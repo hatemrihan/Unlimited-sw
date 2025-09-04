@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Feedback from '../../../../models/feedback';
-import connectToDatabase from '../../../../lib/mongodb';
+import Feedback from '../../../../../models/feedback';
+import connectToDatabase from '../../../../../lib/mongodb';
 
 // DELETE - Delete feedback (Admin only)
 export async function DELETE(
