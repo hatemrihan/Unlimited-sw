@@ -1,11 +1,11 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Nav from '../sections/Nav'
 
-const ThankYouPage = () => {
+function ThankYouContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [orderId, setOrderId] = useState<string | null>(null)
@@ -136,4 +136,17 @@ const ThankYouPage = () => {
   )
 }
 
-export default ThankYouPage 
+export default function ThankYouPage() {
+  return (
+    <Suspense fallback={
+      <>
+        <Nav />
+        <div className="min-h-screen bg-black pt-20 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#b3b3b3]"></div>
+        </div>
+      </>
+    }>
+      <ThankYouContent />
+    </Suspense>
+  )
+} 
