@@ -243,7 +243,8 @@ const EditIntro = ({ params }: { params: Promise<{ id: string }> }) => {
                 </label>
                 <FileUpload
                   onUpload={(url) => handleImageUpload('mainImage', url)}
-                  acceptedFileTypes={formData.isVideo ? ['video/*'] : ['image/*']}
+                  accept={formData.isVideo ? 'video/*' : 'image/*'}
+                  label="Main Image/Video"
                 />
                 {images.mainImage && (
                   <div className="mt-2">
@@ -262,7 +263,8 @@ const EditIntro = ({ params }: { params: Promise<{ id: string }> }) => {
                 </label>
                 <FileUpload
                   onUpload={(url) => handleImageUpload('leftImage', url)}
-                  acceptedFileTypes={['image/*']}
+                  accept="image/*"
+                  label="Left Image"
                 />
                 {images.leftImage && (
                   <div className="mt-2">
@@ -277,7 +279,8 @@ const EditIntro = ({ params }: { params: Promise<{ id: string }> }) => {
                 </label>
                 <FileUpload
                   onUpload={(url) => handleImageUpload('rightImage', url)}
-                  acceptedFileTypes={['image/*']}
+                  accept="image/*"
+                  label="Right Image"
                 />
                 {images.rightImage && (
                   <div className="mt-2">
