@@ -33,7 +33,6 @@ const SidebarNav = ({
   logoAlt = 'Logo',
   items,
   activeHref,
-  className = '',
   ease = 'power3.easeOut',
   baseColor = '#fff',
   pillColor = '#060010',
@@ -55,7 +54,7 @@ const SidebarNav = ({
   const hamburgerRef = useRef<HTMLButtonElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const navItemsRef = useRef<HTMLDivElement>(null);
-  const logoRef = useRef<HTMLAnchorElement>(null);
+  const logoRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const layout = () => {
@@ -169,18 +168,6 @@ const SidebarNav = ({
     });
   };
 
-  const handleLogoEnter = () => {
-    const img = logoImgRef.current;
-    if (!img) return;
-    logoTweenRef.current?.kill();
-    gsap.set(img, { rotate: 0 });
-    logoTweenRef.current = gsap.to(img, {
-      rotate: 360,
-      duration: 0.2,
-      ease,
-      overwrite: 'auto'
-    });
-  };
 
   const toggleMobileMenu = () => {
     const newState = !isMobileMenuOpen;
@@ -254,7 +241,6 @@ const SidebarNav = ({
   // Get user info from session
   const userEmail = session?.user?.email || 'admin@example.com';
   const userInitial = userEmail.charAt(0).toUpperCase();
-  const displayName = session?.user?.name || userName;
   
   // Show loading state if session is being fetched
   if (!session) {

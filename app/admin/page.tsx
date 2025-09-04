@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Bar, BarChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, AreaChart, Area, Tooltip, ReferenceLine } from 'recharts';
+import { XAxis, YAxis, CartesianGrid, ResponsiveContainer, AreaChart, Area, Tooltip } from 'recharts';
 import LightRays from '../../components/LightRays';
 import ProtectedAdminRoute from '@/components/auth/protected-admin-route';
 import SidebarNav from './sections/SideBarNav';
@@ -12,7 +12,6 @@ import Intro from './sections/intro';
 import Reviews from './sections/reviews';
 import { useSession } from 'next-auth/react';
 
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 

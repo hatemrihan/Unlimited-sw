@@ -6,7 +6,6 @@ import Link from 'next/link';
 import Nav from '../sections/Nav';
 
 export default function PaymobFailurePage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [orderDetails, setOrderDetails] = useState<any>(null);
   const [loading, setLoading] = useState(true);

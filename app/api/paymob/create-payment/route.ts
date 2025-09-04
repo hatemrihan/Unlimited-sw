@@ -3,8 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 // Paymob API configuration
 const PAYMOB_TOKEN = process.env.PAYMOB_TOKEN;
 const PAYMOB_INTEGRATION_ID = process.env.PAYMOB_INTEGRATION_ID;
-const PAYMOB_IFRAME_ID = process.env.PAYMOB_IFRAME_ID;
-const PAYMOB_HMAC_SECRET = process.env.PAYMOB_HMAC_SECRET;
 const PAYMOB_PUBLIC_KEY = process.env.PAYMOB_PUBLIC_KEY;
 
 export async function POST(request: NextRequest) {
