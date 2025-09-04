@@ -16,6 +16,7 @@
 # next.js
 /.next/
 /out/
+.vercel/
 
 # production
 /build
@@ -32,6 +33,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+.env.local
+!.env.example
 
 # vercel
 .vercel
@@ -39,3 +42,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# extra: exclude local scripts and tests from repo
+scripts/**
+*.test.*
+*test*.js
+*test*.ts
+simple-test.js
+server.js
