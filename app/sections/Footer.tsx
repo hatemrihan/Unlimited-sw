@@ -85,7 +85,7 @@ const Footer: FC = () => {
     }
   }
   return (
-    <footer className="bg-black text-white py-12 lg:py-16" id="contact" ref={footerRef}>
+    <footer className="bg-stone-100 text-black py-12 lg:py-16" id="contact" ref={footerRef}>
       {/* Main Footer Content */}
       <motion.div
         className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12"
@@ -139,7 +139,7 @@ const Footer: FC = () => {
               >
                 <Button
                   variant="secondary"
-                  className="text-base lg:text-lg px-6 py-3 lg:px-8 lg:py-4 hover:bg-white hover:text-black transition-all duration-300"
+                  className="text-base lg:text-lg px-6 py-3 lg:px-8 lg:py-4 bg-black text-white  hover:bg-white hover:text-black transition-all duration-300"
                   iconAfter={
                     <div className="w-5 h-5 lg:w-6 lg:h-6 overflow-hidden">
                       <div className="w-10 h-5 lg:w-12 lg:h-6 flex transition-transform duration-300 group-hover/button:-translate-x-1/2">
@@ -183,11 +183,11 @@ const Footer: FC = () => {
                   >
                     <Button
                       variant="text"
-                      className="text-base lg:text-lg hover:text-gray-300 transition-colors duration-300 px-0 py-2 lg:px-0 lg:py-3 relative group cursor-pointer"
+                      className="text-base lg:text-lg hover:text-stone-500 transition-colors duration-300 px-0 py-2 lg:px-0 lg:py-3 relative group cursor-pointer"
                     >
                       {label}
                       {/* Underline Animation */}
-                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-white transition-all duration-300 group-hover:w-full"></span>
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-black transition-all duration-300 group-hover:w-full"></span>
                     </Button>
                   </a>
                 </motion.div>
@@ -206,7 +206,7 @@ const Footer: FC = () => {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <motion.p
-            className="text-white/50 text-sm text-center"
+            className="text-black/50 text-sm text-center"
             initial={{opacity: 0, y: 20}}
             animate={isInView ? {opacity: 1, y: 0} : {opacity: 0, y: 20}}
             transition={{duration: 0.3, delay: 0.9}}

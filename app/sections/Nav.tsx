@@ -183,13 +183,13 @@ const Nav: FC = () => {
       {/* Navigation Header */}
       <header className="relative w-full">
         {/* Mobile Sliding Navigation */}
-        <div className="fixed top-0 left-0 w-full h-0 overflow-hidden z-40 bg-black transition-colors duration-300" ref={navScope}>
+        <div className="fixed top-0 left-0 w-full h-0 overflow-hidden z-40 bg-stone-100 transition-colors duration-300" ref={navScope}>
           <nav className="mt-16 sm:mt-20 flex flex-col w-full">
           {navItems.map(({label, href}, index) => (
             <a
               href={href}
               key={label}
-              className={`text-[#b3b3b3] border-t last:border-b border-gray-700/30 py-6 sm:py-8 group/nav-items relative isolate bg-black w-full transition-all duration-300 hover:text-white hover:bg-white/5 ${
+              className={`text-black border-t last:border-b border-gray-700/30 py-6 sm:py-8 group/nav-items relative isolate bg-stone-100 w-full transition-all duration-300 hover:text-stone-500 hover:bg-white/5 ${
                 isOpen ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8'
               }`}
               style={{
@@ -198,7 +198,7 @@ const Nav: FC = () => {
               onClick={handleClickMobileNavItem}
             >
               <div className="container mx-auto px-4 sm:px-6 flex items-center justify-start">
-                <div className="absolute w-full h-0 bg-white/5 group-hover/nav-items:h-full transition-all duration-500 bottom-0 -z-10"></div>
+                <div className="absolute w-full h-0 bg-stone-100/5 group-hover/nav-items:h-full transition-all duration-500 bottom-0 -z-10"></div>
                 <span className="text-2xl sm:text-3xl group-hover/nav-items:pl-4 transition-all duration-500 font-medium">
                   {label}
                 </span>
@@ -212,13 +212,17 @@ const Nav: FC = () => {
       </div>
 
         {/* Fixed Header - Always on top */}
-        <div className="fixed top-0 left-0 right-0 w-full z-50 bg-black backdrop-blur-sm border-b border-gray-800/50 transition-colors duration-300">
+        <div className={`fixed top-0 left-0 right-0 w-full z-50 backdrop-blur-sm border-b transition-colors duration-300 ${
+          isOpen ? 'bg-stone-100 border-gray-300/50' : 'bg-black border-gray-800/50'
+        }`}>
           <div className="w-full px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16 lg:h-20 relative">
               {/* Mobile: Menu Button - Left */}
               <div className="lg:hidden flex items-center">
                 <button
-                  className="text-[#b3b3b3] hover:text-gray-400 transition-colors duration-300 relative z-10 px-3 py-2 min-w-[60px] min-h-[44px] flex flex-col items-center justify-center gap-1 cursor-pointer"
+                  className={`hover:text-gray-400 transition-colors duration-300 relative z-10 px-3 py-2 min-w-[60px] min-h-[44px] flex flex-col items-center justify-center gap-1 cursor-pointer ${
+                    isOpen ? 'text-black' : 'text-[#b3b3b3]'
+                  }`}
                   onClick={toggleMenu}
                   aria-label={isOpen ? 'Close menu' : 'Open menu'}
                 >
@@ -228,15 +232,19 @@ const Nav: FC = () => {
               </div>
 
               {/* Logo - Center on Mobile, Left on Desktop */}
-              <div className="absolute left-1/2 lg:left-60 transform -translate-x-1/2 lg:relative lg:transform-none flex-shrink-0 flex items-center pt-3 text-[#b3b3b3]">
+              <div className={`absolute left-1/2 lg:left-60 transform -translate-x-1/2 lg:relative lg:transform-none flex-shrink-0 flex items-center pt-3 ${
+                isOpen ? 'text-black' : 'text-[#b3b3b3]'
+              }`}>
                 <Link href="/" className="block">
-                  <div className="relative text-[#b3b3b3]">
+                  <div className={`relative ${isOpen ? 'text-black' : 'text-[#b3b3b3]'}`}>
                     <Image
                       src="/images/Logo-image.png"
                       alt="Logo"
                       width={500}
                       height={500}
-                      className="h-25  lg:h-30 w-auto object-contain hover:scale-105 transition-all duration-300 filter brightness-0 invert text-[#b3b3b3]"
+                      className={`h-25 lg:h-30 w-auto object-contain hover:scale-105 transition-all duration-300 ${
+                        isOpen ? 'filter-none' : 'filter brightness-0 invert'
+                      }`}
                       onError={(e) => {
                         // Fallback to text if image fails to load
                         const target = e.currentTarget;
@@ -361,7 +369,9 @@ const Nav: FC = () => {
                   {/* Mobile Cart Icon */}
                   <button
                     onClick={() => window.location.href = '/cart'}
-                    className="text-[#b3b3b3] hover:text-gray-400 transition-colors duration-300 p-2 hover:bg-gray-700/30 rounded-lg cursor-pointer relative"
+                    className={`hover:text-gray-400 transition-colors duration-300 p-2 hover:bg-gray-700/30 rounded-lg cursor-pointer relative ${
+                      isOpen ? 'text-black' : 'text-[#b3b3b3]'
+                    }`}
                     suppressHydrationWarning
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" className="w-5 h-5 fill-current">
@@ -380,11 +390,15 @@ const Nav: FC = () => {
                                       {/* Mobile Account Icon */}
                    {session ? (
                      <div className="flex items-center space-x-1">
-                       <span className="text-[#b3b3b3] text-xs font-medium max-w-[60px] truncate">
+                       <span className={`text-xs font-medium max-w-[60px] truncate ${
+                         isOpen ? 'text-black' : 'text-[#b3b3b3]'
+                       }`}>
                          {session.user?.name?.split(' ')[0] || session.user?.email?.split('@')[0]}
                        </span>
                        <button
-                         className="text-[#b3b3b3] hover:text-gray-400 transition-colors duration-300 p-1 hover:bg-gray-700/30 rounded cursor-pointer"
+                         className={`hover:text-gray-400 transition-colors duration-300 p-1 hover:bg-gray-700/30 rounded cursor-pointer ${
+                           isOpen ? 'text-black' : 'text-[#b3b3b3]'
+                         }`}
                          onClick={() => signOut()}
                          aria-label="Sign out"
                          suppressHydrationWarning
@@ -396,7 +410,9 @@ const Nav: FC = () => {
                      </div>
                    ) : (
                      <button
-                       className="text-[#b3b3b3] hover:text-gray-400 transition-colors duration-300 p-2 hover:bg-gray-700/30 rounded-lg cursor-pointer"
+                       className={`hover:text-gray-400 transition-colors duration-300 p-2 hover:bg-gray-700/30 rounded-lg cursor-pointer ${
+                         isOpen ? 'text-black' : 'text-[#b3b3b3]'
+                       }`}
                        onClick={() => {
                          // Redirect to NextAuth signin with Google provider
                          if (typeof window !== 'undefined') {
