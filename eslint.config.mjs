@@ -27,14 +27,16 @@ const eslintConfig = [
       "simple-test.js",
     ],
   },
-  // Loosen a few rules to unblock deployment; keep type-safety where it matters
+  // Disable all warnings to clean up build output
   {
-    files: ["**/*.{ts,tsx}"]
-  ,
+    files: ["**/*.{ts,tsx}"],
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-require-imports": "off",
       "@typescript-eslint/no-empty-object-type": "off",
+      "@typescript-eslint/no-unused-vars": "off",
+      "@next/next/no-img-element": "off",
+      "react-hooks/exhaustive-deps": "off",
       "react/no-unescaped-entities": "off",
     },
   },

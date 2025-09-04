@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Nav from '../sections/Nav';
 
-export default function PaymobFailurePage() {
+function PaymobFailureContent() {
   const searchParams = useSearchParams();
   const [orderDetails, setOrderDetails] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -108,5 +108,23 @@ export default function PaymobFailurePage() {
         </div>
       </div>
     </>
+  );
+}
+
+export default function PaymobFailurePage() {
+  return (
+    <Suspense fallback={
+      <>
+        <Nav />
+        <div className="min-h-screen bg-black pt-20 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+            <p className="text-white">Loading...</p>
+          </div>
+        </div>
+      </>
+    }>
+      <PaymobFailureContent />
+    </Suspense>
   );
 }

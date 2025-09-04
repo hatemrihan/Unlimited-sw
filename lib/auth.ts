@@ -12,7 +12,7 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async signIn({ user, account, profile }) {
+          async signIn({ user }) {
       console.log("SignIn callback - User email:", user.email);
       console.log("Allowed emails:", allowedEmails);
       

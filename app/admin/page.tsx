@@ -23,7 +23,6 @@ const AdminDashboard = () => {
     orders: 0,
     promoCodes: 0
   });
-  const [chartData, setChartData] = useState<Array<{date: string, orders: number, revenue: number}>>([]);
   const [monthlyData, setMonthlyData] = useState<Array<{name: string, sales: number}>>([
     { name: 'Jan', sales: 0 }, { name: 'Feb', sales: 0 }, { name: 'Mar', sales: 0 },
     { name: 'Apr', sales: 0 }, { name: 'May', sales: 0 }, { name: 'Jun', sales: 0 },
@@ -212,7 +211,6 @@ const AdminDashboard = () => {
         console.log('Monthly data:', monthlyData);
         console.log('Recent orders:', recentOrdersData);
         
-        setChartData(chartData);
         setMonthlyData(monthlyData);
         setRecentOrders(recentOrdersData);
       }
