@@ -9,7 +9,7 @@ import Footer from '../sections/Footer';
 
 const MohamedAlkadyProfile = () => {
   const {scope, entranceAnimation} = useTextRevealAnimationSimple();
-  const inView = useInView(scope, { once: true, margin: "-100px" });
+  const inView = useInView(scope, { once: true, margin: "-50px" });
 
   useEffect(() => {
     if (inView) {
@@ -30,7 +30,7 @@ const MohamedAlkadyProfile = () => {
         <motion.div
           className="flex flex-col  gap-8 md:gap-12 lg:hidden"
           initial={{opacity: 0}}
-          animate={inView ? {opacity: 1} : {opacity: 0}}
+          animate={{opacity: 1}}
           transition={{duration: 0.8, delay: 0.2}}
         >
           {/* Text First - Centered */}
@@ -92,7 +92,7 @@ const MohamedAlkadyProfile = () => {
         <motion.div
           className="hidden lg:grid lg:grid-cols-3 gap-20 items-center"
           initial={{opacity: 0}}
-          animate={inView ? {opacity: 1} : {opacity: 0}}
+          animate={{opacity: 1}}
           transition={{duration: 0.8, delay: 0.2}}
         >
           {/* Left Column - WHO IS MOHAMED ALKADY */}

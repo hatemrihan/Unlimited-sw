@@ -11,17 +11,17 @@ import React from "react";
 
 const navItems = [
   {
-    href: '#intro',
+    href: '/about',
     label: 'About',
     isExternal: false
   },
   {
-    href: '#shop',
+    href: '/shop',
     label: 'Shop',
     isExternal: false
   },
   {
-    href: '#intro',
+    href: '/#intro',
     label: 'Our Athletes',
     isExternal: false
   },
@@ -53,14 +53,27 @@ const Footer: FC = () => {
 
     e.preventDefault();
 
-    if (href.startsWith('#')) {
-      // Handle hash links - scroll to sections with better smooth scrolling
+    if (href.startsWith('/#')) {
+      // Handle home page hash links - navigate to home then scroll
+      const hash = href.substring(1); // Remove the leading /
+      router.push('/');
+      setTimeout(() => {
+        const target = document.querySelector(hash);
+        if (target) {
+          const headerHeight = 80;
+          const targetPosition = target.getBoundingClientRect().top + window.pageYOffset - headerHeight;
+          window.scrollTo({
+            top: targetPosition,
+            behavior: 'smooth'
+          });
+        }
+      }, 100);
+    } else if (href.startsWith('#')) {
+      // Handle current page hash links
       const target = document.querySelector(href);
       if (target) {
-        // Calculate offset for fixed header
-        const headerHeight = 80; // Approximate header height
+        const headerHeight = 80;
         const targetPosition = target.getBoundingClientRect().top + window.pageYOffset - headerHeight;
-
         window.scrollTo({
           top: targetPosition,
           behavior: 'smooth'

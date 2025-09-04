@@ -111,7 +111,7 @@ const FeedbackForm = () => {
   return (
         <motion.div
       id="feedbackform"
-      className="w-full max-w-2xl mx-auto mt-6 lg:mt-8"
+      className="w-full max-w-2xl mx-auto mt-6 lg:mt-8 px-4 sm:px-6"
       ref={formRef}
       initial={{ opacity: 0, y: 50 }}
       animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
@@ -119,12 +119,12 @@ const FeedbackForm = () => {
     >
       {/* Feedback Form Header */}
       <motion.div
-        className="text-center mb-6"
+        className="text-center mb-4 sm:mb-6"
         initial={{opacity: 0, y: 30}}
         animate={isInView ? {opacity: 1, y: 0} : {opacity: 0, y: 30}}
         transition={{duration: 0.6, delay: 0.4}}
       >
-        <h2 className="text-lg sm:text-xl lg:text-4xl font-black uppercase text-[#b3b3b3] mb-2">
+        <h2 className="text-base sm:text-lg md:text-xl lg:text-3xl font-black uppercase text-[#b3b3b3] mb-2">
         — SHARE YOUR FEEDBACK
         </h2>
 
@@ -150,7 +150,7 @@ const FeedbackForm = () => {
         {/* Name and Email Row - Centered on mobile/tablet */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 max-w-md mx-auto lg:max-w-none">
           <div className="space-y-2">
-            <label htmlFor="name" className="block text-sm font-medium text-white uppercase tracking-wider">
+            <label htmlFor="name" className="block text-xs sm:text-sm font-medium text-white uppercase tracking-wider">
               Name *
             </label>
             <input
@@ -170,7 +170,7 @@ const FeedbackForm = () => {
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="email" className="block text-sm font-medium text-white uppercase tracking-wider">
+            <label htmlFor="email" className="block text-xs sm:text-sm font-medium text-white uppercase tracking-wider">
               Email *
             </label>
                         <input

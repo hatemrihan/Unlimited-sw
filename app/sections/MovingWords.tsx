@@ -21,7 +21,7 @@ const MovingWords = () => {
         {[...Array(15)].map((_, index) => (
           <div
             key={index}
-            className="text-[2vw] min-w-max text-white font-light flex-shrink-0 mx-12 flex items-center"
+            className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl min-w-max text-white font-light flex-shrink-0 mx-8 sm:mx-12 flex items-center"
           >
             <span className="mr-3 text-white/60">©</span>
             <span className="tracking-wider">UNLIMITED</span>
