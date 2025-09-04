@@ -444,11 +444,11 @@ const PillNav = ({
               background: 'var(--pill-bg, #fff)',
               color: 'var(--pill-text, #fff)'
             };
-            const hoverIn = (e: React.MouseEvent<HTMLAnchorElement>) => {
+            const hoverIn = (e: React.MouseEvent<HTMLElement>) => {
               e.currentTarget.style.background = 'var(--base)';
               e.currentTarget.style.color = 'var(--hover-text, #fff)';
             };
-            const hoverOut = (e: React.MouseEvent<HTMLAnchorElement>) => {
+            const hoverOut = (e: React.MouseEvent<HTMLElement>) => {
               e.currentTarget.style.background = 'var(--pill-bg, #fff)';
               e.currentTarget.style.color = 'var(--pill-text, #fff)';
             };

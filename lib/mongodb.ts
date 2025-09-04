@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { getMongoDBStatus, MONGODB_CONFIG } from './mongodb-config';
+import { getMongoDBStatus } from './mongodb-config';
 
 type MongooseCache = {
   conn: typeof mongoose | null;
