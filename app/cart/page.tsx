@@ -79,7 +79,7 @@ const CartPage = () => {
               ← Continue Shopping
             </button>
             
-            <h1 className="text-4xl lg:text-6xl font-bold uppercase tracking-wider">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-bold uppercase tracking-wider">
               CART
             </h1>
           </div>
@@ -104,7 +104,7 @@ const CartPage = () => {
                 {cartState.items.map((item) => {
                   console.log('Cart item:', item.name, 'Stock:', item.stock, 'Quantity:', item.quantity);
                   return (
-                  <div key={`${item.id}-${JSON.stringify(item.variant)}`} className="flex items-center gap-4 lg:gap-6 py-6 border-b border-gray-700 last:border-b-0">
+                  <div key={`${item.id}-${JSON.stringify(item.variant)}`} className="flex items-start sm:items-center gap-3 sm:gap-4 lg:gap-6 py-4 sm:py-6 border-b border-gray-700 last:border-b-0">
                     
                     {/* Product Image */}
                     <div
@@ -132,12 +132,12 @@ const CartPage = () => {
                     </div>
                     
                     {/* Quantity Controls */}
-                    <div className="flex flex-col items-center space-y-1">
-                      <div className="flex items-center space-x-2 lg:space-x-4">
+                    <div className="flex flex-col items-center space-y-1 sm:space-y-2">
+                      <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-4">
                         <button
                           onClick={() => handleUpdateQuantity(item.id, item.variant, item.quantity - 1)}
                           disabled={item.quantity <= 1}
-                          className={`w-8 h-8 border flex items-center justify-center font-bold text-lg transition-colors duration-300 ${
+                          className={`w-6 h-6 sm:w-8 sm:h-8 border flex items-center justify-center font-bold text-sm sm:text-lg transition-colors duration-300 ${
                             item.quantity <= 1
                               ? 'border-gray-600 text-gray-600 cursor-not-allowed'
                               : 'border-white text-white hover:bg-white hover:text-black'
@@ -145,11 +145,11 @@ const CartPage = () => {
                         >
                           -
                         </button>
-                        <span className="text-white font-medium w-8 text-center">{item.quantity}</span>
+                        <span className="text-white font-medium w-6 sm:w-8 text-center text-sm sm:text-base">{item.quantity}</span>
                         <button
                           onClick={() => handleUpdateQuantity(item.id, item.variant, item.quantity + 1)}
                           disabled={item.stock !== undefined && item.quantity >= item.stock}
-                          className={`w-8 h-8 border flex items-center justify-center font-bold text-lg transition-colors duration-300 ${
+                          className={`w-6 h-6 sm:w-8 sm:h-8 border flex items-center justify-center font-bold text-sm sm:text-lg transition-colors duration-300 ${
                             item.stock !== undefined && item.quantity >= item.stock
                               ? 'border-gray-600 text-gray-600 cursor-not-allowed'
                               : 'border-white text-white hover:bg-white hover:text-black'

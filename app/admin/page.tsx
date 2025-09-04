@@ -817,7 +817,7 @@ const AdminDashboard = () => {
         <main className="flex-1 p-3 md:p-6 lg:p-8 pb-20 lg:pb-8 overflow-x-hidden bg-transparent relative z-10 md:ml-64">
           <div className="max-w-7xl mx-auto">
             {/* Dashboard heading */}
-        <div className="mb-8">
+        <div className="mb-8 pt-8 sm:pt-12 md:pt-16">
           <a href="/admin">
               <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl tracking-tight font-bold text-center sm:text-left text-white cursor-pointer">
                 UNLIMITED-SW Dashboard

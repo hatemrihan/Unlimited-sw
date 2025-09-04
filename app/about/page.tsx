@@ -37,7 +37,7 @@ const MohamedAlkadyProfile = () => {
           <motion.div
             className="text-left"
             initial={{opacity: 0, x: -50}}
-            animate={inView ? {opacity: 1, x: 0} : {opacity: 0, x: -50}}
+            animate={{opacity: 1, x: 0}}
             transition={{duration: 0.8, delay: 0.4}}
           >
             <h1 className="text-white text-3xl md:text-5xl font-light tracking-wider mt-20 mb-0 md:mb-6" ref={scope as React.RefObject<HTMLHeadingElement>}>
@@ -52,7 +52,7 @@ const MohamedAlkadyProfile = () => {
           <motion.div
             className="flex justify-center w-full"
             initial={{opacity: 0, scale: 0.9}}
-            animate={inView ? {opacity: 1, scale: 1} : {opacity: 0, scale: 0.9}}
+            animate={{opacity: 1, scale: 1}}
             transition={{duration: 0.8, delay: 0.6}}
           >
             <div className="relative w-full max-w-sm md:max-w-md">
@@ -61,7 +61,7 @@ const MohamedAlkadyProfile = () => {
                 alt="Mohamed Alkady"
                 className="w-full h-auto object-cover  shadow-xl"
                 initial={{scale: 0.8}}
-                animate={inView ? {scale: 1} : {scale: 0.8}}
+                animate={{scale: 1}}
                 transition={{duration: 0.8, delay: 0.8}}
                 onError={(e) => {
                   // Fallback if image fails to load
@@ -79,7 +79,7 @@ const MohamedAlkadyProfile = () => {
           <motion.div
             className="text-center"
             initial={{opacity: 0, y: 50}}
-            animate={inView ? {opacity: 1, y: 0} : {opacity: 0, y: 50}}
+            animate={{opacity: 1, y: 0}}
             transition={{duration: 0.8, delay: 1.0}}
           >
             <div className="text-white text-3xl md:text-5xl  tracking-wider">
@@ -99,7 +99,7 @@ const MohamedAlkadyProfile = () => {
           <motion.div
             className="text-left"
             initial={{opacity: 0, x: -50}}
-            animate={inView ? {opacity: 1, x: 0} : {opacity: 0, x: -50}}
+            animate={{opacity: 1, x: 0}}
             transition={{duration: 0.8, delay: 0.4}}
           >
             <h1 className="text-white text-2xl font-light tracking-wider text-spacing-6 mb-9" ref={scope as React.RefObject<HTMLHeadingElement>}>
@@ -114,7 +114,7 @@ const MohamedAlkadyProfile = () => {
           <motion.div
             className="flex justify-center"
             initial={{opacity: 0, scale: 0.9}}
-            animate={inView ? {opacity: 1, scale: 1} : {opacity: 0, scale: 0.9}}
+            animate={{opacity: 1, scale: 1}}
             transition={{duration: 0.8, delay: 0.6}}
           >
             <div className="relative w-full max-w-lg">
@@ -123,7 +123,7 @@ const MohamedAlkadyProfile = () => {
                 alt="Mohamed Alkady"
                 className="w-full h-auto object-cover "
                 initial={{scale: 0.8}}
-                animate={inView ? {scale: 1} : {scale: 0.8}}
+                animate={{scale: 1}}
                 transition={{duration: 0.8, delay: 0.8}}
                 onError={(e) => {
                   // Fallback if image fails to load
@@ -140,7 +140,7 @@ const MohamedAlkadyProfile = () => {
           <motion.div
             className="text-right flex items-center justify-end"
             initial={{opacity: 0, x: 50}}
-            animate={inView ? {opacity: 1, x: 0} : {opacity: 0, x: 50}}
+            animate={{opacity: 1, x: 0}}
             transition={{duration: 0.8, delay: 1.0}}
           >
             <div className="text-white text-2xl  tracking-wider">

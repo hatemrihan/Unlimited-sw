@@ -69,11 +69,13 @@ interface Order {
   totalAmount: number;
   subtotal: number;
   shippingCost: number;
-  paymentMethod: 'cashOnDelivery' | 'instaPay';
+  paymentMethod: 'cashOnDelivery' | 'instaPay' | 'paymob';
   status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
   orderDate: string;
   createdAt: string;
   transactionScreenshot?: string;
+  promoCode?: string;
+  discountAmount?: number;
   notes?: string;
 }
 
@@ -412,10 +414,37 @@ const Orders = () => {
       return (
         <div className="text-white">
           <span className={`inline-flex px-2 py-1 text-xs rounded ${
-            method === 'instaPay' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
+            method === 'instaPay' ? 'bg-blue-100 text-blue-800' : 
+            method === 'paymob' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
           }`}>
-            {method === 'instaPay' ? 'InstaPay' : 'Cash on Delivery'}
+            {method === 'instaPay' ? 'InstaPay' : 
+             method === 'paymob' ? 'Paymob' : 'Cash on Delivery'}
           </span>
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: "promoCode",
+    header: "Promo Code",
+    cell: ({ row }) => {
+      const order = row.original;
+      return (
+        <div className="text-white">
+          {order.promoCode ? (
+            <div>
+              <span className="inline-flex px-2 py-1 text-xs rounded bg-yellow-100 text-yellow-800 font-medium">
+                {order.promoCode}
+              </span>
+              {order.discountAmount && (
+                <div className="text-xs text-green-400 mt-1">
+                  -L.E {order.discountAmount}
+                </div>
+              )}
+            </div>
+          ) : (
+            <span className="text-gray-400 text-xs">No promo</span>
+          )}
         </div>
       );
     },

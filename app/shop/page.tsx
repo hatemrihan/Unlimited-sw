@@ -375,13 +375,20 @@ const ProductCard = ({ product, onAddToCart, isMobile = false }: {
                     {product.discount}% OFF
                   </div>
                 )}
+                
+                {/* Out of Stock Badge */}
+                {product.stock !== undefined && product.stock <= 0 && (
+                  <div className="bg-black text-white px-2 py-1 text-xs font-medium rounded-sm shadow-sm">
+                    OUT OF STOCK
+                  </div>
+                )}
               </div>
 
-              {/* Sold Out Badge */}
-              {(product.isOutOfStock || (product.stock !== undefined && product.stock <= 0)) && (
+              {/* Preorder Badge */}
+              {product.stock !== undefined && product.stock <= 0 && (
                 <div className="absolute top-3 right-3 z-20">
-                  <div className="bg-black text-white px-2 py-1 text-xs font-medium rounded-sm shadow-sm">
-                    SOLD OUT
+                  <div className="bg-gray-700 text-white px-2 py-1 text-xs font-medium rounded-sm shadow-sm">
+                    PREORDER
                   </div>
                 </div>
               )}

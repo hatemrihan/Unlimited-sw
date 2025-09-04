@@ -493,42 +493,69 @@ export default function CheckoutPage() {
                   </label>
                   <div className="space-y-3">
                     <div className="flex items-center">
-                      <input
-                        type="radio"
-                        id="cashOnDelivery"
-                        name="paymentMethod"
-                        value="cashOnDelivery"
-                        checked={formData.paymentMethod === 'cashOnDelivery'}
-                        onChange={handleInputChange}
-                        className="mr-2 h-4 w-4 accent-white"
-                      />
-                      <label htmlFor="cashOnDelivery" className="text-sm">Cash on Delivery</label>
+                      <div className="relative">
+                        <input
+                          type="radio"
+                          id="cashOnDelivery"
+                          name="paymentMethod"
+                          value="cashOnDelivery"
+                          checked={formData.paymentMethod === 'cashOnDelivery'}
+                          onChange={handleInputChange}
+                          className="sr-only"
+                        />
+                        <div className={`w-4 h-4 rounded-full border-2 border-white mr-2 flex items-center justify-center cursor-pointer ${
+                          formData.paymentMethod === 'cashOnDelivery' ? 'bg-black' : 'bg-transparent'
+                        }`} onClick={() => setFormData(prev => ({ ...prev, paymentMethod: 'cashOnDelivery' }))}>
+                          {formData.paymentMethod === 'cashOnDelivery' && (
+                            <div className="w-2 h-2 rounded-full bg-white"></div>
+                          )}
+                        </div>
+                      </div>
+                      <label htmlFor="cashOnDelivery" className="text-sm cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, paymentMethod: 'cashOnDelivery' }))}>Cash on Delivery</label>
                     </div>
 
                     <div className="flex items-center">
-                      <input
-                        type="radio"
-                        id="instaPay"
-                        name="paymentMethod"
-                        value="instaPay"
-                        checked={formData.paymentMethod === 'instaPay'}
-                        onChange={handleInputChange}
-                        className="mr-2 h-4 w-4 accent-white"
-                      />
-                      <label htmlFor="instaPay" className="text-sm">Pay with InstaPay</label>
+                      <div className="relative">
+                        <input
+                          type="radio"
+                          id="instaPay"
+                          name="paymentMethod"
+                          value="instaPay"
+                          checked={formData.paymentMethod === 'instaPay'}
+                          onChange={handleInputChange}
+                          className="sr-only"
+                        />
+                        <div className={`w-4 h-4 rounded-full border-2 border-white mr-2 flex items-center justify-center cursor-pointer ${
+                          formData.paymentMethod === 'instaPay' ? 'bg-black' : 'bg-transparent'
+                        }`} onClick={() => setFormData(prev => ({ ...prev, paymentMethod: 'instaPay' }))}>
+                          {formData.paymentMethod === 'instaPay' && (
+                            <div className="w-2 h-2 rounded-full bg-white"></div>
+                          )}
+                        </div>
+                      </div>
+                      <label htmlFor="instaPay" className="text-sm cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, paymentMethod: 'instaPay' }))}>Pay with InstaPay</label>
                     </div>
 
                     <div className="flex items-center">
-                      <input
-                        type="radio"
-                        id="paymob"
-                        name="paymentMethod"
-                        value="paymob"
-                        checked={formData.paymentMethod === 'paymob'}
-                        onChange={handleInputChange}
-                        className="mr-2 h-4 w-4 accent-white"
-                      />
-                      <label htmlFor="paymob" className="text-sm">PAY WITH PAYMOB</label>
+                      <div className="relative">
+                        <input
+                          type="radio"
+                          id="paymob"
+                          name="paymentMethod"
+                          value="paymob"
+                          checked={formData.paymentMethod === 'paymob'}
+                          onChange={handleInputChange}
+                          className="sr-only"
+                        />
+                        <div className={`w-4 h-4 rounded-full border-2 border-white mr-2 flex items-center justify-center cursor-pointer ${
+                          formData.paymentMethod === 'paymob' ? 'bg-black' : 'bg-transparent'
+                        }`} onClick={() => setFormData(prev => ({ ...prev, paymentMethod: 'paymob' }))}>
+                          {formData.paymentMethod === 'paymob' && (
+                            <div className="w-2 h-2 rounded-full bg-white"></div>
+                          )}
+                        </div>
+                      </div>
+                      <label htmlFor="paymob" className="text-sm cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, paymentMethod: 'paymob' }))}>PAY WITH PAYMOB</label>
                     </div>
                   </div>
                 </div>
@@ -539,7 +566,7 @@ export default function CheckoutPage() {
                     <div className="mb-4">
                       <h3 className="font-medium mb-2">InstaPay Payment Instructions</h3>
                       <p className="text-sm mb-2">Click the link to send money to:</p>
-                      <p className="font-medium mb-2">seifmahmoud1235@instapay</p>
+                      <p className="font-medium mb-2">muhamed.alkady@instapay</p>
                       <p className="text-sm mb-2">Powered by InstaPay:</p>
                       <a
                         href="https://ipn.eg/S/muhamed.alkady/instapay/8kB0I3"
@@ -547,7 +574,7 @@ export default function CheckoutPage() {
                         rel="noopener noreferrer"
                         className="text-blue-600 dark:text-blue-400 underline text-sm"
                       >
-                        https://ipn.eg/S/seifmahmoud1235/instapay/96HscL
+                        https://ipn.eg/S/muhamed.alkady/instapay/8kB0I3
                       </a>
                     </div>
 

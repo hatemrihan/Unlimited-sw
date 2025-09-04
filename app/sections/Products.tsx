@@ -122,7 +122,7 @@ const Products = () => {
                 onClick={() => handleProductClick(product._id!)}
               >
                 {/* Product Image */}
-                <div className="aspect-square mb-2 lg:mb-3 overflow-hidden bg-gray-800 max-w-[140px] sm:max-w-[160px] lg:max-w-[180px] mx-auto">
+                <div className="aspect-square mb-2 lg:mb-3 overflow-hidden bg-gray-800 max-w-[140px] sm:max-w-[160px] lg:max-w-[180px] mx-auto relative">
                   <img
                     src={product.mainImage}
                     alt={product.name}
@@ -132,6 +132,24 @@ const Products = () => {
                       e.currentTarget.style.backgroundColor = '#333';
                     }}
                   />
+                  
+                  {/* Stock Badges */}
+                  {product.stock !== undefined && product.stock <= 0 && (
+                    <div className="absolute top-2 left-2 z-10">
+                      <div className="bg-black text-white px-2 py-1 text-xs font-medium rounded-sm shadow-sm">
+                        OUT OF STOCK
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Preorder Badge - Show when stock is 0 */}
+                  {product.stock !== undefined && product.stock <= 0 && (
+                    <div className="absolute top-2 right-2 z-10">
+                      <div className="bg-gray-700 text-white px-2 py-1 text-xs font-medium rounded-sm shadow-sm">
+                        PREORDER
+                      </div>
+                    </div>
+                  )}
                 </div>
                 
                 {/* Product Info */}
