@@ -48,7 +48,7 @@ interface Product {
 export default function Shop() {
   const [products, setProducts] = useState<Product[]>([]);
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Start with false for instant display
   const [error, setError] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -65,7 +65,7 @@ export default function Shop() {
   useEffect(() => {
     const fetchAllProducts = async () => {
       try {
-        setLoading(true);
+        // Fast fetch without showing loading state
 
         // Fetch both regular and featured products
         const [regularResponse, featuredResponse] = await Promise.all([
@@ -107,12 +107,10 @@ export default function Shop() {
 
 
         setProducts(combinedProducts);
-        setLoading(false);
 
       } catch (err: unknown) {
         console.error('Error fetching products:', err);
         setError('Failed to load products');
-        setLoading(false);
       }
     };
 

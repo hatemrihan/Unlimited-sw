@@ -6,8 +6,11 @@ import useTextRevealAnimationSimple from '@/hooks/UsetextRevealAnimation-simple'
 import { motion, useInView } from 'framer-motion';
 import MovingWords from '../sections/MovingWords';
 import Footer from '../sections/Footer';
+import Image from 'next/image';
+import whoImage from '../../public/images/who-image.jpg';
+import Button from '@/components/Button';
 
-const MohamedAlkadyProfile = () => {
+const MohamedwhoProfile = () => {
   const {scope, entranceAnimation} = useTextRevealAnimationSimple();
   const inView = useInView(scope, { once: true, margin: "-50px" });
 
@@ -19,137 +22,101 @@ const MohamedAlkadyProfile = () => {
   return ( 
   <>
     <Nav />
-    <motion.div
-      className="min-h-screen bg-black flex items-center justify-center p-8 md:p-12"
-      initial={{opacity: 0}}
-      animate={{opacity: 1}}
-      transition={{duration: 0.3}}
-    >
-      <div className="relative w-full max-w-7xl">
-        {/* Mobile/Tablet Vertical Layout */}
-        <motion.div
-          className="flex flex-col  gap-8 md:gap-12 lg:hidden"
-          initial={{opacity: 0}}
-          animate={{opacity: 1}}
-          transition={{duration: 0.8, delay: 0.2}}
-        >
-          {/* Text First - Centered */}
-          <motion.div
-            className="text-left"
-            initial={{opacity: 0, x: -50}}
-            animate={{opacity: 1, x: 0}}
-            transition={{duration: 0.8, delay: 0.4}}
-          >
-            <h1 className="text-white text-3xl md:text-5xl font-light tracking-wider mt-20 mb-0 md:mb-6" ref={scope as React.RefObject<HTMLHeadingElement>}>
-              WHO IS MOHAMED ALKADY?
-            </h1>
-            <h2 className="text-white text-2xl pl-10 md:text-4xl font-light tracking-wider">
-                   WHO IS MOHAMED ALKADY?
-            </h2>
-          </motion.div>
+    <section className="min-h-screen bg-black  text-white  pt-16 lg:pt-20 w-full overflow-x-hidden transition-colors duration-300">
+        <div className="w-full px-4 sm:px-6 py-8 lg:py-24">
+          {/* Hero Text */}
+          <div className="text-center mb-8 lg:mb-16 w-full">
+            <motion.h1 
+              className="text-3xl xs:text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl font-black uppercase leading-none mb-4 lg:mb-8 w-full"
+              style={{ 
+                letterSpacing: '0.05em',
+                wordBreak: 'keep-all',
+                overflowWrap: 'normal'
+              }}
+              initial={{ opacity: 0, y: 100 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+            >
+              WHO ARE WE?
+            </motion.h1>
+            
+            <motion.h2 
+              className="text-base sm:text-lg md:text-xl lg:text-2xl xl:text-3xl font-bold uppercase tracking-wider mb-4 lg:mb-8"
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+            >
+              THE END OF LIMITS.
+            </motion.h2>
+            
+            <motion.div 
+              className="max-w-4xl mx-auto mb-8 lg:mb-12 px-4"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.6 }}
+            >
+              <p className="text-xs sm:text-sm lowercase md:text-base lg:text-lg leading-relaxed mb-6 lg:mb-8 text-white/80  px-2 sm:px-0">
+              Mohamed Dedicated and dynamic sports science professional with a Ph.D. in Biomechanics in
+Sports Training and more than 14 years of coaching experience. Lecturer at the Faculty
+of Sports Sciences, Benha University, Department of Gymnastics and Exercises – Sports
+Training Specialization. Founder of Gravity benha for Calisthenics training. Active
+calisthenics coach and athlete, currently coaching at multiple locations and specializes in
+the training and development of professional athletes,. In addition to coaching, has
+delivered lectures and workshops in various institutions on training load planning and
+periodization. Involved in ongoing scientific research and academic publishing in the
+fields of sports training and biomechanics, with a strong focus on advancing practical and
+Name theoretical knowledge in calisthenics and gymnastics.
+              </p>
+              
+              <a href="/shop">
+              <motion.button 
+                className="inline-flex items-center px-6 py-3 lg:px-8 lg:py-4 bg-black border border-white text-white font-semibold  hover:bg-white hover:text-black transition-all duration-300 text-sm lg:text-base group"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.8 }}
+              >
+               OUR EQUIPMENTS
+               <div className="w-5 h-5 lg:w-6 lg:h-6 overflow-hidden ml-2">
+                 <div className="w-10 h-5 lg:w-12 lg:h-6 flex transition-transform duration-300 group-hover:-translate-x-1/2">
+                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 lg:w-6 lg:h-6 flex-shrink-0">
+                     <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 19.5 15-15m0 0H8.25m11.25 0v11.25" />
+                   </svg>
+                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 lg:w-6 lg:h-6 flex-shrink-0">
+                     <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 19.5 15-15m0 0H8.25m11.25 0v11.25" />
+                   </svg>
+                 </div>
+               </div>
+              </motion.button>
+              </a>
+            </motion.div>
+          </div>
 
-          {/* Image Second - Centered */}
-          <motion.div
-            className="flex justify-center w-full"
-            initial={{opacity: 0, scale: 0.9}}
-            animate={{opacity: 1, scale: 1}}
-            transition={{duration: 0.8, delay: 0.6}}
+          {/* Image Section */}
+          <motion.div 
+            className="mb-12 lg:mb-16"
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
           >
-            <div className="relative w-full max-w-sm md:max-w-md">
-              <motion.img
-                src="/images/who-image.jpg"
-                alt="Mohamed Alkady"
-                className="w-full h-auto object-cover  shadow-xl"
-                initial={{scale: 0.8}}
-                animate={{scale: 1}}
-                transition={{duration: 0.8, delay: 0.8}}
-                onError={(e) => {
-                  // Fallback if image fails to load
-                  e.currentTarget.style.display = 'none';
-                  const fallback = e.currentTarget.nextElementSibling as HTMLElement;
-                  if (fallback) fallback.style.display = 'block';
-                }}
-              />
-              {/* Fallback content if image fails */}
-
+            {/* Enhanced Image Container */}
+            <div className="relative max-w-4xl mx-auto rounded-3xl overflow-hidden 
+                           
+                           p-6 lg:p-8 shadow-2xl shadow-blue-500/10 dark:shadow-blue-500/20">
+              <div className="aspect-video rounded-2xl overflow-hidden shadow-2xl shadow-black/20 dark:shadow-black/40">
+                <Image
+                  width={1000}
+                  height={1000}
+                  src={whoImage}
+                  alt="who-Image"
+                  className="w-full h-full object-contain"
+                />
+              </div>
             </div>
           </motion.div>
-
-          {/* Hello World Last - Centered */}
-          <motion.div
-            className="text-center"
-            initial={{opacity: 0, y: 50}}
-            animate={{opacity: 1, y: 0}}
-            transition={{duration: 0.8, delay: 1.0}}
-          >
-            <div className="text-white text-3xl md:text-5xl  tracking-wider">
-             more words about moahmed...
-            </div>
-          </motion.div>
-        </motion.div>
-
-        {/* Desktop Horizontal Layout */}
-        <motion.div
-          className="hidden lg:grid lg:grid-cols-3 gap-20 items-center"
-          initial={{opacity: 0}}
-          animate={{opacity: 1}}
-          transition={{duration: 0.8, delay: 0.2}}
-        >
-          {/* Left Column - WHO IS MOHAMED ALKADY */}
-          <motion.div
-            className="text-left"
-            initial={{opacity: 0, x: -50}}
-            animate={{opacity: 1, x: 0}}
-            transition={{duration: 0.8, delay: 0.4}}
-          >
-            <h1 className="text-white text-2xl font-light tracking-wider text-spacing-6 mb-9" ref={scope as React.RefObject<HTMLHeadingElement>}>
-              WHO IS MOHAMED ALKADY?
-            </h1>
-            <h2 className="text-white pl-10  text-xl font-light tracking-wider">
-              WHO IS MOHAMED ALKADY?
-            </h2>
-          </motion.div>
-
-          {/* Middle Column - Image */}
-          <motion.div
-            className="flex justify-center"
-            initial={{opacity: 0, scale: 0.9}}
-            animate={{opacity: 1, scale: 1}}
-            transition={{duration: 0.8, delay: 0.6}}
-          >
-            <div className="relative w-full max-w-lg">
-              <motion.img
-                src="/images/who-image.jpg"
-                alt="Mohamed Alkady"
-                className="w-full h-auto object-cover "
-                initial={{scale: 0.8}}
-                animate={{scale: 1}}
-                transition={{duration: 0.8, delay: 0.8}}
-                onError={(e) => {
-                  // Fallback if image fails to load
-                  e.currentTarget.style.display = 'none';
-                  const fallback = e.currentTarget.nextElementSibling as HTMLElement;
-                  if (fallback) fallback.style.display = 'block';
-                }}
-              />
-
-            </div>
-          </motion.div>
-
-          {/* Right Column - Hello World */}
-          <motion.div
-            className="text-right flex items-center justify-end"
-            initial={{opacity: 0, x: 50}}
-            animate={{opacity: 1, x: 0}}
-            transition={{duration: 0.8, delay: 1.0}}
-          >
-            <div className="text-white text-2xl  tracking-wider">
-            mohamed alkady is...................
-            </div>
-          </motion.div>
-        </motion.div>
-      </div>
-    </motion.div>
+        </div>
+      </section>
     <MovingWords />
     <Footer />
   </>
@@ -157,4 +124,4 @@ const MohamedAlkadyProfile = () => {
 
 };
 
-export default MohamedAlkadyProfile;
+export default MohamedwhoProfile;

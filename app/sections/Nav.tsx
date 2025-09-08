@@ -47,6 +47,61 @@ const Nav: FC = () => {
     setMounted(true);
   }, []);
 
+  // Handle dynamic styling after mount to prevent hydration mismatch
+  useEffect(() => {
+    if (!mounted) return;
+    
+    // Handle nav items
+    const navItems = document.querySelectorAll('[data-nav-item="true"]');
+    navItems.forEach((item, index) => {
+      if (isOpen) {
+        item.classList.remove('opacity-0', '-translate-x-8');
+        item.classList.add('opacity-100', 'translate-x-0');
+        (item as HTMLElement).style.transitionDelay = `${index * 100}ms`;
+      } else {
+        item.classList.remove('opacity-100', 'translate-x-0');
+        item.classList.add('opacity-0', '-translate-x-8');
+        (item as HTMLElement).style.transitionDelay = '0ms';
+      }
+    });
+
+    // Handle header background
+    const header = document.querySelector('[data-header="true"]');
+    if (header) {
+      if (isOpen) {
+        header.classList.remove('bg-black', 'border-gray-800/50');
+        header.classList.add('bg-stone-100', 'border-gray-300/50');
+      } else {
+        header.classList.remove('bg-stone-100', 'border-gray-300/50');
+        header.classList.add('bg-black', 'border-gray-800/50');
+      }
+    }
+
+    // Handle dynamic text colors
+    const dynamicElements = document.querySelectorAll('[data-dynamic-color="true"]');
+    dynamicElements.forEach((element) => {
+      if (isOpen) {
+        element.classList.remove('text-[#b3b3b3]');
+        element.classList.add('text-black');
+      } else {
+        element.classList.remove('text-black');
+        element.classList.add('text-[#b3b3b3]');
+      }
+    });
+
+    // Handle logo filter
+    const logo = document.querySelector('[data-logo="true"]');
+    if (logo) {
+      if (isOpen) {
+        logo.classList.remove('filter', 'brightness-0', 'invert');
+        logo.classList.add('filter-none');
+      } else {
+        logo.classList.remove('filter-none');
+        logo.classList.add('filter', 'brightness-0', 'invert');
+      }
+    }
+  }, [isOpen, mounted]);
+
   // Force video playback on mobile
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -183,21 +238,17 @@ const Nav: FC = () => {
       {/* Navigation Header */}
       <header className="relative w-full">
         {/* Mobile Sliding Navigation */}
-        <div className="fixed top-0 left-0 w-full h-0 overflow-hidden z-40 bg-stone-100 transition-colors duration-300" ref={navScope}>
-          <nav className="mt-16 sm:mt-20 flex flex-col w-full">
+        <div className="fixed top-0 left-0 w-full h-0 overflow-hidden z-40 bg-stone-100 transition-colors duration-300 text-center" ref={navScope}>
+          <nav className="mt-16 sm:mt-20 flex flex-col w-full text-center">
           {navItems.map(({label, href}, index) => (
             <a
               href={href}
               key={label}
-              className={`text-black border-t last:border-b border-gray-700/30 py-6 sm:py-8 group/nav-items relative isolate bg-stone-100 w-full transition-all duration-300 hover:text-stone-500 hover:bg-white/5 ${
-                isOpen ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8'
-              }`}
-              style={{
-                transitionDelay: isOpen ? `${index * 100}ms` : '0ms'
-              }}
+              className="text-black border-t last:border-b border-gray-700/30 py-6 sm:py-8 group/nav-items relative isolate bg-stone-100 w-full transition-all duration-300 hover:text-stone-500 hover:bg-white/5 text-center opacity-0 -translate-x-8"
+              data-nav-item="true"
               onClick={handleClickMobileNavItem}
             >
-              <div className="container mx-auto px-4 sm:px-6 flex items-center justify-start">
+              <div className="container mx-auto px-4 sm:px-6 flex items-center justify-center">
                 <div className="absolute w-full h-0 bg-stone-100/5 group-hover/nav-items:h-full transition-all duration-500 bottom-0 -z-10"></div>
                 <span className="text-2xl sm:text-3xl group-hover/nav-items:pl-4 transition-all duration-500 font-medium">
                   {label}
@@ -212,19 +263,17 @@ const Nav: FC = () => {
       </div>
 
         {/* Fixed Header - Always on top */}
-        <div className={`fixed top-0 left-0 right-0 w-full z-50 backdrop-blur-sm border-b transition-colors duration-300 ${
-          isOpen ? 'bg-stone-100 border-gray-300/50' : 'bg-black border-gray-800/50'
-        }`}>
+        <div className="fixed top-0 left-0 right-0 w-full z-50 backdrop-blur-sm border-b transition-colors duration-300 bg-black border-gray-800/50" data-header="true" suppressHydrationWarning>
           <div className="w-full px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16 lg:h-20 relative">
               {/* Mobile: Menu Button - Left */}
               <div className="lg:hidden flex items-center">
                 <button
-                  className={`hover:text-gray-400 transition-colors duration-300 relative z-10 px-3 py-2 min-w-[60px] min-h-[44px] flex flex-col items-center justify-center gap-1 cursor-pointer ${
-                    isOpen ? 'text-black' : 'text-[#b3b3b3]'
-                  }`}
+                  className="hover:text-gray-400 transition-colors duration-300 relative z-10 px-3 py-2 min-w-[60px] min-h-[44px] flex flex-col items-center justify-center gap-1 cursor-pointer text-[#b3b3b3]"
+                  data-dynamic-color="true"
                   onClick={toggleMenu}
-                  aria-label={isOpen ? 'Close menu' : 'Open menu'}
+                  aria-label="Toggle menu"
+                  suppressHydrationWarning
                 >
                   <span className="block w-6 h-0.5 bg-current transition-all duration-300 cursor-pointer"></span>
                   <span className="block w-6 h-0.5 bg-current transition-all duration-300 cursor-pointer"></span>
@@ -232,19 +281,16 @@ const Nav: FC = () => {
               </div>
 
               {/* Logo - Center on Mobile, Left on Desktop */}
-              <div className={`absolute left-1/2 lg:left-60 transform -translate-x-1/2 lg:relative lg:transform-none flex-shrink-0 flex items-center pt-3 ${
-                isOpen ? 'text-black' : 'text-[#b3b3b3]'
-              }`}>
+              <div className="absolute left-1/2 lg:left-60 transform -translate-x-1/2 lg:relative lg:transform-none flex-shrink-0 flex items-center pt-3 text-[#b3b3b3]" data-dynamic-color="true" suppressHydrationWarning>
                 <Link href="/" className="block">
-                  <div className={`relative ${isOpen ? 'text-black' : 'text-[#b3b3b3]'}`}>
+                  <div className="relative text-[#b3b3b3]" data-dynamic-color="true" suppressHydrationWarning>
                     <Image
                       src="/images/Logo-image.png"
                       alt="Logo"
                       width={500}
                       height={500}
-                      className={`h-25 lg:h-30 w-auto object-contain hover:scale-105 transition-all duration-300 ${
-                        isOpen ? 'filter-none' : 'filter brightness-0 invert'
-                      }`}
+                      className="h-25 lg:h-30 w-auto object-contain hover:scale-105 transition-all duration-300 filter brightness-0 invert"
+                      data-logo="true"
                       onError={(e) => {
                         // Fallback to text if image fails to load
                         const target = e.currentTarget;
@@ -309,23 +355,28 @@ const Nav: FC = () => {
                 {/* Desktop Cart and Account Icons */}
                 <div className="hidden lg:flex items-center space-x-4">
                   {/* Desktop Cart Icon */}
-                  <button
-                    onClick={() => window.location.href = '/cart'}
-                    className="text-[#b3b3b3] hover:text-gray-400 transition-colors duration-300 p-2 hover:bg-gray-700/30 rounded-lg cursor-pointer relative"
-                    suppressHydrationWarning
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" className="w-6 h-6 fill-current">
-                      <path fillRule="evenodd" d="M2.5 3.75a.75.75 0 0 1 .75-.75h1.612a1.75 1.75 0 0 1 1.732 1.5h9.656a.75.75 0 0 1 .748.808l-.358 4.653a2.75 2.75 0 0 1-2.742 2.539h-6.351l.093.78a.25.25 0 0 0 .248.22h6.362a.75.75 0 0 1 0 1.5h-6.362a1.75 1.75 0 0 1-1.738-1.543l-1.04-8.737a.25.25 0 0 0-.248-.22h-1.612a.75.75 0 0 1-.75-.75Zm4.868 7.25h6.53a1.25 1.25 0 0 0 1.246-1.154l.296-3.846h-8.667l.595 5Z"/>
-                      <path d="M10 17a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"/>
-                      <path d="M15 17a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"/>
-                    </svg>
-                    {/* Cart Count Badge */}
-                    {cartState.itemCount > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-white text-black text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                        {cartState.itemCount}
-                      </span>
-                    )}
-                  </button>
+                   <div className="relative group">
+                     <button
+                       onClick={() => window.location.href = '/cart'}
+                       className="text-[#b3b3b3] hover:text-white transition-all duration-300 px-3 py-2 cursor-pointer relative flex items-center gap-2"
+                       suppressHydrationWarning
+                     >
+                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" className="w-5 h-5 fill-current">
+                         <path fillRule="evenodd" d="M2.5 3.75a.75.75 0 0 1 .75-.75h1.612a1.75 1.75 0 0 1 1.732 1.5h9.656a.75.75 0 0 1 .748.808l-.358 4.653a2.75 2.75 0 0 1-2.742 2.539h-6.351l.093.78a.25.25 0 0 0 .248.22h6.362a.75.75 0 0 1 0 1.5h-6.362a1.75 1.75 0 0 1-1.738-1.543l-1.04-8.737a.25.25 0 0 0-.248-.22h-1.612a.75.75 0 0 1-.75-.75Zm4.868 7.25h6.53a1.25 1.25 0 0 0 1.246-1.154l.296-3.846h-8.667l.595 5Z"/>
+                         <path d="M10 17a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"/>
+                         <path d="M15 17a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"/>
+                       </svg>
+                       <span className="text-sm font-medium">Cart</span>
+                       {/* Cart Count Badge */}
+                       {cartState.itemCount > 0 && (
+                         <span className="absolute -top-1 -right-1 bg-white text-black text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                           {cartState.itemCount}
+                         </span>
+                       )}
+                     </button>
+                     {/* Underline hover effect */}
+                     <div className="absolute bottom-0 left-0 w-0 h-0.5 bg-white transition-all duration-300 group-hover:w-full"></div>
+                   </div>
                   
                                       {/* Desktop Account Icon */}
                    {session ? (
@@ -367,25 +418,29 @@ const Nav: FC = () => {
                 {/* Mobile Cart and Account Icons */}
                 <div className="lg:hidden flex items-center space-x-2">
                   {/* Mobile Cart Icon */}
-                  <button
-                    onClick={() => window.location.href = '/cart'}
-                    className={`hover:text-gray-400 transition-colors duration-300 p-2 hover:bg-gray-700/30 rounded-lg cursor-pointer relative ${
-                      isOpen ? 'text-black' : 'text-[#b3b3b3]'
-                    }`}
-                    suppressHydrationWarning
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" className="w-5 h-5 fill-current">
-                      <path fillRule="evenodd" d="M2.5 3.75a.75.75 0 0 1 .75-.75h1.612a1.75 1.75 0 0 1 1.732 1.5h9.656a.75.75 0 0 1 .748.808l-.358 4.653a2.75 2.75 0 0 1-2.742 2.539h-6.351l.093.78a.25.25 0 0 0 .248.22h6.362a.75.75 0 0 1 0 1.5h-6.362a1.75 1.75 0 0 1-1.738-1.543l-1.04-8.737a.25.25 0 0 0-.248-.22h-1.612a.75.75 0 0 1-.75-.75Zm4.868 7.25h6.53a1.25 1.25 0 0 0 1.246-1.154l.296-3.846h-8.667l.595 5Z"/>
-                      <path d="M10 17a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"/>
-                      <path d="M15 17a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"/>
-                    </svg>
-                    {/* Cart Count Badge */}
-                    {cartState.itemCount > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-white text-black text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                        {cartState.itemCount}
-                      </span>
-                    )}
-                  </button>
+                   <div className="relative group">
+                     <button
+                       onClick={() => window.location.href = '/cart'}
+                       className="text-[#b3b3b3] hover:text-white transition-all duration-300 px-2 py-1 cursor-pointer relative flex items-center gap-1"
+                       data-dynamic-color="true"
+                       suppressHydrationWarning
+                     >
+                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" className="w-4 h-4 fill-current">
+                         <path fillRule="evenodd" d="M2.5 3.75a.75.75 0 0 1 .75-.75h1.612a1.75 1.75 0 0 1 1.732 1.5h9.656a.75.75 0 0 1 .748.808l-.358 4.653a2.75 2.75 0 0 1-2.742 2.539h-6.351l.093.78a.25.25 0 0 0 .248.22h6.362a.75.75 0 0 1 0 1.5h-6.362a1.75 1.75 0 0 1-1.738-1.543l-1.04-8.737a.25.25 0 0 0-.248-.22h-1.612a.75.75 0 0 1-.75-.75Zm4.868 7.25h6.53a1.25 1.25 0 0 0 1.246-1.154l.296-3.846h-8.667l.595 5Z"/>
+                         <path d="M10 17a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"/>
+                         <path d="M15 17a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"/>
+                       </svg>
+                       <span className="text-xs font-medium">Cart</span>
+                       {/* Cart Count Badge */}
+                       {cartState.itemCount > 0 && (
+                         <span className="absolute -top-1 -right-1 bg-white text-black text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                           {cartState.itemCount}
+                         </span>
+                       )}
+                     </button>
+                     {/* Underline hover effect */}
+                     <div className="absolute bottom-0 left-0 w-0 h-0.5 bg-current transition-all duration-300 group-hover:w-full"></div>
+                   </div>
                   
                                       {/* Mobile Account Icon */}
                    {session ? (

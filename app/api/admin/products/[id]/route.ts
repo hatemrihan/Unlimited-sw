@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../../../lib/mongodb';
 import Product from '../../../../../models/product';
+import { invalidateProductsCache } from '../../../products/route';
 
 // GET - Fetch a single product by ID
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -134,6 +135,9 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     console.log('✅ Product deleted successfully:', deletedProduct._id);
 
+    // Invalidate frontend cache for instant updates
+    invalidateProductsCache();
+
     return NextResponse.json({
       success: true,
       message: 'Product deleted successfully'
@@ -217,6 +221,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     console.log('✅ Product updated successfully:', updatedProduct._id);
+
+    // Invalidate frontend cache for instant updates
+    invalidateProductsCache();
 
     return NextResponse.json({
       success: true,

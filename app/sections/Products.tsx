@@ -9,7 +9,7 @@ const Products = () => {
   // State for managing products from database
   const [products, setProducts] = useState<Product[]>([]);
   const [featuredProduct, setFeaturedProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false); // Start with false for instant display
 
   // Cart functionality
   const { addItem, state: cartState } = useCart();
@@ -20,16 +20,15 @@ const Products = () => {
   const sectionRef = React.useRef(null);
   const isInView = useInView(sectionRef, { once: true, margin: "-100px" });
 
-  // Fetch products from admin-controlled database
+  // Fetch products from admin-controlled database with instant loading
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        console.log('🛍️ Fetching products from API...');
+        // Fast fetch without showing loading state
         const response = await fetch('/api/products');
         
         if (response.ok) {
           const data = await response.json();
-          console.log('📦 Products data received:', data);
           
           if (data.products) {
             setProducts(data.products);
@@ -38,16 +37,13 @@ const Products = () => {
             const featured = data.products.find((p: Product) => p.isFeatured) || data.products[0];
             setFeaturedProduct(featured);
           }
-        } else {
-          console.error('❌ Failed to fetch products');
         }
       } catch (error) {
         console.error('❌ Error fetching products:', error);
-      } finally {
-        setLoading(false);
       }
     };
 
+    // Immediate fetch without loading state
     fetchProducts();
   }, []);
 
@@ -92,25 +88,15 @@ const Products = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <section className="relative min-h-screen bg-black text-[#b3b3b3] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-300"></div>
-      </section>
-    );
-  }
+  // Remove loading screen - show content immediately
 
   return (
     <section className="relative bg-black text-[#b3b3b3] pt-22 pb-8 sm:pt-12 sm:pb-12 lg:pt-16 lg:pb-12 xl:pb-16" id="products">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        {/* Section Title */}
-        <div className="text-center mb-16 sm:mb-12 lg:mb-16">
-          <h2 className="text-xl sm:text-xl md:text-2xl lg:text-3xl font-bold text-[#b3b3b3] uppercase tracking-wider">
-            OUR PRODUCTS
-          </h2>
-          <div className="w-12 sm:w-12 lg:w-16 h-0.5 bg-gradient-to-r from-transparent via-[#b3b3b3] to-transparent mx-auto mt-4 sm:mt-3"></div>
-        </div>
+      <div className="text-lg sm:text-xl font-bold tracking-[0.2em] uppercase mb-12 lg:mb-16 text-center text-[#b3b3b3]">
+        — OUR PRODUCTS
+      </div>
 
         {/* Products Grid - Calisthenics Equipment Style */}
         {products.length > 0 ? (
@@ -185,16 +171,18 @@ const Products = () => {
             ))}
           </div>
         ) : (
-          /* No Products State */
-          <div className="text-center py-6 sm:py-8 lg:py-12">
-            <h2 className="text-lg sm:text-xl lg:text-2xl font-medium text-gray-300 mb-3 text-center">CALISTHENICS EQUIPMENT</h2>
-            <p className="text-gray-400 mb-4 sm:mb-6 text-sm sm:text-base">Equipment coming soon. Admin can add products from the dashboard.</p>
-            <button
-              onClick={() => window.location.href = '/admin'}
-              className="bg-white text-black px-6 sm:px-8 py-2 sm:py-3 font-bold uppercase tracking-wider hover:bg-gray-100 transition-colors duration-300 text-sm sm:text-base"
-            >
-              Go to Admin
-            </button>
+          /* Skeleton Loading or No Products State */
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
+            {[...Array(6)].map((_, index) => (
+              <div key={index} className="animate-pulse">
+                <div className="aspect-square mb-2 lg:mb-3 bg-gray-800 max-w-[140px] sm:max-w-[160px] lg:max-w-[180px] mx-auto rounded"></div>
+                <div className="text-center">
+                  <div className="h-4 bg-gray-800 rounded mb-2 w-3/4 mx-auto"></div>
+                  <div className="h-4 bg-gray-800 rounded mb-2 w-1/2 mx-auto"></div>
+                  <div className="h-8 bg-gray-800 rounded w-20 mx-auto"></div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 

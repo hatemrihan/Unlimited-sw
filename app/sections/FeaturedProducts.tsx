@@ -8,7 +8,7 @@ import { useCart } from '../../contexts/CartContext';
 const FeaturedProducts = () => {
   // COMPLETELY SEPARATE STATE - No conflicts with regular products
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false); // Start with false for instant display
   const [error, setError] = useState<string | null>(null);
 
   // Cart functionality
@@ -20,15 +20,11 @@ const FeaturedProducts = () => {
   const sectionRef = React.useRef(null);
   const isInView = useInView(sectionRef, { once: true, margin: "-100px" });
 
-  // COMPLETELY SEPARATE API CALL - Independent from regular products
+  // COMPLETELY SEPARATE API CALL - Independent from regular products with instant loading
   useEffect(() => {
     const fetchOnlyFeaturedProducts = async () => {
       try {
-        console.log('🎯 FEATURED: Starting completely separate fetch...');
-        setIsLoading(true);
-        setError(null);
-
-        // COMPLETELY SEPARATE ENDPOINT - Only for featured products
+        // Fast fetch without showing loading state
         const response = await fetch('/api/products?featured=true');
 
         if (!response.ok) {
@@ -36,30 +32,20 @@ const FeaturedProducts = () => {
         }
 
         const data = await response.json();
-        console.log('🎯 FEATURED: API Response:', data);
 
         if (data.products && Array.isArray(data.products)) {
-          if (data.products.length > 0) {
-            console.log('🎯 FEATURED: Found', data.products.length, 'featured products');
-            // Show ALL featured products (not limited)
-            setFeaturedProducts(data.products);
-          } else {
-            console.log('🎯 FEATURED: No featured products found');
-            setFeaturedProducts([]);
-          }
+          setFeaturedProducts(data.products);
         } else {
-          console.log('🎯 FEATURED: Invalid response format');
           setFeaturedProducts([]);
         }
       } catch (err) {
         console.error('🎯 FEATURED: Error fetching:', err);
         setError(err instanceof Error ? err.message : 'Unknown error');
         setFeaturedProducts([]);
-      } finally {
-        setIsLoading(false);
       }
     };
 
+    // Immediate fetch without loading state
     fetchOnlyFeaturedProducts();
   }, []);
 
@@ -96,17 +82,7 @@ const FeaturedProducts = () => {
     }
   };
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <section className="relative bg-black text-[#b3b3b3] py-16" id="featured">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-300 mx-auto mb-4"></div>
-          <p>Loading Featured Products...</p>
-        </div>
-      </section>
-    );
-  }
+  // Remove loading screen - show content immediately
 
   // Error state
   if (error) {
@@ -129,23 +105,9 @@ const FeaturedProducts = () => {
     <section className="relative bg-black text-[#b3b3b3] pt-22 pb-8 sm:pt-12 sm:pb-12 lg:pt-16 lg:pb-12 xl:pb-16 border-t border-gray-800" id="featured" ref={sectionRef}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        {/* Section Title */}
-        <motion.div
-          className="text-center mb-16 sm:mb-12 lg:mb-16"
-          initial={{opacity: 0, y: 50}}
-          animate={isInView ? {opacity: 1, y: 0} : {opacity: 1, y: 0}}
-          transition={{duration: 0.2, delay: 0.1}}
-        >
-          <h2 className="text-xl sm:text-xl md:text-2xl lg:text-3xl font-bold text-[#b3b3b3] uppercase tracking-wider">
-             FEATURED PRODUCTS
-          </h2>
-          <motion.div
-            className="w-12 sm:w-12 lg:w-16 h-0.5 bg-gradient-to-r from-transparent via-[#b3b3b3] to-transparent mx-auto mt-4 sm:mt-3"
-            initial={{scaleX: 0}}
-            animate={isInView ? {scaleX: 1} : {scaleX: 1}}
-            transition={{duration: 0.3, delay: 0.2}}
-          ></motion.div>
-        </motion.div>
+      <div className="text-lg sm:text-xl font-bold tracking-[0.2em] uppercase mb-12 lg:mb-16 text-center text-[#b3b3b3]">
+        — OUR FEATURED PRODUCTS
+      </div>
 
 
 
@@ -212,24 +174,23 @@ const FeaturedProducts = () => {
             ))}
           </motion.div>
         ) : (
-          /* No Featured Products State */
+          /* Skeleton Loading for Featured Products */
           <motion.div
-            className="text-center py-6 sm:py-8 lg:py-12 border border-gray-700 rounded-lg"
-            initial={{opacity: 0, y: 50}}
-            animate={isInView ? {opacity: 1, y: 0} : {opacity: 0, y: 50}}
+            className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6"
+            initial={{opacity: 0}}
+            animate={isInView ? {opacity: 1} : {opacity: 1}}
             transition={{duration: 0.2, delay: 0.3}}
           >
-            <h2 className="text-lg sm:text-xl lg:text-2xl font-medium text-[#b3b3b3] mb-3 text-center">FEATURED PRODUCTS</h2>
-            <p className="text-[#b3b3b3]/70 mb-4 sm:mb-6 text-sm sm:text-base">Featured products coming soon. Admin can mark products as featured from the dashboard.</p>
-            <motion.button
-              onClick={() => window.location.href = '/admin'}
-              className="bg-[#b3b3b3] text-black px-6 sm:px-8 py-2 sm:py-3 font-bold uppercase tracking-wider hover:bg-[#b3b3b3]/80 transition-colors duration-300 text-sm sm:text-base"
-              initial={{opacity: 0, scale: 0.9}}
-              animate={isInView ? {opacity: 1, scale: 1} : {opacity: 0, scale: 0.9}}
-              transition={{duration: 0.2, delay: 0.4}}
-            >
-              Go to Admin
-            </motion.button>
+            {[...Array(3)].map((_, index) => (
+              <div key={index} className="animate-pulse">
+                <div className="aspect-square mb-2 lg:mb-3 bg-gray-800 max-w-[140px] sm:max-w-[160px] lg:max-w-[180px] mx-auto rounded"></div>
+                <div className="text-center">
+                  <div className="h-4 bg-gray-800 rounded mb-2 w-3/4 mx-auto"></div>
+                  <div className="h-4 bg-gray-800 rounded mb-2 w-1/2 mx-auto"></div>
+                  <div className="h-8 bg-gray-800 rounded w-20 mx-auto"></div>
+                </div>
+              </div>
+            ))}
           </motion.div>
         )}
 

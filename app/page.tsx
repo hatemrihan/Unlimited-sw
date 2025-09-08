@@ -7,13 +7,14 @@ import FeaturedProducts from "./sections/FeaturedProducts";
 import FeedbackForm from "./sections/FeedbackForm";
 import Footer from "./sections/Footer";
 import WhatsAppButton from "../components/WhatsAppButton";
+import MovingWordsTwo from "./sections/MovingWordsTwo";
 
 export default function Home() {
   return (
     <>
     <Nav/>
     <Hero /> 
-    <MovingWords />
+    <MovingWordsTwo />
     <Products />
     <FeaturedProducts />
     <MovingWords />

@@ -7,14 +7,32 @@ import Product from '../../../models/product';
 // File path for storing products (fallback only)
 const dataFilePath = path.join(process.cwd(), 'data', 'products.json');
 
+// In-memory cache for faster responses
+let productsCache: any = null;
+let lastCacheTime = 0;
+const CACHE_DURATION = 30 * 1000; // 30 seconds cache
+
 // GET - Fetch all active products for frontend
 export async function GET(request: NextRequest) {
   try {
-    console.log('🛍️ Frontend fetching products from MongoDB...');
-
     // Check for featured parameter
     const { searchParams } = new URL(request.url);
     const featuredOnly = searchParams.get('featured') === 'true';
+    const cacheKey = featuredOnly ? 'featured' : 'regular';
+
+    // Check cache first for instant responses
+    const now = Date.now();
+    if (productsCache && productsCache[cacheKey] && (now - lastCacheTime) < CACHE_DURATION) {
+      console.log('⚡ Serving from cache - instant response!');
+      return NextResponse.json({
+        success: true,
+        products: productsCache[cacheKey],
+        count: productsCache[cacheKey].length,
+        source: 'cache'
+      });
+    }
+
+    console.log('🛍️ Cache miss - fetching from MongoDB...');
 
     try {
       // PRIMARY: Try MongoDB first for e-commerce data
@@ -32,13 +50,12 @@ export async function GET(request: NextRequest) {
       const activeProducts = await Product.find(query).sort({ order: 1 });
       console.log('✅ Found', activeProducts.length, featuredOnly ? 'featured' : 'active', 'products in MongoDB');
 
-      // Log details of found products
-      if (activeProducts.length > 0) {
-        console.log('📋 Products found:');
-        activeProducts.forEach((product, index) => {
-          console.log(`  ${index + 1}. ${product.name} - Featured: ${product.isFeatured} - Active: ${product.isActive}`);
-        });
+      // Cache the results for instant future responses
+      if (!productsCache) {
+        productsCache = {};
       }
+      productsCache[cacheKey] = activeProducts;
+      lastCacheTime = now;
 
       return NextResponse.json({
         success: true,
@@ -70,6 +87,13 @@ export async function GET(request: NextRequest) {
         }
 
         console.log('✅ Found', activeProducts.length, featuredOnly ? 'featured' : 'active', 'products from JSON fallback');
+
+        // Cache JSON fallback results too
+        if (!productsCache) {
+          productsCache = {};
+        }
+        productsCache[cacheKey] = activeProducts;
+        lastCacheTime = now;
 
         return NextResponse.json({
           success: true,
@@ -103,6 +127,13 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// Cache invalidation function
+export function invalidateProductsCache() {
+  productsCache = null;
+  lastCacheTime = 0;
+  console.log('🗑️ Products cache invalidated');
 }
 
 

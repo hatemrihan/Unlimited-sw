@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../../lib/mongodb';
 import Product from '../../../../models/product';
+import { invalidateProductsCache } from '../../products/route';
 
 // GET - Fetch all products for admin dashboard
 export async function GET(request: NextRequest) {
@@ -124,6 +125,9 @@ export async function POST(request: NextRequest) {
       // Save to MongoDB
       const savedProduct = await newProduct.save();
       console.log('✅ Product saved to MongoDB:', savedProduct._id);
+
+      // Invalidate frontend cache for instant updates
+      invalidateProductsCache();
 
       // Also save to JSON file as backup (dual storage for reliability)
       try {
