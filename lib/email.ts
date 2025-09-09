@@ -6,7 +6,7 @@ const transporter = nodemailer.createTransport({
   port: 587,
   secure: false, // true for 465, false for other ports
   auth: {
-    user: process.env.BREVO_SMTP_USER || 'be.unlimited.sw@gmail.com', // Your verified email
+    user: 'be.unlimited.sw@gmail.com', // Your verified sender email
     pass: process.env.BREVO_SMTP_PASSWORD || process.env.BREVO_API_KEY, // SMTP password OR API key
   },
 });
@@ -14,8 +14,15 @@ const transporter = nodemailer.createTransport({
 // Verify transporter configuration on startup
 const verifyTransporter = async () => {
   try {
-    if (!process.env.BREVO_SMTP_USER || !process.env.BREVO_SMTP_PASSWORD) {
+    // Log current configuration for debugging
+    console.log('🔧 BREVO Configuration Check:');
+    console.log('- SMTP User:', 'be.unlimited.sw@gmail.com');
+    console.log('- SMTP Password Set:', !!process.env.BREVO_SMTP_PASSWORD);
+    console.log('- API Key Set:', !!process.env.BREVO_API_KEY);
+    
+    if (!process.env.BREVO_SMTP_PASSWORD && !process.env.BREVO_API_KEY) {
       console.error('❌ BREVO email credentials not configured! Check environment variables.');
+      console.error('💡 Add BREVO_SMTP_PASSWORD or BREVO_API_KEY to .env.local');
       return false;
     }
     
@@ -24,6 +31,7 @@ const verifyTransporter = async () => {
     return true;
   } catch (error) {
     console.error('❌ BREVO email transporter verification failed:', error);
+    console.error('💡 Make sure your .env.local has correct BREVO credentials');
     return false;
   }
 };

@@ -48,9 +48,9 @@ export async function GET(request: NextRequest) {
       // 🚀 OPTIMIZED: Get total count efficiently
       const totalCount = await Product.countDocuments(searchQuery);
       
-      // 🚀 OPTIMIZED: Fetch only essential fields + pagination + lean queries
+      // 🚀 OPTIMIZED: Fetch ALL fields for complete admin functionality + pagination + lean queries
       const products = await Product.find(searchQuery)
-        .select('name price originalPrice discount mainImage stock isActive isFeatured order createdAt updatedAt')
+        .select('name price originalPrice discount mainImage images video description stock variants cityPricing isActive isFeatured order category tags specifications shippingInfo faqs detailedDescription promoCode showOutOfStockBadge showPreorderBadge createdAt updatedAt')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)

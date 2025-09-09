@@ -37,14 +37,34 @@ const FileUpload: React.FC<FileUploadProps> = ({
       const uploadPreset = (process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET as string) || (process.env.CLOUDINARY_UPLOAD_PRESET as unknown as string);
       const folder = (process.env.NEXT_PUBLIC_CLOUDINARY_FOLDER as string) || 'alkadyy-intro';
 
-      const isVideo = file.type.startsWith('video/');
+      const isVideo = file.type.startsWith('video/') || 
+                   file.name.toLowerCase().includes('.mp4') ||
+                   file.name.toLowerCase().includes('.mov') ||
+                   file.name.toLowerCase().includes('.avi') ||
+                   file.name.toLowerCase().includes('.webm');
+      
       const resourceType = isVideo ? 'video' : 'image';
+
+      console.log('📹 File type check:', {
+        fileName: file.name,
+        fileType: file.type,
+        isVideo: isVideo,
+        resourceType: resourceType,
+        fileSize: `${(file.size / 1024 / 1024).toFixed(2)}MB`
+      });
 
       if (cloudName && uploadPreset) {
         const form = new FormData();
         form.append('file', file);
         form.append('upload_preset', uploadPreset);
         form.append('folder', folder);
+        
+        // Add video-specific parameters
+        if (isVideo) {
+          form.append('resource_type', 'video');
+          form.append('quality', 'auto');
+          form.append('format', 'mp4');
+        }
 
         console.log('🚀 Uploading directly to Cloudinary...', { cloudName, uploadPreset, resourceType });
         const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`;

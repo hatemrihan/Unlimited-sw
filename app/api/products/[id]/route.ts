@@ -32,9 +32,9 @@ export async function GET(
       // Try MongoDB first
       await dbConnect();
       
-      // 🚀 OPTIMIZED QUERY: Select only needed fields + lean for 3x speed
+      // 🚀 OPTIMIZED QUERY: Select ALL fields for complete product details + lean for 3x speed
       const product = await Product.findById(productId)
-        .select('name description price discount mainImage additionalImages stock variants cityPricing isActive isFeatured category tags')
+        .select('name description price originalPrice discount mainImage images video stock variants cityPricing isActive isFeatured category tags specifications shippingInfo faqs detailedDescription promoCode showOutOfStockBadge showPreorderBadge order')
         .lean() // 3x faster - returns plain objects
         .exec();
       
