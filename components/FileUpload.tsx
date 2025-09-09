@@ -32,29 +32,47 @@ const FileUpload: React.FC<FileUploadProps> = ({
     setUploading(true);
 
     try {
-      // Create form data
+      // Prefer direct unsigned upload to Cloudinary (avoids serverless file size limits)
+      const cloudName = (process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME as string) || (process.env.CLOUDINARY_CLOUD_NAME as unknown as string);
+      const uploadPreset = (process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET as string) || (process.env.CLOUDINARY_UPLOAD_PRESET as unknown as string);
+      const folder = (process.env.NEXT_PUBLIC_CLOUDINARY_FOLDER as string) || 'alkadyy-intro';
+
+      const isVideo = file.type.startsWith('video/');
+      const resourceType = isVideo ? 'video' : 'image';
+
+      if (cloudName && uploadPreset) {
+        const form = new FormData();
+        form.append('file', file);
+        form.append('upload_preset', uploadPreset);
+        form.append('folder', folder);
+
+        console.log('🚀 Uploading directly to Cloudinary...');
+        const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`;
+        const cloudRes = await fetch(cloudinaryUrl, { method: 'POST', body: form });
+        const cloudData = await cloudRes.json();
+        if (cloudRes.ok && cloudData.secure_url) {
+          console.log('✅ Direct upload success:', cloudData.secure_url);
+          onUpload(cloudData.secure_url);
+          alert('File uploaded successfully!');
+          return;
+        } else {
+          console.warn('⚠️ Direct upload failed, falling back to server route', cloudData);
+        }
+      } else {
+        console.warn('⚠️ Cloudinary unsigned preset not configured, using server upload route');
+      }
+
+      // Fallback: server-side upload (works for small files)
       const formData = new FormData();
       formData.append('file', file);
-
-      console.log('🚀 Uploading file to /api/upload...');
-
-      // Upload to Cloudinary via our API
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      console.log('📡 Upload response status:', response.status);
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('✅ Upload successful:', data);
+      const response = await fetch('/api/upload', { method: 'POST', body: formData });
+      console.log('📡 Fallback upload status:', response.status);
+      const data = await response.json().catch(() => ({} as any));
+      if (response.ok && data.url) {
         onUpload(data.url);
-        alert(`File uploaded successfully! URL: ${data.url.substring(0, 50)}...`);
+        alert('File uploaded successfully!');
       } else {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('❌ Upload failed:', response.status, errorData);
-        alert(`Failed to upload file: ${errorData.error || 'Unknown error'}`);
+        throw new Error(data?.details || data?.error || `Upload failed with status ${response.status}`);
       }
     } catch (error) {
       console.error('💥 Error uploading file:', error);

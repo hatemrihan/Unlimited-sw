@@ -190,9 +190,18 @@ const Orders = () => {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Orders');
     
-    // Auto-size columns
-    const maxWidth = excelData.reduce((w, r) => Math.max(w, r['Customer'].length), 10);
-    worksheet['!cols'] = [{ wch: maxWidth }];
+    // Auto-size columns (ensure full address visibility)
+    const cols = [
+      { wch: Math.max(12, ...excelData.map(r => String(r['Customer']).length)) },
+      { wch: 20 }, // Order ID
+      { wch: Math.max(24, ...excelData.map(r => String(r['Email']).length)) },
+      { wch: 16 }, // Phone
+      { wch: Math.min(120, Math.max(50, ...excelData.map(r => String(r['Shipping Address']).length))) },
+      { wch: Math.max(40, ...excelData.map(r => String(r['Products']).length)) },
+      { wch: 12 }, // Payment
+      { wch: 12 }, // Total
+    ];
+    (worksheet as any)['!cols'] = cols;
     
     XLSX.writeFile(workbook, `shipping_orders_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
@@ -223,7 +232,7 @@ const Orders = () => {
         order.orderId,
         order.customer.email,
         order.customer.phone,
-        order.customer.address.substring(0, 30) + '...', // Truncate address for PDF
+        order.customer.address, // full address
         order.paymentMethod === 'cashOnDelivery' ? 'COD' : order.paymentMethod === 'instaPay' ? 'InstaPay' : 'Paymob',
         `${order.totalAmount} L.E`
       ];
@@ -245,6 +254,11 @@ const Orders = () => {
       alternateRowStyles: {
         fillColor: [245, 245, 245],
       },
+      columnStyles: {
+        4: { cellWidth: 100 }, // Address wider
+        5: { cellWidth: 60 },  // Payment
+        6: { cellWidth: 20 },  // Total
+      } as any,
     });
     
     doc.save(`shipping_orders_${new Date().toISOString().split('T')[0]}.pdf`);

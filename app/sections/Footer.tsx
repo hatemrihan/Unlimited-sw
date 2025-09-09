@@ -150,7 +150,7 @@ const Footer: FC = () => {
             transition={{duration: 0.3, delay: 0.4}}
           >
             <a
-              href="mailto:alkady@gmail.com?subject=Contact"
+              href="mailto:be.unlimited.sw@gmail.com?subject=contact"
               className="inline-block"
             >
               <motion.div

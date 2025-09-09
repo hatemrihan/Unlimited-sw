@@ -25,7 +25,24 @@ export async function GET(request: NextRequest) {
     
     await dbConnect();
     
-    const cities = await CityPricing.find({}).sort({ governorate: 1, cityName: 1 });
+    // Return only one entry per governorate (governorates mode)
+    const raw = await CityPricing.find({}).sort({ governorate: 1, cityName: 1 });
+    const govMap: Record<string, any> = {};
+    for (const city of raw) {
+      const key = (city.governorate || '').trim();
+      if (!key) continue;
+      if (!govMap[key]) {
+        govMap[key] = {
+          _id: city._id,
+          governorate: city.governorate,
+          cityName: key, // mirror governorate name
+          shippingCost: city.shippingCost,
+          codFee: city.codFee,
+          isActive: city.isActive,
+        };
+      }
+    }
+    const cities = Object.values(govMap);
     
     // Update cache
     citiesCache = cities;
