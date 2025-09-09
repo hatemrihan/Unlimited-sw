@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     console.log('✅ Connected to MongoDB');
 
     let syncedCount = 0;
-    let errors = [];
+    const errors: Array<{id: string; title: string; error: string}> = [];
 
     // Sync each item
     for (const item of jsonItems) {
