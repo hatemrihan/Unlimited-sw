@@ -23,22 +23,24 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     
     // Get all available cities
     const allCities = await CityPricing.find({ isActive: true }).sort({ governorate: 1, cityName: 1 });
-    
-    // Merge product city pricing with available cities
-    const cityPricingData = allCities.map(city => {
-      const existingPricing = product.cityPricing?.find(
-        (cp: any) => cp.cityName === city.cityName && cp.governorate === city.governorate
-      );
-      
-      return {
-        cityName: city.cityName,
-        governorate: city.governorate,
-        price: existingPricing?.price || product.price || 0,
-        isActive: existingPricing?.isActive !== false,
-        shippingCost: city.shippingCost,
-        codFee: city.codFee
-      };
-    });
+
+    // Aggregate by governorate (one row per governorate)
+    const govMap: Record<string, any> = {};
+    for (const city of allCities) {
+      const govName = city.governorate;
+      if (!govMap[govName]) {
+        // find an existing product price/isActive for this governorate
+        const existingGovPricing = (product.cityPricing || []).find((cp: any) => cp.governorate === govName);
+        govMap[govName] = {
+          governorate: govName,
+          price: existingGovPricing?.price ?? product.price ?? 0,
+          isActive: existingGovPricing?.isActive !== false,
+          shippingCost: city.shippingCost,
+          codFee: city.codFee,
+        };
+      }
+    }
+    const cityPricingData = Object.values(govMap);
     
     return NextResponse.json({
       success: true,
@@ -83,17 +85,45 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       );
     }
     
-    // Update product with new city pricing
+    // cityPricing is governorate-level now. For each governorate:
+    // 1) Update shippingCost and codFee for all cities in that governorate
+    // 2) Build product.cityPricing entries for all cities in that governorate with the new price/isActive
+    const productCityPricing: any[] = [];
+
+    for (const gp of cityPricing) {
+      const govName = gp.governorate;
+      const price = Number(gp.price) || 0;
+      const isActive = gp.isActive !== false;
+
+      // Update all cities in the governorate with new shipping and cod values
+      if (gp.shippingCost !== undefined || gp.codFee !== undefined) {
+        await CityPricing.updateMany(
+          { governorate: govName },
+          {
+            $set: {
+              ...(gp.shippingCost !== undefined ? { shippingCost: Number(gp.shippingCost) } : {}),
+              ...(gp.codFee !== undefined ? { codFee: Number(gp.codFee) } : {}),
+            },
+          }
+        );
+      }
+
+      // Fetch all cities for this governorate to create entries
+      const govCities = await CityPricing.find({ governorate: govName });
+      for (const city of govCities) {
+        productCityPricing.push({
+          cityName: city.cityName,
+          governorate: govName,
+          price,
+          isActive,
+        });
+      }
+    }
+
+    // Replace product cityPricing with the newly built list
     const updatedProduct = await Product.findByIdAndUpdate(
       productId,
-      {
-        cityPricing: cityPricing.map((cp: any) => ({
-          cityName: cp.cityName,
-          governorate: cp.governorate,
-          price: Number(cp.price),
-          isActive: cp.isActive !== false
-        }))
-      },
+      { cityPricing: productCityPricing },
       { new: true, runValidators: true }
     );
     

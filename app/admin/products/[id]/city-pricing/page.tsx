@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 
 interface CityPricing {
-  cityName: string;
   governorate: string;
   price: number;
   isActive: boolean;
@@ -112,14 +111,7 @@ const ProductCityPricingPage = () => {
     }
   };
 
-  // Group cities by governorate
-  const groupedCities = cityPricing.reduce((acc, city) => {
-    if (!acc[city.governorate]) {
-      acc[city.governorate] = [];
-    }
-    acc[city.governorate].push(city);
-    return acc;
-  }, {} as Record<string, CityPricing[]>);
+  const govs = [...cityPricing].sort((a, b) => a.governorate.localeCompare(b.governorate));
 
   if (loading) {
     return (
@@ -183,14 +175,13 @@ const ProductCityPricingPage = () => {
           </div>
         </div>
 
-        {/* City Pricing Table */}
+        {/* Governorate Pricing Table */}
         <div className="bg-black border border-white/10 rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-white text-black">
                 <tr>
                   <th className="px-4 py-3 text-left font-medium">Governorate</th>
-                  <th className="px-4 py-3 text-left font-medium">City</th>
                   <th className="px-4 py-3 text-left font-medium">Price (LE)</th>
                   <th className="px-4 py-3 text-left font-medium">Shipping Cost</th>
                   <th className="px-4 py-3 text-left font-medium">COD Fee</th>
@@ -199,42 +190,33 @@ const ProductCityPricingPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {Object.keys(groupedCities).sort().map(governorate => 
-                  groupedCities[governorate].map((city, index) => (
-                    <tr key={`${city.cityName}-${city.governorate}`} className="border-b border-white/10">
-                      <td className="px-4 py-3 font-medium text-gray-300">
-                        {index === 0 ? governorate : ''}
-                      </td>
-                      <td className="px-4 py-3 font-medium">{city.cityName}</td>
-                      <td className="px-4 py-3">
-                        <input
-                          type="number"
-                          value={city.price}
-                          onChange={(e) => updateCityPrice(city.cityName, city.governorate, Number(e.target.value))}
-                          className="w-20 p-2 bg-transparent border border-white/20 text-white text-center focus:outline-none focus:border-white"
-                          min="0"
-                        />
-                      </td>
-                      <td className="px-4 py-3 text-gray-300">{city.shippingCost} LE</td>
-                      <td className="px-4 py-3 text-gray-300">{city.codFee} LE</td>
-                      <td className="px-4 py-3 font-medium text-green-400">
-                        {city.price + city.shippingCost + city.codFee} LE
-                      </td>
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() => toggleCityActive(city.cityName, city.governorate)}
-                          className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                            city.isActive 
-                              ? 'bg-green-600 text-white hover:bg-green-700' 
-                              : 'bg-gray-600 text-gray-300 hover:bg-gray-700'
-                          }`}
-                        >
-                          {city.isActive ? 'Active' : 'Inactive'}
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
+                {govs.map(gov => (
+                  <tr key={gov.governorate} className="border-b border-white/10">
+                    <td className="px-4 py-3 font-medium text-gray-300">{gov.governorate}</td>
+                    <td className="px-4 py-3">
+                      <input type="number" value={gov.price} min="0"
+                        onChange={(e)=> setCityPricing(prev=>prev.map(x=>x.governorate===gov.governorate?{...x, price:Number(e.target.value)}:x))}
+                        className="w-20 p-2 bg-transparent border border-white/20 text-white text-center focus:outline-none focus:border-white"/>
+                    </td>
+                    <td className="px-4 py-3">
+                      <input type="number" value={gov.shippingCost} min="0"
+                        onChange={(e)=> setCityPricing(prev=>prev.map(x=>x.governorate===gov.governorate?{...x, shippingCost:Number(e.target.value)}:x))}
+                        className="w-24 p-2 bg-transparent border border-white/20 text-white text-center focus:outline-none focus:border-white"/>
+                    </td>
+                    <td className="px-4 py-3">
+                      <input type="number" value={gov.codFee} min="0"
+                        onChange={(e)=> setCityPricing(prev=>prev.map(x=>x.governorate===gov.governorate?{...x, codFee:Number(e.target.value)}:x))}
+                        className="w-24 p-2 bg-transparent border border-white/20 text-white text-center focus:outline-none focus:border-white"/>
+                    </td>
+                    <td className="px-4 py-3 font-medium text-green-400">{gov.price + gov.shippingCost + gov.codFee} LE</td>
+                    <td className="px-4 py-3">
+                      <button onClick={()=> setCityPricing(prev=>prev.map(x=>x.governorate===gov.governorate?{...x, isActive:!x.isActive}:x))}
+                        className={`px-3 py-1 rounded text-xs font-medium transition-colors ${gov.isActive?'bg-green-600 text-white hover:bg-green-700':'bg-gray-600 text-gray-300 hover:bg-gray-700'}`}>
+                        {gov.isActive ? 'Active' : 'Inactive'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -243,23 +225,23 @@ const ProductCityPricingPage = () => {
         {/* Summary */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-black border border-white/10 p-4 rounded-lg">
-            <h3 className="text-lg font-medium mb-2">Active Cities</h3>
+            <h3 className="text-lg font-medium mb-2">Active Governorates</h3>
             <p className="text-2xl font-bold text-green-400">
-              {cityPricing.filter(city => city.isActive).length}
+              {cityPricing.filter(g => g.isActive).length}
             </p>
           </div>
           
           <div className="bg-black border border-white/10 p-4 rounded-lg">
             <h3 className="text-lg font-medium mb-2">Average Price</h3>
             <p className="text-2xl font-bold text-blue-400">
-              {Math.round(cityPricing.reduce((sum, city) => sum + city.price, 0) / cityPricing.length || 0)} LE
+              {Math.round(cityPricing.reduce((sum, g) => sum + g.price, 0) / cityPricing.length || 0)} LE
             </p>
           </div>
           
           <div className="bg-black border border-white/10 p-4 rounded-lg">
             <h3 className="text-lg font-medium mb-2">Price Range</h3>
             <p className="text-2xl font-bold text-purple-400">
-              {Math.min(...cityPricing.map(city => city.price))} - {Math.max(...cityPricing.map(city => city.price))} LE
+              {Math.min(...cityPricing.map(g => g.price))} - {Math.max(...cityPricing.map(g => g.price))} LE
             </p>
           </div>
         </div>
