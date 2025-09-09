@@ -62,3 +62,4 @@ CityPricingSchema.index({ isActive: 1 });
 const CityPricing = mongoose.models.CityPricing || mongoose.model('CityPricing', CityPricingSchema);
 
 export default CityPricing;
+

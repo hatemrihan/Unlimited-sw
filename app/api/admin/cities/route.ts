@@ -130,3 +130,53 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+// PUT - Update all cities in a governorate
+export async function PUT(request: NextRequest) {
+  try {
+    console.log('🏙️ Updating governorate pricing...');
+    
+    const body = await request.json();
+    const { governorate, shippingCost, codFee, isActive } = body;
+    
+    // Validate required fields
+    if (!governorate || shippingCost === undefined || codFee === undefined) {
+      return NextResponse.json(
+        { success: false, error: 'Governorate, shipping cost, and COD fee are required' },
+        { status: 400 }
+      );
+    }
+    
+    await dbConnect();
+    
+    // Update all cities in this governorate
+    const updateResult = await CityPricing.updateMany(
+      { governorate: governorate.trim() },
+      {
+        $set: {
+          shippingCost: Number(shippingCost),
+          codFee: Number(codFee),
+          isActive: isActive !== false
+        }
+      }
+    );
+    
+    console.log(`✅ Updated ${updateResult.modifiedCount} cities in ${governorate}`);
+    
+    // Invalidate cache
+    invalidateCitiesCache();
+    
+    return NextResponse.json({
+      success: true,
+      modifiedCount: updateResult.modifiedCount,
+      message: `Updated pricing for ${governorate}`
+    });
+    
+  } catch (error) {
+    console.error('❌ Error updating governorate:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to update governorate pricing' },
+      { status: 500 }
+    );
+  }
+}

@@ -13,7 +13,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     await dbConnect();
     
     // Get product with city pricing
-    const product = await Product.findById(productId).select('name cityPricing');
+    const product = await Product.findById(productId).select('name price cityPricing');
     if (!product) {
       return NextResponse.json(
         { success: false, error: 'Product not found' },

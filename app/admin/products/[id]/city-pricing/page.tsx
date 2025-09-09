@@ -53,23 +53,7 @@ const ProductCityPricingPage = () => {
     }
   }, [productId]);
 
-  // Update city price
-  const updateCityPrice = (cityName: string, governorate: string, newPrice: number) => {
-    setCityPricing(prev => prev.map(city => 
-      city.cityName === cityName && city.governorate === governorate
-        ? { ...city, price: newPrice }
-        : city
-    ));
-  };
-
-  // Toggle city active status
-  const toggleCityActive = (cityName: string, governorate: string) => {
-    setCityPricing(prev => prev.map(city => 
-      city.cityName === cityName && city.governorate === governorate
-        ? { ...city, isActive: !city.isActive }
-        : city
-    ));
-  };
+  // Governorate-level editing is handled inline via input handlers below.
 
   // Save changes
   const handleSave = async () => {
