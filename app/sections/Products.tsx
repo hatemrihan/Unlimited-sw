@@ -47,6 +47,14 @@ const Products = () => {
     fetchProducts();
   }, []);
 
+  // Compute available stock: prefer variants if provided, otherwise use product.stock
+  const getAvailableStock = (p: Product): number => {
+    if (Array.isArray(p.variants) && p.variants.length > 0) {
+      return p.variants.reduce((sum: number, v: any) => sum + (Number((v as any).stock) || 0), 0);
+    }
+    return Number((p as any).stock) || 0;
+  };
+
   // Handle shop button click
   const handleShopClick = () => {
     if (typeof window !== 'undefined') {
@@ -128,8 +136,8 @@ const Products = () => {
                       </div>
                     )}
                     
-                    {/* Admin-controlled badges (only when stock is 0) */}
-                    {product.stock !== undefined && product.stock === 0 && (
+                    {/* Admin-controlled badges (only when overall available stock is 0) */}
+                    {getAvailableStock(product) === 0 && (
                       <>
                         { // show only if admin enabled
                           (product as any).showOutOfStockBadge && (

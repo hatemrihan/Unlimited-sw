@@ -410,7 +410,12 @@ const ProductCard = ({ product, onAddToCart, isMobile = false }: {
           )}
         </div>
 
-        {(product.stock !== undefined && product.stock === 0) ? (
+        {(() => {
+          const variantStock = Array.isArray(product.variants) && product.variants.length > 0
+            ? product.variants.reduce((sum: number, v: any) => sum + (Number((v as any).stock) || 0), 0)
+            : Number((product as any).stock) || 0;
+          return variantStock === 0;
+        })() ? (
           <button
             disabled
             className="bg-gray-600 text-gray-300 px-4 py-2 text-xs font-medium uppercase tracking-wider cursor-not-allowed"

@@ -190,6 +190,8 @@ const ProductDetail = () => {
 
   // Get all images (main + additional)
   const allImages = [product.mainImage, ...(product.images || [])].filter(Boolean);
+  // Determine max stock respecting selected variant
+  const maxStock = selectedVariant ? selectedVariant.stock : product.stock;
 
   return (
     <>
@@ -345,12 +347,12 @@ const ProductDetail = () => {
               {/* Variants Selection */}
               {product.variants && product.variants.length > 0 && (
                 <div>
-                  <label className="block text-sm font-medium mb-3">Name</label>
+                  <label className="block text-sm font-medium mb-3">Color</label>
                   <div className="flex flex-wrap gap-2">
                     {product.variants.map((variant, index) => (
                       <button
                         key={index}
-                        onClick={() => setSelectedVariant(variant)}
+                        onClick={() => { setSelectedVariant(variant); setQuantity(1); }}
                         className={`px-4 py-2 border  font-medium transition-colors duration-300 ${
                           selectedVariant === variant
                             ? 'bg-white text-black border-white'
@@ -375,9 +377,9 @@ const ProductDetail = () => {
               <div>
                 <label className="block text-sm font-medium mb-3">
                   Quantity
-                  {product?.stock !== undefined && product.stock > 0 && (
+                  {maxStock !== undefined && maxStock > 0 && (
                     <span className="text-xs text-gray-400 ml-2">
-                      ({product.stock} available)
+                      ({maxStock} available)
                     </span>
                   )}
                 </label>
@@ -390,10 +392,10 @@ const ProductDetail = () => {
                   </button>
                   <span className="text-lg font-medium w-8 text-center">{quantity}</span>
                   <button
-                    onClick={() => setQuantity(quantity + 1)}
-                    disabled={product?.stock !== undefined && quantity >= product.stock}
+                    onClick={() => setQuantity(Math.min((maxStock ?? Infinity) as number, quantity + 1))}
+                    disabled={maxStock !== undefined && quantity >= (maxStock as number)}
                     className={`w-10 h-10 border text-white flex items-center justify-center font-bold transition-colors duration-300 ${
-                      product?.stock !== undefined && quantity >= product.stock
+                      maxStock !== undefined && quantity >= (maxStock as number)
                         ? 'border-gray-600 text-gray-600 cursor-not-allowed'
                         : 'border-white hover:bg-white hover:text-black'
                     }`}
@@ -401,7 +403,7 @@ const ProductDetail = () => {
                     +
                   </button>
                 </div>
-                {product?.stock !== undefined && product.stock > 0 && quantity >= product.stock && (
+                {maxStock !== undefined && (maxStock as number) > 0 && quantity >= (maxStock as number) && (
                   <p className="text-xs text-yellow-400 mt-2">
                     Maximum available quantity reached
                   </p>

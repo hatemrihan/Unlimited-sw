@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../lib/mongodb';
 import Order, { IOrder } from '../../../models/order';
+import { sendOrderConfirmationEmail, sendAdminNotificationEmail } from '../../../lib/email';
+
+// Ensure Node runtime for Nodemailer
+export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
   try {
@@ -210,24 +214,16 @@ export async function POST(request: NextRequest) {
           address: savedOrder.customer.address
         },
         customerPhone: savedOrder.customer.phone
-      };
+      } as any;
 
-      // Send both customer and admin emails
-      const emailResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/send-email`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          type: 'both',
-          orderData: emailData
-        }),
-      });
+      // Send directly via Nodemailer (avoids NEXTAUTH_URL issues)
+      const customerRes = await sendOrderConfirmationEmail(emailData);
+      const adminRes = await sendAdminNotificationEmail(emailData);
 
-      if (emailResponse.ok) {
-        console.log('✅ Order confirmation emails sent successfully');
+      if (!customerRes.success || !adminRes.success) {
+        console.warn('⚠️ Email send reported failure', { customerRes, adminRes });
       } else {
-        console.warn('⚠️ Failed to send order confirmation emails');
+        console.log('✅ Order confirmation emails sent successfully');
       }
     } catch (emailError) {
       console.error('❌ Error sending order emails:', emailError);

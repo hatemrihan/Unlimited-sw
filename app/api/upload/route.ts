@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import cloudinary from '../../../lib/cloudinary';
 
+// Ensure Node.js runtime for Cloudinary upload_stream (Edge runtime doesn't support Buffer/streams)
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     // Get the form data from the request
@@ -36,8 +40,8 @@ export async function POST(request: NextRequest) {
     // Upload to Cloudinary
     const uploadResponse = await new Promise((resolve, reject) => {
       const uploadOptions: any = {
-        resource_type: 'auto', // Automatically detect file type (image/video)
-        folder: 'alkadyy-intro', // Organize uploads in a folder
+        resource_type: isVideo ? 'video' : 'image',
+        folder: 'alkadyy-intro',
       };
 
       // Add video-specific options if it's a video
