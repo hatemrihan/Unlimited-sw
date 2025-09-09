@@ -16,7 +16,7 @@ export async function GET(
     const cacheKey = `product:detail:${productId}`;
     
     // ⚡ ULTRA-FAST: Check cache first (sub-millisecond response)
-    const cachedProduct = productCache.get(cacheKey);
+    const cachedProduct = productCache.get<any>(cacheKey);
     if (cachedProduct) {
       console.log('⚡ LIGHTNING FAST: Product served from cache!');
       return NextResponse.json({

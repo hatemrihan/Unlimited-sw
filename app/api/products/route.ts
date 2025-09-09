@@ -17,8 +17,8 @@ export async function GET(request: NextRequest) {
     const cacheKey = featuredOnly ? 'products:featured' : 'products:all';
 
     // ⚡ ULTRA-FAST: Check cache first (sub-millisecond response)
-    const cachedProducts = apiCache.get(cacheKey);
-    if (cachedProducts) {
+    const cachedProducts = apiCache.get<any[]>(cacheKey);
+    if (cachedProducts && Array.isArray(cachedProducts)) {
       console.log('⚡ LIGHTNING FAST: Products served from cache!');
       return NextResponse.json({
         success: true,
