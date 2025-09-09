@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       const activeItems = allItems.filter((item: any) => item && item.isActive === true);
       return NextResponse.json({ success: true, items: activeItems, count: activeItems.length });
     }
-  catch (error) {
+  } catch (error) {
     console.error('❌ General error fetching intro items:', error);
     return NextResponse.json(
       {
