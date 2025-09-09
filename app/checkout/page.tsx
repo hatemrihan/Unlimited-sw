@@ -73,7 +73,7 @@ export default function CheckoutPage() {
     const fetchCities = async () => {
       try {
         // Get product IDs from cart
-        const productIds = state.items.map(item => item._id).join(',');
+        const productIds = state.items.map(item => item.id).join(',');
         
         // Fetch cities with product-specific pricing
         const response = await fetch(`/api/checkout/cities${productIds ? `?productIds=${productIds}` : ''}`);
