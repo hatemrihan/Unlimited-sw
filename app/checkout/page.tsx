@@ -68,14 +68,19 @@ export default function CheckoutPage() {
   const [cities, setCities] = useState<City[]>([]);
   const [loadingCities, setLoadingCities] = useState(true);
 
-  // Fetch cities on component mount
+  // Fetch cities with product-specific pricing on component mount
   useEffect(() => {
     const fetchCities = async () => {
       try {
-        const response = await fetch('/api/admin/cities');
+        // Get product IDs from cart
+        const productIds = state.items.map(item => item._id).join(',');
+        
+        // Fetch cities with product-specific pricing
+        const response = await fetch(`/api/checkout/cities${productIds ? `?productIds=${productIds}` : ''}`);
         if (response.ok) {
           const data = await response.json();
           setCities(data.cities || []);
+          console.log('✅ Loaded cities with product-specific pricing');
         } else {
           console.error('Failed to fetch cities');
         }
@@ -87,11 +92,36 @@ export default function CheckoutPage() {
     };
 
     fetchCities();
-  }, []);
+  }, [state.items]); // Re-fetch when cart items change
 
   // Calculate shipping cost based on selected city
   const selectedCity = cities.find(city => city.cityName === formData.city);
-  const shippingCost = selectedCity ? selectedCity.shippingCost : 0;
+  
+  // Use the highest shipping cost among all products in the cart
+  // (This is a common e-commerce pattern - customer pays one shipping fee)
+  let maxShippingCost = 0;
+  if (selectedCity) {
+    // Check if any products have custom shipping rates
+    let hasCustomRates = false;
+    for (const item of state.items) {
+      const productSpecificPricing = selectedCity.productPricing?.[item._id];
+      if (productSpecificPricing && productSpecificPricing.isActive !== false) {
+        hasCustomRates = true;
+        break;
+      }
+    }
+    
+    if (hasCustomRates) {
+      console.log('⚠️ Some products have custom shipping rates - using global default for now');
+      console.log('📝 Future enhancement: implement product-specific shipping cost logic');
+    }
+    
+    // For now, use global default shipping cost
+    // TODO: Implement proper product-specific shipping cost calculation
+    maxShippingCost = selectedCity.shippingCost;
+  }
+  
+  const shippingCost = maxShippingCost;
   const codFee = selectedCity && formData.paymentMethod === 'cashOnDelivery' ? selectedCity.codFee : 0;
   const discountAmount = appliedPromo ? appliedPromo.discount : 0;
   const subtotalAfterDiscount = Math.max(0, state.total - discountAmount);

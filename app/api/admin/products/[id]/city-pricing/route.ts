@@ -85,9 +85,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       );
     }
     
-    // cityPricing is governorate-level now. For each governorate:
-    // 1) Update shippingCost and codFee for all cities in that governorate
-    // 2) Build product.cityPricing entries for all cities in that governorate with the new price/isActive
+    // FIXED: Product-specific city pricing logic
+    // For each governorate:
+    // 1) Set product-specific price and isActive status
+    // 2) Build product.cityPricing entries for all cities in that governorate
+    // 3) DO NOT modify global CityPricing collection (that's for defaults only)
     const productCityPricing: any[] = [];
 
     for (const gp of cityPricing) {
@@ -95,20 +97,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       const price = Number(gp.price) || 0;
       const isActive = gp.isActive !== false;
 
-      // Update all cities in the governorate with new shipping and cod values
-      if (gp.shippingCost !== undefined || gp.codFee !== undefined) {
-        await CityPricing.updateMany(
-          { governorate: govName },
-          {
-            $set: {
-              ...(gp.shippingCost !== undefined ? { shippingCost: Number(gp.shippingCost) } : {}),
-              ...(gp.codFee !== undefined ? { codFee: Number(gp.codFee) } : {}),
-            },
-          }
-        );
-      }
+      // FIXED: DO NOT update global CityPricing collection!
+      // Product-specific shipping costs should ONLY be stored in Product.cityPricing
+      // The global CityPricing collection should remain unchanged
+      
+      console.log(`📦 Setting product-specific pricing for ${govName}: price=${price}, active=${isActive}`);
+      console.log(`⚠️ NOT updating global shipping costs - this is product-specific only`);
 
-      // Fetch all cities for this governorate to create entries
+      // Fetch all cities for this governorate to create product-specific entries
       const govCities = await CityPricing.find({ governorate: govName });
       for (const city of govCities) {
         productCityPricing.push({

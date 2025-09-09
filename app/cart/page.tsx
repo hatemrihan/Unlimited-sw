@@ -43,7 +43,7 @@ const CartPage = () => {
       // Validate against stock if available
       const maxQuantity = item.stock !== undefined ? item.stock : 999;
       const validQuantity = Math.min(newQuantity, maxQuantity);
-      updateQuantity(item.id, validQuantity, item.stock);
+      updateQuantity(item.id, item.variant, validQuantity, item.stock);
     }
   };
 

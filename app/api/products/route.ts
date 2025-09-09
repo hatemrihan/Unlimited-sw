@@ -47,8 +47,12 @@ export async function GET(request: NextRequest) {
       console.log('🔍 Query:', query);
       console.log('🎯 Featured only:', featuredOnly);
 
-      const activeProducts = await Product.find(query).sort({ order: 1 });
-      console.log('✅ Found', activeProducts.length, featuredOnly ? 'featured' : 'active', 'products in MongoDB');
+      // 🚀 OPTIMIZED: Only fetch essential fields for frontend + use lean queries
+      const activeProducts = await Product.find(query)
+        .select('name price originalPrice discount mainImage images video description promoCode variants stock isActive isFeatured order showOutOfStockBadge showPreorderBadge')
+        .sort({ order: 1 })
+        .lean(); // 🚀 3x faster queries with lean()
+      console.log('⚡ Found', activeProducts.length, featuredOnly ? 'featured' : 'active', 'products LIGHTNING FAST!');
 
       // Cache the results for instant future responses
       if (!productsCache) {

@@ -64,48 +64,26 @@ export default function Shop() {
   useEffect(() => {
     const fetchAllProducts = async () => {
       try {
-        // Fast fetch without showing loading state
+        console.log('🚀 OPTIMIZED: Fetching products with single API call...');
 
-        // Fetch both regular and featured products
-        const [regularResponse, featuredResponse] = await Promise.all([
-          fetch('/api/products'),
-          fetch('/api/products?featured=true')
-        ]);
+        // 🚀 OPTIMIZED: Single API call instead of two
+        const response = await fetch('/api/products');
 
-        let allProducts: Product[] = [];
-        let featuredList: Product[] = [];
-
-        // Process regular products
-        if (regularResponse.ok) {
-          const regularData = await regularResponse.json();
-          if (regularData.products) {
-            allProducts = regularData.products;
+        if (response.ok) {
+          const data = await response.json();
+          if (data.products) {
+            console.log(`⚡ Loaded ${data.products.length} products instantly from cache!`);
+            
+            // Separate featured products from the single response
+            const allProducts = data.products;
+            const featuredList = allProducts.filter(product => product.isFeatured);
+            
+            setProducts(allProducts);
+            setFeaturedProducts(featuredList);
           }
+        } else {
+          throw new Error('Failed to fetch products');
         }
-
-        // Process featured products
-        if (featuredResponse.ok) {
-          const featuredData = await featuredResponse.json();
-          if (featuredData.products) {
-            featuredList = featuredData.products;
-            setFeaturedProducts(featuredData.products);
-          }
-        }
-
-        // Ensure featured products are marked as featured
-        const markedFeaturedList = featuredList.map(product => ({
-          ...product,
-          isFeatured: true
-        }));
-
-        // Combine all products and remove duplicates
-        const combinedProducts = [...allProducts, ...markedFeaturedList].filter(
-          (product, index, self) => index === self.findIndex(p => p._id === product._id)
-        );
-
-
-
-        setProducts(combinedProducts);
 
       } catch (err: unknown) {
         console.error('Error fetching products:', err);

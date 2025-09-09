@@ -24,7 +24,7 @@ interface CartState {
 type CartAction =
   | { type: 'ADD_ITEM'; payload: CartItem }
   | { type: 'REMOVE_ITEM'; payload: { id: string; variant?: any } }
-  | { type: 'UPDATE_QUANTITY'; payload: { id: string; quantity: number; maxStock?: number } }
+  | { type: 'UPDATE_QUANTITY'; payload: { id: string; variant?: any; quantity: number; maxStock?: number } }
   | { type: 'CLEAR_CART' }
   | { type: 'LOAD_CART'; payload: CartItem[] };
 
@@ -32,7 +32,7 @@ const CartContext = createContext<{
   state: CartState;
   addItem: (item: Omit<CartItem, 'quantity'>, maxStock?: number) => void;
   removeItem: (id: string, variant?: any) => void;
-  updateQuantity: (id: string, quantity: number, maxStock?: number) => void;
+  updateQuantity: (id: string, variant: any, quantity: number, maxStock?: number) => void;
   clearCart: () => void;
 } | null>(null);
 
@@ -90,16 +90,22 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
     }
     
     case 'UPDATE_QUANTITY': {
-      const newItems = state.items.map(item =>
-        item.id === action.payload.id
-          ? {
-              ...item,
-              quantity: action.payload.maxStock !== undefined
-                ? Math.min(Math.max(0, action.payload.quantity), action.payload.maxStock)
-                : Math.max(0, action.payload.quantity)
-            }
-          : item
-      ).filter(item => item.quantity > 0);
+      const newItems = state.items.map(item => {
+        const isMatch = item.id === action.payload.id && 
+                       JSON.stringify(item.variant) === JSON.stringify(action.payload.variant);
+        
+        if (isMatch) {
+          const newQuantity = action.payload.maxStock !== undefined
+            ? Math.min(Math.max(0, action.payload.quantity), action.payload.maxStock)
+            : Math.max(0, action.payload.quantity);
+          
+          return {
+            ...item,
+            quantity: newQuantity
+          };
+        }
+        return item;
+      }).filter(item => item.quantity > 0);
 
       const total = newItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
       const itemCount = newItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -162,8 +168,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     dispatch({ type: 'REMOVE_ITEM', payload: { id, variant } });
   };
 
-  const updateQuantity = (id: string, quantity: number, maxStock?: number) => {
-    dispatch({ type: 'UPDATE_QUANTITY', payload: { id, quantity, maxStock } });
+  const updateQuantity = (id: string, variant: any, quantity: number, maxStock?: number) => {
+    dispatch({ type: 'UPDATE_QUANTITY', payload: { id, variant, quantity, maxStock } });
   };
 
   const clearCart = () => {

@@ -18,11 +18,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('📁 Uploading file:', {
+    const fileSizeMB = file.size / 1024 / 1024;
+    const isVideo = file.type.startsWith('video/');
+
+    console.log('📁 Server uploading file:', {
       name: file.name,
       type: file.type,
-      size: `${(file.size / 1024 / 1024).toFixed(2)} MB`
+      size: `${fileSizeMB.toFixed(2)} MB`,
+      isVideo
     });
+
+    // Check file size limits (serverless functions have limits)
+    if (fileSizeMB > 10) { // 10MB limit for server uploads
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `File too large (${fileSizeMB.toFixed(1)}MB). Server uploads limited to 10MB. For videos, please configure Cloudinary direct uploads.`,
+          details: 'Check CLOUDINARY_SETUP.md for configuration instructions'
+        },
+        { status: 413 }
+      );
+    }
+
+    // Warn about video uploads via server
+    if (isVideo && fileSizeMB > 5) {
+      console.warn('⚠️ Large video uploaded via server route - recommend Cloudinary direct upload');
+    }
 
     // Convert file to buffer
     const bytes = await file.arrayBuffer();

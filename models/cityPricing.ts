@@ -63,3 +63,4 @@ const CityPricing = mongoose.models.CityPricing || mongoose.model('CityPricing',
 
 export default CityPricing;
 
+

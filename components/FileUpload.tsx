@@ -46,20 +46,33 @@ const FileUpload: React.FC<FileUploadProps> = ({
         form.append('upload_preset', uploadPreset);
         form.append('folder', folder);
 
-        console.log('🚀 Uploading directly to Cloudinary...');
+        console.log('🚀 Uploading directly to Cloudinary...', { cloudName, uploadPreset, resourceType });
         const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`;
         const cloudRes = await fetch(cloudinaryUrl, { method: 'POST', body: form });
         const cloudData = await cloudRes.json();
         if (cloudRes.ok && cloudData.secure_url) {
           console.log('✅ Direct upload success:', cloudData.secure_url);
           onUpload(cloudData.secure_url);
-          alert('File uploaded successfully!');
+          alert('✅ Video/Image uploaded successfully!');
           return;
         } else {
           console.warn('⚠️ Direct upload failed, falling back to server route', cloudData);
+          if (isVideo) {
+            throw new Error(`❌ Video upload failed: ${cloudData.error?.message || 'Cloudinary direct upload required for videos'}. Please check Cloudinary configuration.`);
+          }
         }
       } else {
-        console.warn('⚠️ Cloudinary unsigned preset not configured, using server upload route');
+        const missingVars = [];
+        if (!cloudName) missingVars.push('NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME');
+        if (!uploadPreset) missingVars.push('NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET');
+        
+        console.warn('⚠️ Cloudinary unsigned preset not configured:', missingVars);
+        
+        if (isVideo) {
+          throw new Error(`❌ Video uploads require Cloudinary configuration. Missing: ${missingVars.join(', ')}. Please check CLOUDINARY_SETUP.md for setup instructions.`);
+        }
+        
+        console.log('📝 Using server upload route for images...');
       }
 
       // Fallback: server-side upload (works for small files)

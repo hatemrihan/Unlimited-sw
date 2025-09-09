@@ -1,15 +1,35 @@
 import nodemailer from 'nodemailer';
 
-// Brevo SMTP configuration
+// Brevo SMTP configuration - Alternative method using API key
 const transporter = nodemailer.createTransport({
   host: 'smtp-relay.brevo.com',
   port: 587,
   secure: false, // true for 465, false for other ports
   auth: {
-    user: process.env.BREVO_SMTP_USER || '969421001@smtp-brevo.com',
-    pass: process.env.BREVO_SMTP_PASSWORD || '9cxTEsDbUXht0pRd',
+    user: process.env.BREVO_SMTP_USER || 'be.unlimited.sw@gmail.com', // Your verified email
+    pass: process.env.BREVO_SMTP_PASSWORD || process.env.BREVO_API_KEY, // SMTP password OR API key
   },
 });
+
+// Verify transporter configuration on startup
+const verifyTransporter = async () => {
+  try {
+    if (!process.env.BREVO_SMTP_USER || !process.env.BREVO_SMTP_PASSWORD) {
+      console.error('❌ BREVO email credentials not configured! Check environment variables.');
+      return false;
+    }
+    
+    await transporter.verify();
+    console.log('✅ BREVO email transporter verified successfully');
+    return true;
+  } catch (error) {
+    console.error('❌ BREVO email transporter verification failed:', error);
+    return false;
+  }
+};
+
+// Verify on module load
+verifyTransporter();
 
 export interface OrderEmailData {
   customerEmail: string;
@@ -40,23 +60,43 @@ export async function sendOrderConfirmationEmail(orderData: OrderEmailData) {
   try {
     console.log('📧 Sending order confirmation email to:', orderData.customerEmail);
 
+    // Check if email service is configured
+    if (!process.env.BREVO_SMTP_USER || !process.env.BREVO_SMTP_PASSWORD) {
+      console.error('❌ Brevo email credentials not configured');
+      return { 
+        success: false, 
+        error: 'Email service not configured. Please set BREVO_SMTP_USER and BREVO_SMTP_PASSWORD environment variables.' 
+      };
+    }
+
     const emailHtml = generateOrderEmailTemplate(orderData);
 
     const mailOptions = {
       from: {
         name: 'UNLIMITED-SW',
-        address: '969421001@smtp-brevo.com'
+        address: 'be.unlimited.sw@gmail.com' // Use your verified sender address
       },
       to: orderData.customerEmail,
       subject: `Order Confirmation #${orderData.orderId} - UNLIMITED-SW`,
       html: emailHtml,
     };
 
+    console.log('📧 Attempting to send email with options:', {
+      from: mailOptions.from,
+      to: mailOptions.to,
+      subject: mailOptions.subject
+    });
+
     const result = await transporter.sendMail(mailOptions);
     console.log('✅ Order confirmation email sent successfully:', result.messageId);
     return { success: true, messageId: result.messageId };
   } catch (error) {
     console.error('❌ Error sending order confirmation email:', error);
+    console.error('❌ Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      code: (error as any)?.code,
+      response: (error as any)?.response
+    });
     return { success: false, error: error };
   }
 }
@@ -65,23 +105,43 @@ export async function sendAdminNotificationEmail(orderData: OrderEmailData) {
   try {
     console.log('📧 Sending admin notification email for order:', orderData.orderId);
 
+    // Check if email service is configured
+    if (!process.env.BREVO_SMTP_USER || !process.env.BREVO_SMTP_PASSWORD) {
+      console.error('❌ Brevo email credentials not configured');
+      return { 
+        success: false, 
+        error: 'Email service not configured. Please set BREVO_SMTP_USER and BREVO_SMTP_PASSWORD environment variables.' 
+      };
+    }
+
     const emailHtml = generateAdminEmailTemplate(orderData);
 
     const mailOptions = {
       from: {
         name: 'UNLIMITED-SW Store',
-        address: '969421001@smtp-brevo.com'
+        address: 'be.unlimited.sw@gmail.com' // Use your verified sender address
       },
       to: ['hatemrihan100@gmail.com', 'Muhamed.alkady@gmail.com'], // Admin emails
       subject: `🛒 New Order #${orderData.orderId} - UNLIMITED-SW`,
       html: emailHtml,
     };
 
+    console.log('📧 Attempting to send admin email with options:', {
+      from: mailOptions.from,
+      to: mailOptions.to,
+      subject: mailOptions.subject
+    });
+
     const result = await transporter.sendMail(mailOptions);
     console.log('✅ Admin notification email sent successfully:', result.messageId);
     return { success: true, messageId: result.messageId };
   } catch (error) {
     console.error('❌ Error sending admin notification email:', error);
+    console.error('❌ Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      code: (error as any)?.code,
+      response: (error as any)?.response
+    });
     return { success: false, error: error };
   }
 }

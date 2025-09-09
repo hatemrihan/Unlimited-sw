@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { CitiesTableSkeleton } from '../../components/LoadingSkeleton';
 
 interface GovernorateData {
   name: string;
@@ -65,15 +66,42 @@ const CitiesManagement = () => {
     ));
   };
 
-  // Save all changes
+  // Add new governorates (Fayoum & Damietta)
+  const handleAddNewGovernorates = async () => {
+    setSaving(true);
+    
+    try {
+      const response = await fetch('/api/admin/cities/bulk-add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        alert(`✅ Successfully added governorates!\n\n📊 Results:\n• Added: ${data.results.added} cities\n• Skipped: ${data.results.skipped} (already existed)\n• Errors: ${data.results.errors}\n\n🔄 Refreshing the page...`);
+        // Refresh the governorates list
+        await fetchGovernorates();
+      } else {
+        throw new Error(data.error || 'Failed to add governorates');
+      }
+    } catch (error) {
+      console.error('Error adding governorates:', error);
+      alert('❌ Failed to add governorates. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Save all changes - FIXED: Only update global default rates, not product-specific rates
   const handleSaveAll = async () => {
     setSaving(true);
     
     try {
-      // Save each governorate's pricing
+      // Save each governorate's DEFAULT pricing (this will be the fallback for new products)
       for (const gov of governorates) {
-        // Update all cities in this governorate with new pricing
-        const response = await fetch('/api/admin/cities', {
+        // Update the global default shipping costs for this governorate
+        const response = await fetch('/api/admin/cities/global-defaults', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -89,10 +117,10 @@ const CitiesManagement = () => {
         }
       }
       
-      alert('All governorate pricing updated successfully!');
+      alert('✅ Global default shipping rates updated successfully!\n\n📝 Note: This only affects NEW products. Existing products with custom shipping rates remain unchanged.');
     } catch (error) {
       console.error('Error saving governorates:', error);
-      alert('Failed to save changes. Please try again.');
+      alert('❌ Failed to save changes. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -169,8 +197,31 @@ const CitiesManagement = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
+      <div className="min-h-screen bg-black text-white p-6">
+        <div className="max-w-7xl mx-auto">
+          {/* Header skeleton */}
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <div className="h-8 bg-gray-700 rounded w-80 mb-2 animate-pulse"></div>
+              <div className="h-4 bg-gray-700 rounded w-96 animate-pulse"></div>
+            </div>
+            <div className="flex gap-4">
+              <div className="h-12 bg-gray-700 rounded w-32 animate-pulse"></div>
+              <div className="h-10 bg-gray-700 rounded w-28 animate-pulse"></div>
+            </div>
+          </div>
+          
+          {/* Action buttons skeleton */}
+          <div className="mb-6 flex gap-4 flex-wrap">
+            <div className="h-10 bg-gray-700 rounded w-40 animate-pulse"></div>
+            <div className="h-10 bg-gray-700 rounded w-28 animate-pulse"></div>
+            <div className="h-10 bg-gray-700 rounded w-32 animate-pulse"></div>
+            <div className="h-10 bg-gray-700 rounded w-28 animate-pulse"></div>
+          </div>
+
+          {/* Table skeleton */}
+          <CitiesTableSkeleton />
+        </div>
       </div>
     );
   }
@@ -181,8 +232,9 @@ const CitiesManagement = () => {
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white">Governorate Pricing Management</h1>
-            <p className="text-gray-400 mt-2">Manage shipping costs and COD fees by governorate</p>
+            <h1 className="text-3xl font-bold text-white">🚨 Global Default Shipping Rates</h1>
+            <p className="text-gray-400 mt-2">⚠️ These are DEFAULT rates for NEW products only. Each product can have custom shipping costs!</p>
+            <p className="text-yellow-400 text-sm mt-1">💡 To set product-specific shipping costs, go to Products → [Product Name] → City Pricing</p>
           </div>
           <div className="flex gap-4">
             <button
@@ -190,7 +242,7 @@ const CitiesManagement = () => {
               disabled={saving}
               className="bg-white text-black px-6 py-3 font-medium hover:bg-gray-200 transition-colors disabled:opacity-50"
             >
-              {saving ? 'Saving...' : 'Save All Changes'}
+              {saving ? 'Saving...' : 'Save Global Defaults'}
             </button>
             <button
               onClick={() => router.push('/admin')}
@@ -201,8 +253,18 @@ const CitiesManagement = () => {
           </div>
         </div>
 
-        {/* Export Buttons */}
-        <div className="mb-6 flex gap-4">
+        {/* Action Buttons */}
+        <div className="mb-6 flex gap-4 flex-wrap">
+          {/* Add Governorates Button */}
+          <button
+            onClick={handleAddNewGovernorates}
+            disabled={saving}
+            className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 font-medium"
+          >
+            {saving ? 'Adding...' : '➕ Add Fayoum & Damietta'}
+          </button>
+          
+          {/* Export Buttons */}
           <button
             onClick={exportAsCSV}
             className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
@@ -304,8 +366,18 @@ const CitiesManagement = () => {
 
         {/* Instructions */}
         <div className="mt-8 bg-gray-900 border border-white/10 p-6 rounded-lg">
-          <h3 className="text-lg font-medium mb-4">💡 How Governorate Pricing Works</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300">
+          <h3 className="text-lg font-medium mb-4">💡 Important: How This Page Works</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-gray-300">
+            <div className="bg-yellow-900/20 p-4 rounded border border-yellow-600/30">
+              <h4 className="font-medium text-yellow-400 mb-2">⚠️ Global Defaults Only:</h4>
+              <p>This page sets DEFAULT shipping rates that apply to NEW products. Each product can override these with custom rates.</p>
+            </div>
+            <div className="bg-blue-900/20 p-4 rounded border border-blue-600/30">
+              <h4 className="font-medium text-blue-400 mb-2">🎯 Product-Specific Rates:</h4>
+              <p>To set custom shipping for a specific product, go to: Admin → Products → [Product] → City Pricing</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300 mt-4">
             <div>
               <h4 className="font-medium text-white mb-2">For Online Payment:</h4>
               <p>Customer pays: <strong>Product Price + Shipping Cost</strong></p>
