@@ -12,8 +12,7 @@ const EditIntro = ({ params }: { params: Promise<{ id: string }> }) => {
     description: '',
     url: '',
     isVideo: false,
-    isActive: true,
-    order: 0
+    isActive: true
   });
   const [images, setImages] = useState({
     mainImage: '',
@@ -37,8 +36,7 @@ const EditIntro = ({ params }: { params: Promise<{ id: string }> }) => {
             description: item.description || '',
             url: item.url || '',
             isVideo: item.isVideo || false,
-            isActive: item.isActive !== undefined ? item.isActive : true,
-            order: item.order || 0
+            isActive: item.isActive !== undefined ? item.isActive : true
           });
           
           setImages({
@@ -95,8 +93,7 @@ const EditIntro = ({ params }: { params: Promise<{ id: string }> }) => {
         },
         body: JSON.stringify({
           ...formData,
-          ...images,
-          order: parseInt(formData.order.toString())
+          ...images
         }),
       });
 
@@ -146,64 +143,46 @@ const EditIntro = ({ params }: { params: Promise<{ id: string }> }) => {
           <div className="bg-black border border-white/10 rounded-lg p-6">
             <h2 className="text-xl font-semibold text-white mb-4">Basic Information</h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-white mb-2">
-                  Title *
-                </label>
-                <input
-                  type="text"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full bg-transparent border border-white/20 text-white px-3 py-2 rounded-lg focus:outline-none focus:border-white/40"
-                  placeholder="Athlete name or title"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-white mb-2">
-                  Order
-                </label>
-                <input
-                  type="number"
-                  name="order"
-                  value={formData.order}
-                  onChange={handleInputChange}
-                  className="w-full bg-transparent border border-white/20 text-white px-3 py-2 rounded-lg focus:outline-none focus:border-white/40"
-                  placeholder="Display order"
-                />
-              </div>
-            </div>
-
-            <div className="mt-4">
+            <div>
               <label className="block text-sm font-medium text-white mb-2">
-                Description *
+                Title *
               </label>
-              <textarea
-                name="description"
-                value={formData.description}
+              <input
+                type="text"
+                name="title"
+                value={formData.title}
                 onChange={handleInputChange}
                 required
-                rows={3}
                 className="w-full bg-transparent border border-white/20 text-white px-3 py-2 rounded-lg focus:outline-none focus:border-white/40"
-                placeholder="Athlete description or bio"
+                placeholder="Athlete name or title"
               />
             </div>
 
             <div className="mt-4">
               <label className="block text-sm font-medium text-white mb-2">
-                URL *
+                Description
+              </label>
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleInputChange}
+                rows={3}
+                className="w-full bg-transparent border border-white/20 text-white px-3 py-2 rounded-lg focus:outline-none focus:border-white/40"
+                placeholder="Athlete description or bio (optional)"
+              />
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-white mb-2">
+                URL
               </label>
               <input
                 type="url"
                 name="url"
                 value={formData.url}
                 onChange={handleInputChange}
-                required
                 className="w-full bg-transparent border border-white/20 text-white px-3 py-2 rounded-lg focus:outline-none focus:border-white/40"
-                placeholder="https://example.com"
+                placeholder="https://example.com (optional)"
               />
             </div>
 

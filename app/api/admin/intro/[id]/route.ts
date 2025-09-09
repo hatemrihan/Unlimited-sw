@@ -80,50 +80,113 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    console.log('🔄 Updating intro item in MongoDB...');
+    console.log('🔄 Updating intro item...');
 
     // Parse request body
     const body = await request.json();
     const params = await context.params;
     const { id } = params;
     
-    // Connect to MongoDB
-    await dbConnect();
-    console.log('✅ MongoDB connected for update');
+    console.log('📝 Update data:', { id, body });
     
-    // Update intro item in MongoDB
-    const updatedItem = await IntroItem.findByIdAndUpdate(
-      id,
-      { 
-        ...body,
-        updatedAt: new Date()
-      },
-      { 
-        new: true,
-        runValidators: true
+    let updatedFromMongoDB = false;
+    let updatedFromFile = false;
+    let updatedItem = null;
+
+    // Try MongoDB first
+    try {
+      await dbConnect();
+      console.log('✅ MongoDB connected for update');
+      
+      // Update intro item in MongoDB
+      updatedItem = await IntroItem.findByIdAndUpdate(
+        id,
+        { 
+          ...body,
+          updatedAt: new Date()
+        },
+        { 
+          new: true,
+          runValidators: true
+        }
+      );
+      
+      if (updatedItem) {
+        console.log('✅ Intro item updated in MongoDB:', updatedItem._id);
+        updatedFromMongoDB = true;
+      } else {
+        console.log('📝 Item not found in MongoDB, trying JSON file...');
       }
-    );
+    } catch (mongoError) {
+      console.log('❌ MongoDB update failed, trying JSON file...', mongoError instanceof Error ? mongoError.message : String(mongoError));
+    }
+
+    // Try JSON file if MongoDB failed
+    if (!updatedFromMongoDB) {
+      try {
+        const dataFilePath = path.join(process.cwd(), 'data', 'intro-items.json');
+        console.log('🔍 Updating in JSON file:', dataFilePath);
+
+        // Read current items
+        let items = [];
+        try {
+          const data = await fs.readFile(dataFilePath, 'utf8');
+          items = JSON.parse(data);
+          console.log('📖 Read', items.length, 'items from JSON file');
+        } catch (readError) {
+          console.log('❌ Error reading JSON file:', readError instanceof Error ? readError.message : String(readError));
+          items = [];
+        }
+
+        // Find and update the item
+        const itemIndex = items.findIndex((item: any) => item._id === id);
+        
+        if (itemIndex !== -1) {
+          items[itemIndex] = {
+            ...items[itemIndex],
+            ...body,
+            updatedAt: new Date().toISOString()
+          };
+          
+          // Write updated items back to file
+          await fs.writeFile(dataFilePath, JSON.stringify(items, null, 2));
+          console.log('✅ Intro item updated in JSON file');
+          updatedFromFile = true;
+          updatedItem = items[itemIndex];
+        } else {
+          console.log('❌ Item not found in JSON file');
+        }
+      } catch (fileError) {
+        console.error('❌ File update failed:', fileError);
+      }
+    }
     
-    if (!updatedItem) {
-      console.log('❌ Intro item not found:', id);
+    if (updatedFromMongoDB || updatedFromFile) {
+      return NextResponse.json({
+        success: true,
+        item: updatedItem,
+        message: `Intro item updated successfully in ${updatedFromMongoDB ? 'MongoDB' : 'JSON file'}`
+      });
+    } else {
+      console.log('❌ Intro item not found in either MongoDB or JSON file:', id);
       return NextResponse.json(
         { success: false, error: 'Intro item not found' },
         { status: 404 }
       );
     }
     
-    console.log('✅ Intro item updated in MongoDB:', updatedItem._id);
-    
-    return NextResponse.json({
-      success: true,
-      item: updatedItem,
-      message: 'Intro item updated successfully in MongoDB'
-    });
-    
   } catch (error) {
-    console.error('❌ MongoDB error updating intro item:', error);
+    console.error('❌ General error updating intro item:', error);
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return NextResponse.json(
-      { success: false, error: 'Failed to update intro item in MongoDB' },
+      { 
+        success: false, 
+        error: 'Failed to update intro item',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }
