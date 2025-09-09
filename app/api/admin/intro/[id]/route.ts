@@ -141,6 +141,8 @@ export async function DELETE(
     const { id } = params;
     
     console.log('🔍 Attempting to delete intro item with ID:', id);
+    console.log('🔍 ID type:', typeof id);
+    console.log('🔍 ID length:', id.length);
     
     // Validate ID format
     if (!id || id.trim() === '') {
@@ -188,7 +190,12 @@ export async function DELETE(
 
       // Find and remove the item
       const initialLength = items.length;
+      console.log('🔍 Looking for item with ID:', id);
+      console.log('🔍 Available items:', items.map((item: any) => ({ id: item._id, title: item.title })));
+      
       items = items.filter((item: any) => item._id !== id);
+      
+      console.log('🔍 Items after filter:', items.length, 'vs initial:', initialLength);
       
       if (items.length < initialLength) {
         // Write updated items back to file
