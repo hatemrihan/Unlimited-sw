@@ -19,6 +19,7 @@ const ProductDetail = () => {
     name: string;
     stock: number;
     price?: number;
+    images?: string[];
   } | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0);
@@ -58,6 +59,8 @@ const ProductDetail = () => {
           // Set first variant as default
           if (productData.product.variants && productData.product.variants.length > 0) {
             setSelectedVariant(productData.product.variants[0]);
+            setSelectedImageIndex(0); // Reset image index for default variant
+            setCurrentImageIndex(0);
           }
         } else {
           console.error('❌ Failed to fetch product, status:', productResponse.status);
@@ -116,20 +119,16 @@ const ProductDetail = () => {
     if (!product) return;
 
     try {
-      // Determine the correct stock based on selected variant
-      const availableStock = selectedVariant ? selectedVariant.stock : product.stock;
-      
-      // Add to cart using context with stock validation
+      // Add to cart using context
       addItem({
         id: product._id!,
         name: product.name,
         image: product.mainImage,
         price: selectedVariant?.price || product.price,
-        stock: availableStock,
         variant: selectedVariant ? {
           name: selectedVariant.name
         } : undefined
-      }, availableStock);
+      }, quantity);
 
       // Show beautiful cart notification
       setCartNotificationKey(prev => prev + 1);
@@ -188,10 +187,17 @@ const ProductDetail = () => {
     );
   }
 
-  // Get all images (main + additional)
-  const allImages = [product.mainImage, ...(product.images || [])].filter(Boolean);
-  // Determine max stock respecting selected variant
-  const maxStock = selectedVariant ? selectedVariant.stock : product.stock;
+  // Get images based on selected variant or default product images
+  const getDisplayImages = () => {
+    // If variant is selected and has images, use variant images
+    if (selectedVariant && selectedVariant.images && selectedVariant.images.length > 0) {
+      return selectedVariant.images;
+    }
+    // Otherwise, use main product images (main + additional)
+    return [product.mainImage, ...(product.images || [])].filter(Boolean);
+  };
+  
+  const allImages = getDisplayImages();
 
   return (
     <>
@@ -362,7 +368,12 @@ const ProductDetail = () => {
                     {product.variants.map((variant, index) => (
                       <button
                         key={index}
-                        onClick={() => { setSelectedVariant(variant); setQuantity(1); }}
+                        onClick={() => { 
+                          setSelectedVariant(variant); 
+                          setQuantity(1); 
+                          setSelectedImageIndex(0); // Reset image index when variant changes
+                          setCurrentImageIndex(0);
+                        }}
                         className={`px-4 py-2 border  font-medium transition-colors duration-300 ${
                           selectedVariant === variant
                             ? 'bg-white text-black border-white'
@@ -375,11 +386,6 @@ const ProductDetail = () => {
                   </div>
                   
                   {/* Selected Variant Info */}
-                  {selectedVariant && (
-                    <div className="mt-3 text-sm text-gray-300">
-                      Stock: {selectedVariant.stock} available
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -387,11 +393,6 @@ const ProductDetail = () => {
               <div>
                 <label className="block text-sm font-medium mb-3">
                   Quantity
-                  {maxStock !== undefined && maxStock > 0 && (
-                    <span className="text-xs text-gray-400 ml-2">
-                      ({maxStock} available)
-                    </span>
-                  )}
                 </label>
                 <div className="flex items-center space-x-4">
                   <button
@@ -402,22 +403,12 @@ const ProductDetail = () => {
                   </button>
                   <span className="text-lg font-medium w-8 text-center">{quantity}</span>
                   <button
-                    onClick={() => setQuantity(Math.min((maxStock ?? Infinity) as number, quantity + 1))}
-                    disabled={maxStock !== undefined && quantity >= (maxStock as number)}
-                    className={`w-10 h-10 border text-white flex items-center justify-center font-bold transition-colors duration-300 ${
-                      maxStock !== undefined && quantity >= (maxStock as number)
-                        ? 'border-gray-600 text-gray-600 cursor-not-allowed'
-                        : 'border-white hover:bg-white hover:text-black'
-                    }`}
+                    onClick={() => setQuantity(quantity + 1)}
+                    className="w-10 h-10 border border-white text-white hover:bg-white hover:text-black transition-colors duration-300 flex items-center justify-center font-bold"
                   >
                     +
                   </button>
                 </div>
-                {maxStock !== undefined && (maxStock as number) > 0 && quantity >= (maxStock as number) && (
-                  <p className="text-xs text-yellow-400 mt-2">
-                    Maximum available quantity reached
-                  </p>
-                )}
               </div>
 
               {/* Action Buttons */}

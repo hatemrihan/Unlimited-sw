@@ -50,7 +50,7 @@ const AddProductPage = () => {
     video: '',
     description: '',
     promoCode: '',
-    variants: [{ name: '', stock: 0, price: 0 }],
+    variants: [{ name: '', stock: 0, price: 0, images: [] }],
     stock: 0,
     isActive: true,
     isFeatured: false,
@@ -238,6 +238,56 @@ const AddProductPage = () => {
                           </div>
                         </div>
                       </div>
+                      
+                      {/* Variant Images */}
+                      <div className="mt-4">
+                        <label className="block text-xs font-medium text-gray-300 mb-2">
+                          Variant Images (Optional)
+                        </label>
+                        <p className="text-xs text-gray-500 mb-2">
+                          Upload specific images for this variant. If no images, default product images will be used.
+                        </p>
+                        
+                        {/* Display current variant images */}
+                        {variant.images && variant.images.length > 0 && (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2">
+                            {variant.images.map((img, imgIndex) => (
+                              <div key={imgIndex} className="relative">
+                                <img 
+                                  src={img} 
+                                  alt={`Variant ${variant.name} ${imgIndex + 1}`}
+                                  className="w-full h-20 object-cover rounded border border-white/20"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newVariants = [...(newProduct.variants || [])];
+                                    const newImages = variant.images?.filter((_, i) => i !== imgIndex) || [];
+                                    newVariants[index] = { ...variant, images: newImages };
+                                    setNewProduct({...newProduct, variants: newVariants});
+                                  }}
+                                  className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center hover:bg-red-600"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {/* Add variant image button */}
+                        <FileUpload
+                          label={`Add Image for ${variant.name || 'Variant'}`}
+                          accept="image/*"
+                          onUpload={(url) => {
+                            const newVariants = [...(newProduct.variants || [])];
+                            const currentImages = variant.images || [];
+                            newVariants[index] = { ...variant, images: [...currentImages, url] };
+                            setNewProduct({...newProduct, variants: newVariants});
+                          }}
+                          className="w-full"
+                        />
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -249,7 +299,7 @@ const AddProductPage = () => {
                     const currentVariants = newProduct.variants || [];
                     setNewProduct({
                       ...newProduct, 
-                      variants: [...currentVariants, { name: '', stock: 0, price: 0 }]
+                      variants: [...currentVariants, { name: '', stock: 0, price: 0, images: [] }]
                     });
                   }}
                   className="w-full p-3 border-2 border-dashed border-white/20 rounded-lg text-gray-400 hover:border-white hover:text-white transition-colors duration-300"

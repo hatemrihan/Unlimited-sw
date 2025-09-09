@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../lib/mongodb';
 import Order, { IOrder } from '../../../models/order';
+import Product from '../../../models/product';
 import { sendOrderConfirmationEmail, sendAdminNotificationEmail } from '../../../lib/email';
 
 // Ensure Node runtime for Nodemailer
@@ -184,6 +185,98 @@ export async function POST(request: NextRequest) {
       newOrder.notes = `${newOrder.notes || ''}\n\n🎫 Promo Code Applied: ${orderData.promoCode} (Discount: L.E ${promoDiscount})`.trim();
     }
 
+    // 🔥 CRITICAL: Validate and deduct stock before creating order
+    console.log('🔍 Validating stock availability...');
+    
+    // Store original stock values for rollback if needed
+    const stockRollback: Array<{productId: string, variantName?: string, originalStock: number, originalVariantStock?: number}> = [];
+    
+    // Validate and deduct stock for each product in the order
+    for (const orderProduct of orderData.products) {
+      const product = await Product.findById(orderProduct.productId);
+      
+      if (!product) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Product not found: ${orderProduct.name}`
+          },
+          { status: 400 }
+        );
+      }
+
+      // Check if product has variants
+      if (product.variants && product.variants.length > 0) {
+        // Find the specific variant
+        const variant = product.variants.find((v: any) => 
+          v.name === orderProduct.variant?.name
+        );
+        
+        if (!variant) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Variant not found: ${orderProduct.variant?.name} for ${orderProduct.name}`
+            },
+            { status: 400 }
+          );
+        }
+
+        // Check variant stock
+        if (variant.stock < orderProduct.quantity) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Insufficient stock for ${orderProduct.name} (${orderProduct.variant?.name}). Available: ${variant.stock}, Requested: ${orderProduct.quantity}`
+            },
+            { status: 400 }
+          );
+        }
+
+        // Store original values for rollback
+        stockRollback.push({
+          productId: product._id.toString(),
+          variantName: variant.name,
+          originalStock: product.stock,
+          originalVariantStock: variant.stock
+        });
+
+        // Deduct variant stock
+        variant.stock -= orderProduct.quantity;
+        
+        // Also deduct from total product stock
+        product.stock -= orderProduct.quantity;
+        
+        console.log(`📦 Deducted ${orderProduct.quantity} from variant ${variant.name} of ${product.name}. Variant stock: ${variant.stock}, Total stock: ${product.stock}`);
+      } else {
+        // Check main product stock
+        if (product.stock < orderProduct.quantity) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Insufficient stock for ${orderProduct.name}. Available: ${product.stock}, Requested: ${orderProduct.quantity}`
+            },
+            { status: 400 }
+          );
+        }
+
+        // Store original values for rollback
+        stockRollback.push({
+          productId: product._id.toString(),
+          originalStock: product.stock
+        });
+
+        // Deduct main product stock
+        product.stock -= orderProduct.quantity;
+        console.log(`📦 Deducted ${orderProduct.quantity} from ${product.name}. New stock: ${product.stock}`);
+      }
+
+      // Save the updated product
+      await product.save();
+    }
+
+    console.log('✅ Stock validation and deduction completed successfully');
+
     // Save order to database
     const savedOrder = await Order.create(newOrder);
 
@@ -251,6 +344,36 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: unknown) {
+    // 🔄 ROLLBACK: Restore stock if order creation failed
+    if (stockRollback && stockRollback.length > 0) {
+      console.log('🔄 Rolling back stock changes due to order creation failure...');
+      
+      try {
+        for (const rollback of stockRollback) {
+          const product = await Product.findById(rollback.productId);
+          if (product) {
+            if (rollback.variantName) {
+              // Restore variant stock
+              const variant = product.variants.find((v: any) => v.name === rollback.variantName);
+              if (variant && rollback.originalVariantStock !== undefined) {
+                variant.stock = rollback.originalVariantStock;
+                product.stock = rollback.originalStock;
+                await product.save();
+                console.log(`🔄 Restored variant ${rollback.variantName} stock to ${rollback.originalVariantStock}`);
+              }
+            } else {
+              // Restore main product stock
+              product.stock = rollback.originalStock;
+              await product.save();
+              console.log(`🔄 Restored ${product.name} stock to ${rollback.originalStock}`);
+            }
+          }
+        }
+        console.log('✅ Stock rollback completed successfully');
+      } catch (rollbackError) {
+        console.error('❌ Error during stock rollback:', rollbackError);
+      }
+    }
 
     // Handle specific MongoDB errors
     if (error && typeof error === 'object' && 'code' in error && error.code === 11000) {

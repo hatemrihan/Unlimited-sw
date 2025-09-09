@@ -182,13 +182,26 @@ const Products = () => {
                       <span className="text-white font-bold text-sm">
                         {product.price.toLocaleString()} L.E
                       </span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        product.stock > 0 
-                          ? 'bg-green-900 text-green-200' 
-                          : 'bg-red-900 text-red-200'
-                      }`}>
-                        {product.stock > 0 ? 'In Stock' : 'Out of Stock'}
-                      </span>
+                      <div className="text-xs space-y-1">
+                        <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          product.stock > 0 
+                            ? 'bg-green-900 text-green-200' 
+                            : 'bg-red-900 text-red-200'
+                        }`}>
+                          Total: {product.stock}
+                        </div>
+                        
+                        {/* Variant Stock Details */}
+                        {product.variants && product.variants.length > 0 && (
+                          <div className="space-y-1">
+                            {product.variants.map((variant: any, idx: number) => (
+                              <div key={idx} className="text-gray-400 text-xs">
+                                {variant.name}: {variant.stock || 0}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* Action Buttons */}

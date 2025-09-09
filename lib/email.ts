@@ -1,36 +1,29 @@
 import nodemailer from 'nodemailer';
 
-// Brevo SMTP configuration - Try multiple authentication methods
+// Brevo SMTP configuration - Use correct authentication
 const createTransporter = () => {
-  // Method 1: Use SMTP Key (preferred)
-  if (process.env.BREVO_SMTP_PASSWORD) {
-    console.log('🔧 Using BREVO_SMTP_PASSWORD for authentication');
-    return nodemailer.createTransporter({
-      host: 'smtp-relay.brevo.com',
-      port: 587,
-      secure: false,
-      auth: {
-        user: process.env.BREVO_SMTP_USER || 'orders@unlimited-sw.com',
-        pass: process.env.BREVO_SMTP_PASSWORD,
-      },
-    });
+  console.log('🔧 Creating Brevo SMTP transporter...');
+  
+  // For Brevo SMTP, you need to use the SMTP login (not your email) as the user
+  const smtpUser = process.env.BREVO_SMTP_USER || '969421001@smtp-brevo.com';
+  const smtpPassword = process.env.BREVO_SMTP_PASSWORD;
+  
+  if (!smtpPassword) {
+    throw new Error('BREVO_SMTP_PASSWORD is required!');
   }
   
-  // Method 2: Use API Key as fallback
-  if (process.env.BREVO_API_KEY) {
-    console.log('🔧 Using BREVO_API_KEY for authentication');
-    return nodemailer.createTransporter({
-      host: 'smtp-relay.brevo.com',
-      port: 587,
-      secure: false,
-      auth: {
-        user: process.env.BREVO_SMTP_USER || 'orders@unlimited-sw.com',
-        pass: process.env.BREVO_API_KEY,
-      },
-    });
-  }
+  console.log('🔧 SMTP User:', smtpUser);
+  console.log('🔧 SMTP Password Set:', !!smtpPassword);
   
-  throw new Error('No Brevo credentials found! Set BREVO_SMTP_PASSWORD or BREVO_API_KEY');
+  return nodemailer.createTransport({
+    host: 'smtp-relay.brevo.com',
+    port: 587,
+    secure: false,
+    auth: {
+      user: smtpUser, // Use SMTP login, not sender email
+      pass: smtpPassword,
+    },
+  });
 };
 
 const transporter = createTransporter();
@@ -40,9 +33,9 @@ const verifyTransporter = async () => {
   try {
     // Log current configuration for debugging
     console.log('🔧 BREVO Configuration Check:');
-    console.log('- SMTP User:', 'be.unlimited.sw@gmail.com');
+    console.log('- SMTP Login:', process.env.BREVO_SMTP_USER || '969421001@smtp-brevo.com');
     console.log('- SMTP Password Set:', !!process.env.BREVO_SMTP_PASSWORD);
-    console.log('- API Key Set:', !!process.env.BREVO_API_KEY);
+    console.log('- Sender Email:', 'orders@unlimited-sw.com');
     
     if (!process.env.BREVO_SMTP_PASSWORD && !process.env.BREVO_API_KEY) {
       console.error('❌ BREVO email credentials not configured! Check environment variables.');
@@ -105,12 +98,36 @@ export async function sendOrderConfirmationEmail(orderData: OrderEmailData) {
 
     const mailOptions = {
       from: {
-        name: 'UNLIMITED-SW',
+        name: 'UNLIMITED-SW Store',
         address: 'orders@unlimited-sw.com' // Use your domain email for better deliverability
       },
       to: orderData.customerEmail,
-      subject: `Order Confirmation #${orderData.orderId} - UNLIMITED-SW`,
+      subject: `✅ Your Order #${orderData.orderId} is Confirmed - UNLIMITED-SW`,
       html: emailHtml,
+      // Anti-spam headers
+      headers: {
+        'X-Mailer': 'UNLIMITED-SW Order System',
+        'X-Priority': '3',
+        'X-MSMail-Priority': 'Normal',
+        'Reply-To': 'orders@unlimited-sw.com',
+        'List-Unsubscribe': '<mailto:orders@unlimited-sw.com?subject=Unsubscribe>',
+      },
+      // Add plain text version
+      text: `
+Hello ${orderData.customerName},
+
+Thank you for your order! Your order #${orderData.orderId} has been confirmed.
+
+Order Details:
+- Order ID: ${orderData.orderId}
+- Total: ${orderData.total || orderData.totalAmount} L.E
+- Items: ${(orderData.items || orderData.orderItems || []).length} item(s)
+
+We'll process your order and send you tracking information soon.
+
+Best regards,
+UNLIMITED-SW Team
+      `.trim(),
     };
 
     console.log('📧 Attempting to send email with options:', {

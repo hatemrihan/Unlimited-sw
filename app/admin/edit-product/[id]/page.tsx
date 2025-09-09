@@ -17,10 +17,9 @@ interface Product {
   promoCode?: string;
   variants: Array<{
     name: string;
-    size: string;
-    color: string;
     stock: number;
-    price: number;
+    price?: number;
+    images?: string[];
   }>;
   stock: number;
   isActive: boolean;
@@ -53,7 +52,7 @@ const EditProductPage = () => {
     images: [],
     description: '',
     promoCode: '',
-    variants: [{ name: '', size: '', color: '', stock: 0, price: 0 }],
+    variants: [{ name: '', stock: 0, price: 0, images: [] }],
     stock: 0,
     isActive: true,
     isFeatured: false,
@@ -233,9 +232,9 @@ const EditProductPage = () => {
                   <div key={index} className="bg-transparent p-3 rounded-lg mb-3 border border-white/10">
                     <div className="space-y-3">
                       {/* First Row: Variant Name and Size */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-300 mb-1">Variant Name</label>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="sm:col-span-2">
+                          <label className="block text-xs font-medium text-gray-300 mb-1">VARIANT NAME *</label>
                           <input
                             type="text"
                             value={variant.name}
@@ -245,40 +244,7 @@ const EditProductPage = () => {
                               setProduct({...product, variants: newVariants});
                             }}
                             className="w-full p-2 bg-transparent border border-white/20 rounded text-white text-sm focus:border-white focus:outline-none"
-                            placeholder="Large Kit"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label className="block text-xs font-medium text-gray-300 mb-1">Name</label>
-                          <input
-                            type="text"
-                            value={variant.size}
-                            onChange={(e) => {
-                              const newVariants = [...(product.variants || [])];
-                              newVariants[index] = { ...variant, size: e.target.value };
-                              setProduct({...product, variants: newVariants});
-                            }}
-                            className="w-full p-2 bg-transparent border border-white/20 rounded text-white text-sm focus:border-white focus:outline-none"
-                            placeholder="L"
-                          />
-                        </div>
-                      </div>
-                      
-                      {/* Second Row: Color and Stock */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-300 mb-1">Color</label>
-                          <input
-                            type="text"
-                            value={variant.color}
-                            onChange={(e) => {
-                              const newVariants = [...(product.variants || [])];
-                              newVariants[index] = { ...variant, color: e.target.value };
-                              setProduct({...product, variants: newVariants});
-                            }}
-                            className="w-full p-2 bg-transparent border border-white/20 rounded text-white text-sm focus:border-white focus:outline-none"
-                            placeholder="Matte Black"
+                            placeholder="e.g., Black, Gray, Premium"
                           />
                         </div>
                         
@@ -314,6 +280,56 @@ const EditProductPage = () => {
                           </div>
                         </div>
                       </div>
+                      
+                      {/* Variant Images */}
+                      <div className="mt-4">
+                        <label className="block text-xs font-medium text-gray-300 mb-2">
+                          Variant Images (Optional)
+                        </label>
+                        <p className="text-xs text-gray-500 mb-2">
+                          Upload specific images for this variant. If no images, default product images will be used.
+                        </p>
+                        
+                        {/* Display current variant images */}
+                        {variant.images && variant.images.length > 0 && (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2">
+                            {variant.images.map((img, imgIndex) => (
+                              <div key={imgIndex} className="relative">
+                                <img 
+                                  src={img} 
+                                  alt={`Variant ${variant.name} ${imgIndex + 1}`}
+                                  className="w-full h-20 object-cover rounded border border-white/20"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newVariants = [...(product.variants || [])];
+                                    const newImages = variant.images?.filter((_, i) => i !== imgIndex) || [];
+                                    newVariants[index] = { ...variant, images: newImages };
+                                    setProduct({...product, variants: newVariants});
+                                  }}
+                                  className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center hover:bg-red-600"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {/* Add variant image button */}
+                        <FileUpload
+                          label={`Add Image for ${variant.name || 'Variant'}`}
+                          accept="image/*"
+                          onUpload={(url) => {
+                            const newVariants = [...(product.variants || [])];
+                            const currentImages = variant.images || [];
+                            newVariants[index] = { ...variant, images: [...currentImages, url] };
+                            setProduct({...product, variants: newVariants});
+                          }}
+                          className="w-full"
+                        />
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -325,7 +341,7 @@ const EditProductPage = () => {
                     const currentVariants = product.variants || [];
                     setProduct({
                       ...product, 
-                      variants: [...currentVariants, { name: '', size: '', color: '', stock: 0, price: 0 }]
+                      variants: [...currentVariants, { name: '', stock: 0, price: 0, images: [] }]
                     });
                   }}
                   className="w-full p-3 border-2 border-dashed border-white/20 rounded-lg text-gray-400 hover:border-white hover:text-white transition-colors duration-300"
