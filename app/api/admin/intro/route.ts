@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
           leftImage: leftImage.trim(),
           rightImage: rightImage.trim(),
           description: description.trim(),
-          url: url.trim(),
+          url: '#',  // Default URL since it's removed from form
           isVideo: isVideo || false,
           isActive: true,
           order: order || items.length,
