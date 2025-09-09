@@ -24,6 +24,7 @@ const ProductDetail = () => {
   } | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0);
+  const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
 
   // Cart functionality
   const { addItem, state: cartState } = useCart();
@@ -212,29 +213,73 @@ const ProductDetail = () => {
               animate={{opacity: 1, x: 0}}
               transition={{duration: 0.8, delay: 0.2}}
             >
-              {/* Main Image */}
+              {/* Horizontal Scrollable Image Gallery */}
               <motion.div
-                className="aspect-square overflow-hidden bg-gray-800"
+                className="relative"
                 initial={{scale: 0.9}}
                 animate={{scale: 1}}
                 transition={{duration: 0.6, delay: 0.4}}
               >
-                <img
-                  src={allImages[selectedImageIndex]}
-                  alt={product.name}
-                  className="w-full h-full object-cover"
-                />
+                <div 
+                  className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide"
+                  style={{
+                    scrollSnapType: 'x mandatory',
+                    WebkitOverflowScrolling: 'touch',
+                    msOverflowStyle: 'none',
+                    scrollbarWidth: 'none'
+                  }}
+                  onScroll={(e) => {
+                    const container = e.currentTarget;
+                    const scrollLeft = container.scrollLeft;
+                    const itemWidth = container.clientWidth;
+                    const newIndex = Math.round(scrollLeft / itemWidth);
+                    setCurrentImageIndex(newIndex);
+                  }}
+                >
+                  {allImages.map((image, index) => (
+                    <div
+                      key={index}
+                      className="flex-shrink-0 w-full aspect-square bg-gray-800 overflow-hidden"
+                      style={{ scrollSnapAlign: 'start' }}
+                    >
+                      <img
+                        src={image}
+                        alt={`${product.name} ${index + 1}`}
+                        className="w-full h-full object-cover"
+                        loading={index === 0 ? 'eager' : 'lazy'}
+                      />
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Image Counter */}
+                {allImages.length > 1 && (
+                  <div className="absolute bottom-6 right-4 bg-black/70 text-white px-2 py-1 rounded-full text-sm">
+                    {currentImageIndex + 1} / {allImages.length}
+                  </div>
+                )}
               </motion.div>
               
-              {/* Thumbnail Images */}
+              {/* Thumbnail Navigation (Optional - for desktop) */}
               {allImages.length > 1 && (
-                <div className="grid grid-cols-4 gap-2">
+                <div className="hidden lg:grid grid-cols-4 gap-2">
                   {allImages.map((image, index) => (
                     <button
                       key={index}
-                      onClick={() => setSelectedImageIndex(index)}
+                      onClick={() => {
+                        // Scroll to the specific image
+                        const gallery = document.querySelector('.flex.overflow-x-auto');
+                        if (gallery) {
+                          const imageWidth = gallery.clientWidth;
+                          gallery.scrollTo({
+                            left: index * imageWidth,
+                            behavior: 'smooth'
+                          });
+                        }
+                        setCurrentImageIndex(index);
+                      }}
                       className={`aspect-square overflow-hidden bg-gray-800 border-2 transition-colors duration-300 ${
-                        selectedImageIndex === index 
+                        currentImageIndex === index 
                           ? 'border-white' 
                           : 'border-transparent hover:border-gray-400'
                       }`}

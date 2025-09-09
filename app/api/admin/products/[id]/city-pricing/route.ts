@@ -27,7 +27,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // Merge product city pricing with available cities
     const cityPricingData = allCities.map(city => {
       const existingPricing = product.cityPricing?.find(
-        cp => cp.cityName === city.cityName && cp.governorate === city.governorate
+        (cp: any) => cp.cityName === city.cityName && cp.governorate === city.governorate
       );
       
       return {
