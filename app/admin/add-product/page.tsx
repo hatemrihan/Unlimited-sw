@@ -49,7 +49,7 @@ const AddProductPage = () => {
     images: [],
     video: '',
     description: '',
-    promoCode: '',',
+    promoCode: '',
     variants: [{ name: '', size: '', color: '', stock: 0, price: 0 }],
     stock: 0,
     isActive: true,

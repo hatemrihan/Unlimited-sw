@@ -119,23 +119,27 @@ const Products = () => {
                     }}
                   />
                   
-                  {/* Stock Badges */}
-                  {product.stock !== undefined && product.stock === 0 && (
-                    <div className="absolute top-2 left-2 z-10">
-                      <div className="bg-black text-white px-2 py-1 text-xs font-medium rounded-sm shadow-sm">
-                        OUT OF STOCK
+                  {/* Badges Container - Stacked Vertically */}
+                  <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
+                    {/* Discount Badge */}
+                    {product.discount && product.discount > 0 && (
+                      <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
+                        {product.discount}% OFF
                       </div>
-                    </div>
-                  )}
-                  
-                  {/* Preorder Badge - Show when stock is 0 */}
-                  {product.stock !== undefined && product.stock === 0 && (
-                    <div className="absolute top-2 right-2 z-10">
-                      <div className="bg-gray-700 text-white px-2 py-1 text-xs font-medium rounded-sm shadow-sm">
-                        PREORDER
-                      </div>
-                    </div>
-                  )}
+                    )}
+                    
+                    {/* Stock Badges - Both when stock is 0 */}
+                    {product.stock !== undefined && product.stock === 0 && (
+                      <>
+                        <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
+                          OUT OF STOCK
+                        </div>
+                        <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
+                          PREORDER
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
                 
                 {/* Product Info */}

@@ -8,7 +8,7 @@ import MovingWords from '../sections/MovingWords';
 import Footer from '../sections/Footer';
 import Image from 'next/image';
 import aboutImage from '../../public/images/about-image.jpg';
-import Button from '@/components/Button';
+
 import Mohamed from '../sections/mohamed';
 
 const MohamedaboutProfile = () => {
