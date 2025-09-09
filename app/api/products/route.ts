@@ -84,17 +84,14 @@ export async function GET(request: NextRequest) {
 
         console.log('✅ Found', activeProducts.length, featuredOnly ? 'featured' : 'active', 'products from JSON fallback');
 
-        // Cache JSON fallback results too
-        if (!productsCache) {
-          productsCache = {};
-        }
-        productsCache[cacheKey] = activeProducts;
-        lastCacheTime = now;
+        // ⚡ CACHE IT: Store fallback results for ultra-fast future requests
+        apiCache.set(cacheKey, activeProducts, 300000); // 5min cache
 
         return NextResponse.json({
           success: true,
           products: activeProducts,
           count: activeProducts.length,
+          cached: false,
           source: 'json'
         });
 
@@ -127,8 +124,8 @@ export async function GET(request: NextRequest) {
 
 // Cache invalidation function
 export function invalidateProductsCache() {
-  productsCache = null;
-  lastCacheTime = 0;
+  apiCache.delete('products:all');
+  apiCache.delete('products:featured');
   console.log('🗑️ Products cache invalidated');
 }
 
