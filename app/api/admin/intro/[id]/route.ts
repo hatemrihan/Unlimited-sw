@@ -176,13 +176,39 @@ export async function DELETE(
     try {
       const dataFilePath = path.join(process.cwd(), 'data', 'intro-items.json');
       console.log('🔍 Looking for intro items file at:', dataFilePath);
+      console.log('🔍 Current working directory:', process.cwd());
+
+      // Ensure data directory exists
+      const dataDir = path.dirname(dataFilePath);
+      try {
+        await fs.mkdir(dataDir, { recursive: true });
+        console.log('✅ Data directory ensured');
+      } catch (mkdirError) {
+        console.log('❌ Error creating data directory:', mkdirError instanceof Error ? mkdirError.message : String(mkdirError));
+      }
+
+      // Check if file exists
+      try {
+        await fs.access(dataFilePath);
+        console.log('✅ Data file exists and is accessible');
+      } catch (accessError) {
+        console.log('❌ Data file not accessible:', accessError instanceof Error ? accessError.message : String(accessError));
+        // Try to create empty file
+        try {
+          await fs.writeFile(dataFilePath, '[]');
+          console.log('✅ Created empty data file');
+        } catch (createError) {
+          console.log('❌ Cannot create data file:', createError instanceof Error ? createError.message : String(createError));
+          throw new Error('Cannot access or create data file');
+        }
+      }
 
       // Read current items
       let items = [];
       try {
         const data = await fs.readFile(dataFilePath, 'utf8');
         items = JSON.parse(data);
-        console.log('📖 Successfully read intro items file');
+        console.log('📖 Successfully read intro items file, found', items.length, 'items');
       } catch (readError) {
         console.log('❌ Error reading intro items file:', readError instanceof Error ? readError.message : String(readError));
         items = [];
