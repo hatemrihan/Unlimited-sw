@@ -1,11 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { IntroItem } from '../../../models/intro';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const Intro = () => {
   const router = useRouter();
   const [introItems, setIntroItems] = useState<IntroItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<IntroItem | null>(null);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Function to fetch all intro items
   const fetchIntroItems = async () => {
@@ -55,26 +70,52 @@ const Intro = () => {
     }
   };
 
+  // Open delete confirmation dialog
+  const openDeleteDialog = (item: IntroItem) => {
+    setItemToDelete(item);
+    setDeleteDialogOpen(true);
+  };
+
   // Delete an intro item
-  const deleteIntroItem = async (itemId: string) => {
-    if (!confirm('Are you sure you want to delete this athlete?')) {
-      return;
-    }
+  const deleteIntroItem = async () => {
+    if (!itemToDelete) return;
 
     try {
-      const response = await fetch(`/api/admin/intro/${itemId}`, {
+      console.log('🗑️ Attempting to delete item:', itemToDelete._id);
+      const response = await fetch(`/api/admin/intro/${itemToDelete._id}`, {
         method: 'DELETE',
       });
 
-      if (response.ok) {
-        setIntroItems(introItems.filter(item => item._id !== itemId));
-        alert('Athlete deleted successfully!');
+      console.log('📡 Delete response status:', response.status);
+      const data = await response.json();
+      console.log('📡 Delete response data:', data);
+
+      if (response.ok && data.success) {
+        setIntroItems(introItems.filter(item => item._id !== itemToDelete._id));
+        setSuccessMessage('Athlete deleted successfully!');
+        setErrorMessage('');
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccessMessage(''), 3000);
       } else {
-        alert('Failed to delete athlete. Please try again.');
+        const errorMsg = data.error || 'Failed to delete athlete. Please try again.';
+        console.error('❌ Delete failed:', errorMsg);
+        setErrorMessage(errorMsg);
+        setSuccessMessage('');
+        
+        // Clear error message after 5 seconds
+        setTimeout(() => setErrorMessage(''), 5000);
       }
     } catch (error) {
-      console.error('Error deleting intro item:', error);
-      alert('Error deleting athlete. Please try again.');
+      console.error('❌ Error deleting intro item:', error);
+      setErrorMessage('Network error. Please check your connection and try again.');
+      setSuccessMessage('');
+      
+      // Clear error message after 5 seconds
+      setTimeout(() => setErrorMessage(''), 5000);
+    } finally {
+      setDeleteDialogOpen(false);
+      setItemToDelete(null);
     }
   };
 
@@ -173,7 +214,7 @@ const Intro = () => {
                    {item.isActive ? 'Deactivate' : 'Activate'}
                  </button>
                  <button
-                   onClick={() => deleteIntroItem(item._id || '')}
+                   onClick={() => openDeleteDialog(item)}
                    className="text-red-400 hover:text-red-300 text-sm font-medium cursor-pointer"
                  >
                    Delete
@@ -193,6 +234,46 @@ const Intro = () => {
           </div>
         )}
       </div>
+
+      {/* Success Message */}
+      {successMessage && (
+        <div className="fixed bottom-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50">
+          {successMessage}
+        </div>
+      )}
+
+      {/* Error Message */}
+      {errorMessage && (
+        <div className="fixed bottom-4 right-4 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg z-50">
+          {errorMessage}
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="bg-gray-900 border border-gray-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Delete Athlete</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-300">
+              Are you sure you want to delete "{itemToDelete?.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              onClick={() => setDeleteDialogOpen(false)}
+              className="bg-gray-700 text-white hover:bg-gray-600 border-gray-600"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={deleteIntroItem}
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

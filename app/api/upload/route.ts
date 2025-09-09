@@ -14,21 +14,54 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log('📁 Uploading file:', {
+      name: file.name,
+      type: file.type,
+      size: `${(file.size / 1024 / 1024).toFixed(2)} MB`
+    });
+
     // Convert file to buffer
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
+    // Determine if it's a video file
+    const isVideo = file.type.startsWith('video/') || 
+                   file.name.toLowerCase().includes('.mp4') ||
+                   file.name.toLowerCase().includes('.mov') ||
+                   file.name.toLowerCase().includes('.avi') ||
+                   file.name.toLowerCase().includes('.webm');
+
+    console.log('🎥 Is video file:', isVideo);
+
     // Upload to Cloudinary
     const uploadResponse = await new Promise((resolve, reject) => {
+      const uploadOptions: any = {
+        resource_type: 'auto', // Automatically detect file type (image/video)
+        folder: 'alkadyy-intro', // Organize uploads in a folder
+      };
+
+      // Add video-specific options if it's a video
+      if (isVideo) {
+        uploadOptions.video = {
+          quality: 'auto',
+          format: 'mp4'
+        };
+      }
+
+      console.log('⚙️ Upload options:', uploadOptions);
+
       cloudinary.uploader.upload_stream(
-        {
-          resource_type: 'auto', // Automatically detect file type (image/video)
-          folder: 'alkadyy-intro', // Organize uploads in a folder
-        },
+        uploadOptions,
         (error, result) => {
           if (error) {
+            console.error('❌ Cloudinary error:', error);
             reject(error);
           } else {
+            console.log('✅ Cloudinary success:', {
+              url: result?.secure_url,
+              resource_type: result?.resource_type,
+              format: result?.format
+            });
             resolve(result);
           }
         }

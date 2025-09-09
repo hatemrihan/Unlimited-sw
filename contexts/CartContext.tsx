@@ -12,8 +12,6 @@ interface CartItem {
   stock?: number;
   variant?: {
     name: string;
-    size: string;
-    color: string;
   };
 }
 

@@ -126,7 +126,7 @@ const CartPage = () => {
                       
                       {item.variant && (
                         <p className="text-gray-400 text-xs lg:text-sm">
-                          {item.variant.name} - {item.variant.color}
+                          {item.variant.name}
                         </p>
                       )}
                     </div>

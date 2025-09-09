@@ -17,8 +17,6 @@ const ProductDetail = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedVariant, setSelectedVariant] = useState<{
     name: string;
-    size: string;
-    color: string;
     stock: number;
     price?: number;
   } | null>(null);
@@ -129,9 +127,7 @@ const ProductDetail = () => {
         price: selectedVariant?.price || product.price,
         stock: availableStock,
         variant: selectedVariant ? {
-          name: selectedVariant.name,
-          size: selectedVariant.size,
-          color: selectedVariant.color
+          name: selectedVariant.name
         } : undefined
       }, availableStock);
 
@@ -361,7 +357,7 @@ const ProductDetail = () => {
                             : 'bg-transparent text-white border-white hover:bg-white hover:text-black'
                         }`}
                       >
-                        {variant.name || variant.size}
+                        {variant.name}
                       </button>
                     ))}
                   </div>
@@ -369,7 +365,7 @@ const ProductDetail = () => {
                   {/* Selected Variant Info */}
                   {selectedVariant && (
                     <div className="mt-3 text-sm text-gray-300">
-                      Color: {selectedVariant.color} | Stock: {selectedVariant.stock} available
+                      Stock: {selectedVariant.stock} available
                     </div>
                   )}
                 </div>

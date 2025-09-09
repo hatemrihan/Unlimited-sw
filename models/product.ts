@@ -13,9 +13,7 @@ export interface Product {
   description: string;
   promoCode: string;
   variants: Array<{
-    name: string;      // Custom name like "Small Kit", "Large Set"
-    size: string;      // Size identifier
-    color: string;     // Custom color name
+    name: string;      // Variant name like "Small Kit", "Large Set", "Premium Bundle"
     stock: number;     // Stock for this variant
     price?: number;    // Optional different price for variant
   }>;
@@ -108,9 +106,7 @@ const ProductSchema = new mongoose.Schema({
   
   // Product variants (custom equipment options)
   variants: [{
-    name: { type: String, required: true },      // Custom name
-    size: { type: String, required: true },      // Size identifier  
-    color: { type: String, required: true },     // Custom color name
+    name: { type: String, required: true },      // Variant name
     stock: { type: Number, default: 0 },         // Stock for this variant
     price: { type: Number }                      // Optional variant price
   }],

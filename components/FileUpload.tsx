@@ -13,7 +13,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   onUpload, 
   currentUrl, 
   label, 
-  accept = "image/*,video/*" 
+  accept = "image/*,video/*,.mp4,.mov,.avi,.webm" 
 }) => {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -22,6 +22,13 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const handleFileSelect = async (file: File) => {
     if (!file) return;
 
+    console.log('📁 Selected file:', {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      lastModified: file.lastModified
+    });
+
     setUploading(true);
 
     try {
@@ -29,22 +36,29 @@ const FileUpload: React.FC<FileUploadProps> = ({
       const formData = new FormData();
       formData.append('file', file);
 
+      console.log('🚀 Uploading file to /api/upload...');
+
       // Upload to Cloudinary via our API
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
       });
 
+      console.log('📡 Upload response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ Upload successful:', data);
         onUpload(data.url);
-        alert('File uploaded successfully!');
+        alert(`File uploaded successfully! URL: ${data.url.substring(0, 50)}...`);
       } else {
-        alert('Failed to upload file');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('❌ Upload failed:', response.status, errorData);
+        alert(`Failed to upload file: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error('Error uploading file:', error);
-      alert('Error uploading file');
+      console.error('💥 Error uploading file:', error);
+      alert(`Error uploading file: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setUploading(false);
     }
@@ -76,6 +90,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
     const files = e.target.files;
     if (files && files.length > 0) {
       handleFileSelect(files[0]);
+      // Reset the input value to allow re-uploading the same file
+      e.target.value = '';
     }
   };
 
@@ -105,11 +121,12 @@ const FileUpload: React.FC<FileUploadProps> = ({
           <div>
             {/* Preview uploaded file */}
             <div className="mb-4">
-              {currentUrl.includes('.mp4') || currentUrl.includes('.mov') ? (
+              {currentUrl.includes('.mp4') || currentUrl.includes('.mov') || currentUrl.includes('.avi') || currentUrl.includes('.webm') || currentUrl.includes('video') ? (
                 <video 
                   src={currentUrl} 
                   className="max-w-full h-32 mx-auto rounded-lg object-cover"
                   controls
+                  preload="metadata"
                 />
               ) : (
                 <img 

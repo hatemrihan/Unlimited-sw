@@ -17,8 +17,6 @@ interface Product {
   promoCode?: string;
   variants: Array<{
     name: string;
-    size: string;
-    color: string;
     stock: number;
     price: number;
   }>;
@@ -50,7 +48,7 @@ const AddProductPage = () => {
     video: '',
     description: '',
     promoCode: '',
-    variants: [{ name: '', size: '', color: '', stock: 0, price: 0 }],
+    variants: [{ name: '', stock: 0, price: 0 }],
     stock: 0,
     isActive: true,
     isFeatured: false,
@@ -66,7 +64,10 @@ const AddProductPage = () => {
     setSavingProduct(true);
     
     try {
-      console.log('🛍️ Adding product:', newProduct);
+      console.log('🛍️ Adding product:', {
+        ...newProduct,
+        video: newProduct.video ? `✅ Video URL: ${newProduct.video}` : '❌ No video'
+      });
       
       // Validate required fields
       if (!newProduct.name || !newProduct.mainImage || !newProduct.description) {
@@ -183,10 +184,10 @@ const AddProductPage = () => {
                 {newProduct.variants?.map((variant, index) => (
                   <div key={index} className="bg-transparent p-3 rounded-lg mb-3 border border-white/10">
                     <div className="space-y-3">
-                      {/* First Row: Variant Name and Size */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-300 mb-1">Variant Name</label>
+                      {/* Simplified: Only Variant Name, Stock, and Price */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="sm:col-span-2">
+                          <label className="block text-xs font-medium text-gray-300 mb-1">VARIANT NAME *</label>
                           <input
                             type="text"
                             value={variant.name}
@@ -196,45 +197,12 @@ const AddProductPage = () => {
                               setNewProduct({...newProduct, variants: newVariants});
                             }}
                             className="w-full p-2 bg-transparent border border-white/20 rounded text-white text-sm focus:border-white focus:outline-none"
-                            placeholder="Large Kit"
+                            placeholder="e.g., Large Kit, Medium Set, Premium Bundle"
                           />
                         </div>
                         
                         <div>
-                          <label className="block text-xs font-medium text-gray-300 mb-1">Name</label>
-                          <input
-                            type="text"
-                            value={variant.size}
-                            onChange={(e) => {
-                              const newVariants = [...(newProduct.variants || [])];
-                              newVariants[index] = { ...variant, size: e.target.value };
-                              setNewProduct({...newProduct, variants: newVariants});
-                            }}
-                            className="w-full p-2 bg-transparent border border-white/20 rounded text-white text-sm focus:border-white focus:outline-none"
-                            placeholder="L"
-                          />
-                        </div>
-                      </div>
-                      
-                      {/* Second Row: Color and Stock */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-300 mb-1">Color</label>
-                          <input
-                            type="text"
-                            value={variant.color}
-                            onChange={(e) => {
-                              const newVariants = [...(newProduct.variants || [])];
-                              newVariants[index] = { ...variant, color: e.target.value };
-                              setNewProduct({...newProduct, variants: newVariants});
-                            }}
-                            className="w-full p-2 bg-transparent border border-white/20 rounded text-white text-sm focus:border-white focus:outline-none"
-                            placeholder="Matte Black"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label className="block text-xs font-medium text-gray-300 mb-1">Stock</label>
+                          <label className="block text-xs font-medium text-gray-300 mb-1">Stock *</label>
                           <div className="flex items-center gap-2">
                             <input
                               type="number"
@@ -258,6 +226,7 @@ const AddProductPage = () => {
                                   setNewProduct({...newProduct, variants: newVariants});
                                 }}
                                 className="text-red-400 hover:text-red-300 p-1 flex-shrink-0"
+                                title="Delete variant"
                               >
                                 ✕
                               </button>
@@ -276,7 +245,7 @@ const AddProductPage = () => {
                     const currentVariants = newProduct.variants || [];
                     setNewProduct({
                       ...newProduct, 
-                      variants: [...currentVariants, { name: '', size: '', color: '', stock: 0, price: 0 }]
+                      variants: [...currentVariants, { name: '', stock: 0, price: 0 }]
                     });
                   }}
                   className="w-full p-3 border-2 border-dashed border-white/20 rounded-lg text-gray-400 hover:border-white hover:text-white transition-colors duration-300"
@@ -401,7 +370,10 @@ const AddProductPage = () => {
                   <FileUpload
                     label="Product Video (Optional)"
                     currentUrl={newProduct.video}
-                    onUpload={(url) => setNewProduct({...newProduct, video: url})}
+                    onUpload={(url) => {
+                      console.log('🎥 Video uploaded, setting URL:', url);
+                      setNewProduct({...newProduct, video: url});
+                    }}
                     accept="video/*"
                   />
                 </div>
