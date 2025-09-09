@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
           url: '#',  // Default URL since it's removed from form
           isVideo: isVideo || false,
           isActive: true,
-          order: order || items.length,
+          order: 0,  // Default order since it's removed from form
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         };
