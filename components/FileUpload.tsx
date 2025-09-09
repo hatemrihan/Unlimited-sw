@@ -59,12 +59,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
         form.append('upload_preset', uploadPreset);
         form.append('folder', folder);
         
-        // Add video-specific parameters
-        if (isVideo) {
-          form.append('resource_type', 'video');
-          form.append('quality', 'auto');
-          form.append('format', 'mp4');
-        }
+        // For unsigned uploads, we can only use basic parameters
+        // The resource_type is determined by the upload preset, not manually set
 
         console.log('🚀 Uploading directly to Cloudinary...', { cloudName, uploadPreset, resourceType });
         const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`;

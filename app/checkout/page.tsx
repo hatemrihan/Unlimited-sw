@@ -94,17 +94,17 @@ export default function CheckoutPage() {
     fetchCities();
   }, [state.items]); // Re-fetch when cart items change
 
-  // Calculate shipping cost based on selected city
-  const selectedCity = cities.find(city => city.cityName === formData.city);
+  // Calculate shipping cost based on selected governorate
+  const selectedGovernorate = cities.find(city => city.cityName === formData.city);
   
   // Use the highest shipping cost among all products in the cart
   // (This is a common e-commerce pattern - customer pays one shipping fee)
   let maxShippingCost = 0;
-  if (selectedCity) {
+  if (selectedGovernorate) {
     // Check if any products have custom shipping rates
     let hasCustomRates = false;
     for (const item of state.items) {
-      const productSpecificPricing = (selectedCity as any).productPricing?.[item.id];
+      const productSpecificPricing = (selectedGovernorate as any).productPricing?.[item.id];
       if (productSpecificPricing && productSpecificPricing.isActive !== false) {
         hasCustomRates = true;
         break;
@@ -118,11 +118,11 @@ export default function CheckoutPage() {
     
     // For now, use global default shipping cost
     // TODO: Implement proper product-specific shipping cost calculation
-    maxShippingCost = selectedCity.shippingCost;
+    maxShippingCost = selectedGovernorate.shippingCost;
   }
   
   const shippingCost = maxShippingCost;
-  const codFee = selectedCity && formData.paymentMethod === 'cashOnDelivery' ? selectedCity.codFee : 0;
+  const codFee = selectedGovernorate && formData.paymentMethod === 'cashOnDelivery' ? selectedGovernorate.codFee : 0;
   const discountAmount = appliedPromo ? appliedPromo.discount : 0;
   const subtotalAfterDiscount = Math.max(0, state.total - discountAmount);
   const totalWithShipping = subtotalAfterDiscount + shippingCost + codFee;
@@ -190,7 +190,7 @@ export default function CheckoutPage() {
     if (!formData.email?.trim()) newErrors.email = 'Email is required';
     if (!formData.phone?.trim()) newErrors.phone = 'Phone number is required';
     if (!formData.address?.trim()) newErrors.address = 'Address is required';
-    if (!formData.city) newErrors.city = 'Please select a city';
+    if (!formData.city) newErrors.city = 'Please select a governorate';
 
     // Validate payment method
     if (!formData.paymentMethod) {
@@ -707,7 +707,7 @@ export default function CheckoutPage() {
 
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    City *
+                    Governorate *
                   </label>
                   <select
                     name="city"
@@ -716,13 +716,13 @@ export default function CheckoutPage() {
                     className={`w-full p-3 bg-transparent border border-white text-white focus:outline-none focus:border-gray-400 transition-colors duration-300 ${errors.city ? 'border-red-500' : ''}`}
                   >
                     <option value="" className="bg-black text-white">
-                      {loadingCities ? 'Loading cities...' : 'Select a city'}
+                      {loadingCities ? 'Loading governorates...' : 'Select a governorate'}
                     </option>
                     {cities
                       .filter(city => city.isActive)
                       .map((city) => (
                         <option key={city._id} value={city.cityName} className="bg-black text-white">
-                          {city.cityName} - {city.governorate}
+                          {city.governorate} (L.E {city.shippingCost})
                         </option>
                       ))}
                   </select>
@@ -834,13 +834,13 @@ export default function CheckoutPage() {
                 <div className="flex justify-between">
                   <span className="text-white">Shipping</span>
                   <span className="text-white">
-                    {selectedCity ? `L.E ${selectedCity.shippingCost}` : 'Select a city'}
+                    {selectedGovernorate ? `L.E ${selectedGovernorate.shippingCost}` : 'Select a governorate'}
                   </span>
                 </div>
-                {formData.paymentMethod === 'cashOnDelivery' && selectedCity && selectedCity.codFee > 0 && (
+                {formData.paymentMethod === 'cashOnDelivery' && selectedGovernorate && selectedGovernorate.codFee > 0 && (
                   <div className="flex justify-between">
                     <span className="text-white">COD Fee</span>
-                    <span className="text-white">L.E {selectedCity.codFee}</span>
+                    <span className="text-white">L.E {selectedGovernorate.codFee}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-medium text-lg pt-2 border-t border-gray-600">

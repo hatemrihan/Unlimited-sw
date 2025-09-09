@@ -82,11 +82,45 @@ export async function GET(request: NextRequest) {
     
     const cities = Array.from(cityPricingMap.values());
     
-    console.log(`✅ Returning ${cities.length} cities with combined pricing`);
+    // 🏛️ GROUP BY GOVERNORATES ONLY (not individual cities)
+    const governorateMap = new Map<string, any>();
+    
+    for (const city of cities) {
+      const gov = city.governorate;
+      
+      if (!governorateMap.has(gov)) {
+        // Use the first city's pricing as the governorate pricing
+        governorateMap.set(gov, {
+          _id: city._id,
+          cityName: gov, // Use governorate name as city name
+          governorate: gov,
+          shippingCost: city.shippingCost,
+          codFee: city.codFee,
+          isActive: city.isActive,
+          source: city.source,
+          productPricing: city.productPricing
+        });
+      } else {
+        // If multiple cities in same governorate, use the lowest shipping cost
+        const existing = governorateMap.get(gov);
+        if (city.shippingCost < existing.shippingCost) {
+          existing.shippingCost = city.shippingCost;
+        }
+        if (city.codFee < existing.codFee) {
+          existing.codFee = city.codFee;
+        }
+        // Merge product pricing
+        Object.assign(existing.productPricing, city.productPricing);
+      }
+    }
+    
+    const governorates = Array.from(governorateMap.values());
+    
+    console.log(`✅ Returning ${governorates.length} GOVERNORATES (not individual cities)`);
     
     return NextResponse.json({
       success: true,
-      cities: cities
+      cities: governorates // Keep the same field name for compatibility
     });
     
   } catch (error) {

@@ -42,6 +42,8 @@ interface Product {
   }[];
   stock?: number;
   order?: number;
+  showOutOfStockBadge?: boolean;
+  showPreorderBadge?: boolean;
 }
 
 export default function Shop() {
@@ -357,16 +359,17 @@ const ProductCard = ({ product, onAddToCart, isMobile = false }: {
                   </div>
                 )}
                 
-                {/* Stock Badges - Both when stock is 0 */}
-                {product.stock !== undefined && product.stock === 0 && (
-                  <>
-                    <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
-                      OUT OF STOCK
-                    </div>
-                    <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
-                      PREORDER
-                    </div>
-                  </>
+                {/* Badge System - Only show if explicitly enabled */}
+                {product.showOutOfStockBadge && (
+                  <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
+                    OUT OF STOCK
+                  </div>
+                )}
+                
+                {product.showPreorderBadge && (
+                  <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
+                    PREORDER
+                  </div>
                 )}
               </div>
             </>

@@ -1,15 +1,39 @@
 import nodemailer from 'nodemailer';
 
-// Brevo SMTP configuration - Alternative method using API key
-const transporter = nodemailer.createTransport({
-  host: 'smtp-relay.brevo.com',
-  port: 587,
-  secure: false, // true for 465, false for other ports
-  auth: {
-    user: 'be.unlimited.sw@gmail.com', // Your verified sender email
-    pass: process.env.BREVO_SMTP_PASSWORD || process.env.BREVO_API_KEY, // SMTP password OR API key
-  },
-});
+// Brevo SMTP configuration - Try multiple authentication methods
+const createTransporter = () => {
+  // Method 1: Use SMTP Key (preferred)
+  if (process.env.BREVO_SMTP_PASSWORD) {
+    console.log('🔧 Using BREVO_SMTP_PASSWORD for authentication');
+    return nodemailer.createTransporter({
+      host: 'smtp-relay.brevo.com',
+      port: 587,
+      secure: false,
+      auth: {
+        user: process.env.BREVO_SMTP_USER || 'orders@unlimited-sw.com',
+        pass: process.env.BREVO_SMTP_PASSWORD,
+      },
+    });
+  }
+  
+  // Method 2: Use API Key as fallback
+  if (process.env.BREVO_API_KEY) {
+    console.log('🔧 Using BREVO_API_KEY for authentication');
+    return nodemailer.createTransporter({
+      host: 'smtp-relay.brevo.com',
+      port: 587,
+      secure: false,
+      auth: {
+        user: process.env.BREVO_SMTP_USER || 'orders@unlimited-sw.com',
+        pass: process.env.BREVO_API_KEY,
+      },
+    });
+  }
+  
+  throw new Error('No Brevo credentials found! Set BREVO_SMTP_PASSWORD or BREVO_API_KEY');
+};
+
+const transporter = createTransporter();
 
 // Verify transporter configuration on startup
 const verifyTransporter = async () => {
@@ -82,7 +106,7 @@ export async function sendOrderConfirmationEmail(orderData: OrderEmailData) {
     const mailOptions = {
       from: {
         name: 'UNLIMITED-SW',
-        address: 'be.unlimited.sw@gmail.com' // Use your verified sender address
+        address: 'orders@unlimited-sw.com' // Use your domain email for better deliverability
       },
       to: orderData.customerEmail,
       subject: `Order Confirmation #${orderData.orderId} - UNLIMITED-SW`,
@@ -127,7 +151,7 @@ export async function sendAdminNotificationEmail(orderData: OrderEmailData) {
     const mailOptions = {
       from: {
         name: 'UNLIMITED-SW Store',
-        address: 'be.unlimited.sw@gmail.com' // Use your verified sender address
+        address: 'orders@unlimited-sw.com' // Use your domain email for better deliverability
       },
       to: ['hatemrihan100@gmail.com', 'Muhamed.alkady@gmail.com'], // Admin emails
       subject: `🛒 New Order #${orderData.orderId} - UNLIMITED-SW`,
