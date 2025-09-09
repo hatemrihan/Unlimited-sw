@@ -351,7 +351,8 @@ const ProductCard = ({ product, onAddToCart, isMobile = false }: {
   isMobile?: boolean;
 }) => {
   const hasDiscount = product.discount && product.discount > 0;
-  const finalPrice = hasDiscount ? product.price - (product.price * product.discount / 100) : product.price;
+  const discountAmount = product.discount || 0;
+  const finalPrice = hasDiscount ? product.price - (product.price * discountAmount / 100) : product.price;
 
   return (
     <div className="group block relative">
