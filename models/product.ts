@@ -22,6 +22,10 @@ export interface Product {
   isFeatured: boolean;
   order: number;
 
+  // Admin-controlled badges (only considered when stock === 0)
+  showOutOfStockBadge?: boolean;
+  showPreorderBadge?: boolean;
+
   // NEW: Detailed product information (optional fields for admin control)
   detailedDescription?: string;  // Long detailed description
   specifications?: string;       // Technical specs/details
@@ -134,6 +138,16 @@ const ProductSchema = new mongoose.Schema({
   order: {
     type: Number,
     default: 0,
+  },
+
+  // Admin-controlled badges (only considered when stock === 0)
+  showOutOfStockBadge: {
+    type: Boolean,
+    default: false,
+  },
+  showPreorderBadge: {
+    type: Boolean,
+    default: false,
   },
 
   // NEW: Detailed product information (optional fields for admin control)

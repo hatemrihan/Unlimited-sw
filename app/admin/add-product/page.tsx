@@ -31,6 +31,8 @@ interface Product {
     question: string;
     answer: string;
   }>;
+  showOutOfStockBadge?: boolean;
+  showPreorderBadge?: boolean;
 }
 
 const AddProductPage = () => {
@@ -56,7 +58,9 @@ const AddProductPage = () => {
     detailedDescription: '',
     specifications: '',
     shippingInfo: '',
-    faqs: [{ question: '', answer: '' }]
+    faqs: [{ question: '', answer: '' }],
+    showOutOfStockBadge: false,
+    showPreorderBadge: false
   });
 
   // Function to add new product
@@ -409,6 +413,33 @@ const AddProductPage = () => {
                     />
                     <label htmlFor="isActive" className="text-sm text-white">
                       Show in Products Section (main catalog)
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Admin Badges (only effective when stock is 0) */}
+              <div className="space-y-3 lg:space-y-4">
+                <div className="bg-transparent border border-white text-white px-3 py-1.5 text-xs font-medium uppercase tracking-wider   transition-all duration-300 whitespace-nowrap">
+                  <h4 className="text-sm font-semibold text-white mb-2">Badges (shown only when stock is 0)</h4>
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={newProduct.showOutOfStockBadge || false}
+                        onChange={(e)=> setNewProduct({...newProduct, showOutOfStockBadge: e.target.checked})}
+                        className="mr-1 h-4 w-4 text-white focus:ring-white border-white rounded"
+                      />
+                      <span>OUT OF STOCK</span>
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={newProduct.showPreorderBadge || false}
+                        onChange={(e)=> setNewProduct({...newProduct, showPreorderBadge: e.target.checked})}
+                        className="mr-1 h-4 w-4 text-white focus:ring-white border-white rounded"
+                      />
+                      <span>PREORDER</span>
                     </label>
                   </div>
                 </div>

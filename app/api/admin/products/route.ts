@@ -90,7 +90,8 @@ export async function POST(request: NextRequest) {
     const { 
       name, price, originalPrice, discount, mainImage, images, video, description, promoCode, 
       variants, stock, isActive, isFeatured, order,
-      detailedDescription, specifications, shippingInfo, faqs
+      detailedDescription, specifications, shippingInfo, faqs,
+      showOutOfStockBadge, showPreorderBadge
     } = body;
     
     // Validate required fields
@@ -130,6 +131,9 @@ export async function POST(request: NextRequest) {
         specifications: specifications?.trim() || '',
         shippingInfo: shippingInfo?.trim() || '',
         faqs: faqs || [],
+        // Admin badges
+        showOutOfStockBadge: !!showOutOfStockBadge,
+        showPreorderBadge: !!showPreorderBadge,
         // Initialize empty city pricing array
         cityPricing: []
       });
