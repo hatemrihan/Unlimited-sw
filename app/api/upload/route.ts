@@ -19,7 +19,13 @@ export async function POST(request: NextRequest) {
     }
 
     const fileSizeMB = file.size / 1024 / 1024;
-    const isVideo = file.type.startsWith('video/');
+    
+    // Determine if it's a video file (comprehensive check)
+    const isVideo = file.type.startsWith('video/') || 
+                   file.name.toLowerCase().includes('.mp4') ||
+                   file.name.toLowerCase().includes('.mov') ||
+                   file.name.toLowerCase().includes('.avi') ||
+                   file.name.toLowerCase().includes('.webm');
 
     console.log('📁 Server uploading file:', {
       name: file.name,
@@ -48,15 +54,6 @@ export async function POST(request: NextRequest) {
     // Convert file to buffer
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-
-    // Determine if it's a video file
-    const isVideo = file.type.startsWith('video/') || 
-                   file.name.toLowerCase().includes('.mp4') ||
-                   file.name.toLowerCase().includes('.mov') ||
-                   file.name.toLowerCase().includes('.avi') ||
-                   file.name.toLowerCase().includes('.webm');
-
-    console.log('🎥 Is video file:', isVideo);
 
     // Upload to Cloudinary
     const uploadResponse = await new Promise((resolve, reject) => {
