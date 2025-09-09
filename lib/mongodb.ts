@@ -49,7 +49,7 @@ async function dbConnect() {
       maxIdleTimeMS: 30000, // 🚀 OPTIMIZED: Close idle connections faster
       waitQueueTimeoutMS: 2000, // 🚀 FASTER: Don't wait long for connections
       retryWrites: true, // 🚀 RELIABILITY: Retry failed writes
-      w: 'majority', // 🚀 PERFORMANCE: Write concern for speed
+      w: 'majority' as const, // 🚀 PERFORMANCE: Write concern for speed
     };
 
     cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoose) => {

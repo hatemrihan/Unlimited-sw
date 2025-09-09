@@ -104,7 +104,7 @@ export default function CheckoutPage() {
     // Check if any products have custom shipping rates
     let hasCustomRates = false;
     for (const item of state.items) {
-      const productSpecificPricing = selectedCity.productPricing?.[item._id];
+      const productSpecificPricing = (selectedCity as any).productPricing?.[item.id];
       if (productSpecificPricing && productSpecificPricing.isActive !== false) {
         hasCustomRates = true;
         break;

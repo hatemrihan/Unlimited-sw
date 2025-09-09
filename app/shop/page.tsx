@@ -76,7 +76,7 @@ export default function Shop() {
             
             // Separate featured products from the single response
             const allProducts = data.products;
-            const featuredList = allProducts.filter(product => product.isFeatured);
+            const featuredList = allProducts.filter((product: any) => product.isFeatured);
             
             setProducts(allProducts);
             setFeaturedProducts(featuredList);
