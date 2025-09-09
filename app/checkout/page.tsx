@@ -720,7 +720,7 @@ export default function CheckoutPage() {
                     type="button"
                     onClick={applyPromoCode}
                     disabled={!formData.promoCode.trim()}
-                    className="mt-2 px-4 py-2 bg-black text-white border border-white hover:bg-white hover:text-black disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors duration-300 text-sm"
+                    className="mt-2 px-4 py-2 bg-black white border border-white hover:bg-white hover:text-black not-allowed transition-colors duration-300 text-sm"
                   >
                     Apply Code
                   </button>

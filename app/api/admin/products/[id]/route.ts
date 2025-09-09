@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../../../lib/mongodb';
 import Product from '../../../../../models/product';
-import { invalidateProductsCache } from '../../../products/route';
 
 // GET - Fetch a single product by ID
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -135,9 +134,6 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     console.log('✅ Product deleted successfully:', deletedProduct._id);
 
-    // Invalidate frontend cache for instant updates
-    invalidateProductsCache();
-
     return NextResponse.json({
       success: true,
       message: 'Product deleted successfully'
@@ -170,7 +166,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const body = await request.json();
     console.log('📦 Update product request body:', body);
 
-    const { name, price, originalPrice, discount, mainImage, images, video, description, promoCode, variants, stock, isActive, isFeatured, order, detailedDescription, specifications, shippingInfo, faqs } = body;
+    const { name, price, originalPrice, discount, mainImage, images, description, promoCode, variants, stock, isActive, isFeatured, order, detailedDescription, specifications, shippingInfo, faqs } = body;
 
     // Validate required fields
     if (!name || !mainImage || !description) {
@@ -194,10 +190,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         name: name.trim(),
         price: price || 0,
         originalPrice: originalPrice || 0,
-        discount: discount && discount > 0 ? discount : undefined,
+        discount: discount || 0,
         mainImage: mainImage.trim(),
         images: images || [],
-        video: video || '',
         description: description.trim(),
         promoCode: promoCode ? promoCode.trim() : '',
         variants: variants || [],
@@ -205,9 +200,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         isActive: isActive !== false,
         isFeatured: isFeatured || false,
         order: order || 0,
-        detailedDescription: detailedDescription?.trim() || '',
-        specifications: specifications?.trim() || '',
-        shippingInfo: shippingInfo?.trim() || '',
+        detailedDescription: detailedDescription || '',
+        specifications: specifications || '',
+        shippingInfo: shippingInfo || '',
         faqs: faqs || []
       },
       { new: true, runValidators: true }
@@ -222,9 +217,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     console.log('✅ Product updated successfully:', updatedProduct._id);
-
-    // Invalidate frontend cache for instant updates
-    invalidateProductsCache();
 
     return NextResponse.json({
       success: true,

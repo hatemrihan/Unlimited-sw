@@ -161,12 +161,27 @@ export async function DELETE(
       await dbConnect();
       console.log('✅ MongoDB connected for delete');
       
-      const deletedItem = await IntroItem.findByIdAndDelete(id);
-      if (deletedItem) {
-        console.log('✅ Intro item deleted from MongoDB:', deletedItem._id);
-        deletedFromMongoDB = true;
+      // First check if item exists in MongoDB
+      const existingItem = await IntroItem.findById(id);
+      console.log('🔍 MongoDB item exists:', !!existingItem);
+      
+      if (existingItem) {
+        const deletedItem = await IntroItem.findByIdAndDelete(id);
+        if (deletedItem) {
+          console.log('✅ Intro item deleted from MongoDB:', deletedItem._id);
+          deletedFromMongoDB = true;
+        }
       } else {
-        console.log('📝 Item not found in MongoDB, trying JSON file...');
+        console.log('📝 Item not found in MongoDB (ID:', id, '), trying JSON file...');
+        
+        // Count total items in MongoDB for debugging
+        const totalMongoItems = await IntroItem.countDocuments();
+        console.log('📊 Total items in MongoDB:', totalMongoItems);
+        
+        if (totalMongoItems === 0) {
+          console.log('⚠️ MongoDB is empty! You may need to sync data from JSON file.');
+          console.log('💡 Use POST /api/admin/sync-intro to sync data from JSON to MongoDB');
+        }
       }
     } catch (mongoError) {
       console.log('❌ MongoDB delete failed, trying JSON file...', mongoError instanceof Error ? mongoError.message : String(mongoError));
