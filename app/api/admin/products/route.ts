@@ -87,13 +87,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log('📦 Product request body:', body);
     
-    const { name, price, originalPrice, discount, mainImage, images, description, promoCode, variants, stock, isActive, isFeatured, order } = body;
+    const { 
+      name, price, originalPrice, discount, mainImage, images, video, description, promoCode, 
+      variants, stock, isActive, isFeatured, order,
+      detailedDescription, specifications, shippingInfo, faqs
+    } = body;
     
     // Validate required fields
-    if (!name || !mainImage || !description || !promoCode) {
+    if (!name || !mainImage || !description) {
       console.log('❌ Missing required product fields');
       return NextResponse.json(
-        { success: false, error: 'Name, Main Image, Description, and Promo Code are required' },
+        { success: false, error: 'Name, Main Image, and Description are required' },
         { status: 400 }
       );
     }
@@ -113,13 +117,21 @@ export async function POST(request: NextRequest) {
         discount: discount || 0,
         mainImage: mainImage.trim(),
         images: images || [],
+        video: video || '',
         description: description.trim(),
-        promoCode: promoCode.trim(),
+        promoCode: promoCode?.trim() || '',
         variants: variants || [],
         stock: stock || 0,
         isActive: isActive !== false,
         isFeatured: isFeatured || false,
-        order: order || 0
+        order: order || 0,
+        // Detailed product information
+        detailedDescription: detailedDescription?.trim() || '',
+        specifications: specifications?.trim() || '',
+        shippingInfo: shippingInfo?.trim() || '',
+        faqs: faqs || [],
+        // Initialize empty city pricing array
+        cityPricing: []
       });
 
       // Save to MongoDB

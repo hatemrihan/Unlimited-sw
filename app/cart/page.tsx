@@ -158,21 +158,6 @@ const CartPage = () => {
                           +
                         </button>
                       </div>
-                      {item.stock !== undefined ? (
-                        item.stock > 0 ? (
-                          <span className="text-xs text-gray-400">
-                            {item.stock - item.quantity} left in stock
-                          </span>
-                        ) : (
-                          <span className="text-xs text-red-400">
-                            Out of stock
-                          </span>
-                        )
-                      ) : (
-                        <span className="text-xs text-gray-400">
-                          Stock not available
-                        </span>
-                      )}
                     </div>
                     
                     {/* Price */}

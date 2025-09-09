@@ -28,12 +28,33 @@ const navItems = [
  
   {
     href: '/policy',
-    label: 'POLICY',
+    label: 'PRIVACY POLICY',
     isExternal: false
   },
   {
-    href: 'https://www.instagram.com/muhamed.alkady?igsh=MWJtZnV3bncyZnFtcA==',
+    href: '/terms',
+    label: 'TERMS OF SERVICE',
+    isExternal: false
+  },
+  {
+    href: '/refund',
+    label: 'REFUND POLICY',
+    isExternal: false
+  },
+
+  {
+    href: 'https://www.instagram.com/unlimited.sw/',
     label: 'Instagram',
+    isExternal: true
+  },
+  {
+    href: 'https://www.facebook.com/profile.php?id=61568240363167',
+    label: 'Facebook',
+    isExternal: true
+  },
+  {
+    href: 'https://www.tiktok.com/@unlimited.sw?_t=ZS-8zZ5xMelNwX&_r=1',
+    label: 'TikTok',
     isExternal: true
   },
 ]
@@ -153,7 +174,7 @@ const Footer: FC = () => {
                     </div>
                   }
                 >
-                  alkady@gmail.com
+                  be.unlimited.sw@gmail.com
                 </Button>
               </motion.div>
             </a>

@@ -12,6 +12,7 @@ interface Product {
   discount?: number;
   mainImage: string;
   images: string[];
+  video?: string;
   description: string;
   promoCode?: string;
   variants: Array<{
@@ -46,8 +47,9 @@ const AddProductPage = () => {
     discount: 0,
     mainImage: '',
     images: [],
+    video: '',
     description: '',
-    promoCode: '',
+    promoCode: '',',
     variants: [{ name: '', size: '', color: '', stock: 0, price: 0 }],
     stock: 0,
     isActive: true,
@@ -199,7 +201,7 @@ const AddProductPage = () => {
                         </div>
                         
                         <div>
-                          <label className="block text-xs font-medium text-gray-300 mb-1">Size</label>
+                          <label className="block text-xs font-medium text-gray-300 mb-1">Name</label>
                           <input
                             type="text"
                             value={variant.size}
@@ -305,16 +307,17 @@ const AddProductPage = () => {
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                   <div>
-                    <label className="block text-sm font-medium text-white mb-2">Discount %</label>
+                    <label className="block text-sm font-medium text-white mb-2">Discount % (Optional)</label>
                     <input
                       type="number"
                       value={newProduct.discount || ''}
                       onChange={(e) => setNewProduct({...newProduct, discount: parseFloat(e.target.value) || 0})}
                       className="w-full p-3 bg-transparent border border-white/20 rounded-lg text-white focus:border-white focus:outline-none"
-                      placeholder="10"
+                      placeholder="0"
                       min="0"
                       max="100"
                     />
+                    <p className="text-xs text-gray-400 mt-1">Leave empty or 0 for no discount</p>
                   </div>
                   
                   <div>
@@ -371,23 +374,36 @@ const AddProductPage = () => {
                   />
                 </div>
                 
-                {/* Additional Images */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {[0, 1, 2].map((index) => (
-                    <div key={index}>
-                      <FileUpload
-                        label={`Image ${index + 2}`}
-                        currentUrl={newProduct.images?.[index]}
-                        onUpload={(url) => {
-                          const currentImages = newProduct.images || [];
-                          const newImages = [...currentImages];
-                          newImages[index] = url;
-                          setNewProduct({...newProduct, images: newImages});
-                        }}
-                        accept="image/*"
-                      />
-                    </div>
-                  ))}
+                {/* Additional Images - Support 9+ images */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-white mb-2">Additional Images (Upload up to 12 images)</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((index) => (
+                      <div key={index}>
+                        <FileUpload
+                          label={`Image ${index + 2}`}
+                          currentUrl={newProduct.images?.[index]}
+                          onUpload={(url) => {
+                            const currentImages = newProduct.images || [];
+                            const newImages = [...currentImages];
+                            newImages[index] = url;
+                            setNewProduct({...newProduct, images: newImages});
+                          }}
+                          accept="image/*"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Product Video */}
+                <div className="mb-4">
+                  <FileUpload
+                    label="Product Video (Optional)"
+                    currentUrl={newProduct.video}
+                    onUpload={(url) => setNewProduct({...newProduct, video: url})}
+                    accept="video/*"
+                  />
                 </div>
               </div>
 

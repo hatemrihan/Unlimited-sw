@@ -170,7 +170,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const body = await request.json();
     console.log('📦 Update product request body:', body);
 
-    const { name, price, originalPrice, discount, mainImage, images, description, promoCode, variants, stock, isActive, isFeatured, order, detailedDescription, specifications, shippingInfo, faqs } = body;
+    const { name, price, originalPrice, discount, mainImage, images, video, description, promoCode, variants, stock, isActive, isFeatured, order, detailedDescription, specifications, shippingInfo, faqs } = body;
 
     // Validate required fields
     if (!name || !mainImage || !description) {
@@ -197,6 +197,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         discount: discount || 0,
         mainImage: mainImage.trim(),
         images: images || [],
+        video: video || '',
         description: description.trim(),
         promoCode: promoCode ? promoCode.trim() : '',
         variants: variants || [],
@@ -204,9 +205,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         isActive: isActive !== false,
         isFeatured: isFeatured || false,
         order: order || 0,
-        detailedDescription: detailedDescription || '',
-        specifications: specifications || '',
-        shippingInfo: shippingInfo || '',
+        detailedDescription: detailedDescription?.trim() || '',
+        specifications: specifications?.trim() || '',
+        shippingInfo: shippingInfo?.trim() || '',
         faqs: faqs || []
       },
       { new: true, runValidators: true }

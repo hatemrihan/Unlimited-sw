@@ -350,7 +350,8 @@ const ProductCard = ({ product, onAddToCart, isMobile = false }: {
   onAddToCart: (product: Product) => void;
   isMobile?: boolean;
 }) => {
-  const finalPrice = product.discount ? product.price - (product.price * product.discount / 100) : product.price;
+  const hasDiscount = product.discount && product.discount > 0;
+  const finalPrice = hasDiscount ? product.price - (product.price * product.discount / 100) : product.price;
 
   return (
     <div className="group block relative">
@@ -368,14 +369,14 @@ const ProductCard = ({ product, onAddToCart, isMobile = false }: {
               />
 
               <div className="absolute top-3 left-3 z-10 flex flex-col gap-2">
-                {product.discount && product.discount > 0 && (
+                {hasDiscount && (
                   <div className="bg-black text-white px-2 py-1 text-xs font-medium rounded-sm shadow-sm">
                     {product.discount}% OFF
                   </div>
                 )}
                 
                 {/* Out of Stock Badge */}
-                {product.stock !== undefined && product.stock <= 0 && (
+                {product.stock !== undefined && product.stock === 0 && (
                   <div className="bg-black text-white px-2 py-1 text-xs font-medium rounded-sm shadow-sm">
                     OUT OF STOCK
                   </div>
@@ -383,7 +384,7 @@ const ProductCard = ({ product, onAddToCart, isMobile = false }: {
               </div>
 
               {/* Preorder Badge */}
-              {product.stock !== undefined && product.stock <= 0 && (
+              {product.stock !== undefined && product.stock === 0 && (
                 <div className="absolute top-3 right-3 z-20">
                   <div className="bg-gray-700 text-white px-2 py-1 text-xs font-medium rounded-sm shadow-sm">
                     PREORDER
@@ -408,12 +409,12 @@ const ProductCard = ({ product, onAddToCart, isMobile = false }: {
 
         <div className={`font-light ${isMobile ? 'text-xs' : 'text-sm'} mb-2`}>
           <span className="text-[#b3b3b3]">{finalPrice} L.E</span>
-          {product.discount && product.discount > 0 && (
+          {hasDiscount && (
             <span className="ml-2 text-gray-500 line-through text-xs">{product.price} L.E</span>
           )}
         </div>
 
-        {(product.isOutOfStock || (product.stock !== undefined && product.stock <= 0)) ? (
+        {(product.isOutOfStock || (product.stock !== undefined && product.stock === 0)) ? (
           <button
             disabled
             className="bg-gray-600 text-gray-300 px-4 py-2 text-xs font-medium uppercase tracking-wider cursor-not-allowed"

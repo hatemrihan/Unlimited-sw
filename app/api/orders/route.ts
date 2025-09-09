@@ -183,6 +183,57 @@ export async function POST(request: NextRequest) {
     // Save order to database
     const savedOrder = await Order.create(newOrder);
 
+    // Send email notifications (don't block order creation if emails fail)
+    try {
+      console.log('📧 Sending order confirmation emails...');
+      
+      const emailData = {
+        customerEmail: savedOrder.customer.email,
+        customerName: savedOrder.customer.name,
+        orderId: savedOrder.orderId,
+        orderItems: savedOrder.products.map(product => ({
+          name: product.name,
+          quantity: product.quantity,
+          price: product.price * product.quantity,
+          variant: product.size || product.color ? {
+            name: product.size || '',
+            size: product.size || '',
+            color: product.color || ''
+          } : undefined
+        })),
+        totalAmount: savedOrder.totalAmount,
+        shippingCost: savedOrder.shippingCost,
+        paymentMethod: savedOrder.paymentMethod,
+        shippingAddress: {
+          governorate: orderData.customer.governorate || '',
+          city: orderData.customer.city || '',
+          address: savedOrder.customer.address
+        },
+        customerPhone: savedOrder.customer.phone
+      };
+
+      // Send both customer and admin emails
+      const emailResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/send-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'both',
+          orderData: emailData
+        }),
+      });
+
+      if (emailResponse.ok) {
+        console.log('✅ Order confirmation emails sent successfully');
+      } else {
+        console.warn('⚠️ Failed to send order confirmation emails');
+      }
+    } catch (emailError) {
+      console.error('❌ Error sending order emails:', emailError);
+      // Continue with order creation even if emails fail
+    }
+
     // Return success response with order details
     return NextResponse.json({
       success: true,

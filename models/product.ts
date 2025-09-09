@@ -9,6 +9,7 @@ export interface Product {
   discount?: number;
   mainImage: string;
   images: string[];
+  video?: string;  // Product video URL (optional)
   description: string;
   promoCode: string;
   variants: Array<{
@@ -30,6 +31,14 @@ export interface Product {
   faqs?: Array<{                // Frequently asked questions
     question: string;
     answer: string;
+  }>;
+
+  // City-specific pricing
+  cityPricing?: Array<{
+    cityName: string;
+    governorate: string;
+    price: number;
+    isActive: boolean;
   }>;
 
   createdAt?: Date;
@@ -58,12 +67,13 @@ const ProductSchema = new mongoose.Schema({
     min: 0,
   },
 
-  // Discount percentage
+  // Discount percentage (optional)
   discount: {
     type: Number,
     default: 0,
     min: 0,
     max: 100,
+    required: false,
   },
   
   // Main product image
@@ -77,16 +87,24 @@ const ProductSchema = new mongoose.Schema({
     type: String,
   }],
   
+  // Product video (optional)
+  video: {
+    type: String,
+    required: false,
+    default: '',
+  },
+  
   // Product description
   description: {
     type: String,
     required: true,
   },
   
-  // Promo code for product
+  // Promo code for product (optional)
   promoCode: {
     type: String,
-    required: true,
+    required: false,
+    default: '',
   },
   
   // Product variants (custom equipment options)
@@ -142,6 +160,14 @@ const ProductSchema = new mongoose.Schema({
   faqs: [{
     question: { type: String, required: true },
     answer: { type: String, required: true },
+  }],
+
+  // City-specific pricing
+  cityPricing: [{
+    cityName: { type: String, required: true },
+    governorate: { type: String, required: true },
+    price: { type: Number, required: true, min: 0 },
+    isActive: { type: Boolean, default: true },
   }],
 }, {
   // Add timestamps for tracking

@@ -120,7 +120,7 @@ const Products = () => {
                   />
                   
                   {/* Stock Badges */}
-                  {product.stock !== undefined && product.stock <= 0 && (
+                  {product.stock !== undefined && product.stock === 0 && (
                     <div className="absolute top-2 left-2 z-10">
                       <div className="bg-black text-white px-2 py-1 text-xs font-medium rounded-sm shadow-sm">
                         OUT OF STOCK
@@ -129,7 +129,7 @@ const Products = () => {
                   )}
                   
                   {/* Preorder Badge - Show when stock is 0 */}
-                  {product.stock !== undefined && product.stock <= 0 && (
+                  {product.stock !== undefined && product.stock === 0 && (
                     <div className="absolute top-2 right-2 z-10">
                       <div className="bg-gray-700 text-white px-2 py-1 text-xs font-medium rounded-sm shadow-sm">
                         PREORDER

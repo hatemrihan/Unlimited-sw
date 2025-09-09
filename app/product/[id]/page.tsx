@@ -48,6 +48,12 @@ const ProductDetail = () => {
           const productData = await productResponse.json();
           console.log('✅ Product data received:', productData);
           console.log('✅ Product object:', productData.product);
+          console.log('🔍 Product detailed fields:', {
+            specifications: productData.product.specifications,
+            detailedDescription: productData.product.detailedDescription,
+            shippingInfo: productData.product.shippingInfo,
+            faqs: productData.product.faqs
+          });
           setProduct(productData.product);
           
           // Set first variant as default
@@ -242,6 +248,23 @@ const ProductDetail = () => {
                   ))}
                 </div>
               )}
+              
+              {/* Product Video if available */}
+              {product.video && (
+                <div className="mt-4">
+                  <h3 className="text-sm font-medium text-gray-300 mb-2">Product Video</h3>
+                  <div className="aspect-video overflow-hidden bg-gray-800 rounded">
+                    <video
+                      src={product.video}
+                      controls
+                      className="w-full h-full object-cover"
+                      poster={product.mainImage}
+                    >
+                      Your browser does not support the video tag.
+                    </video>
+                  </div>
+                </div>
+              )}
             </motion.div>
             
             {/* Right Side - Product Info */}
@@ -258,17 +281,21 @@ const ProductDetail = () => {
                 <h1 className="text-2xl lg:text-4xl font-bold mb-4">{product.name}</h1>
                 
                 <div className="flex items-center space-x-4 mb-2">
-                  <span className="text-2xl lg:text-3xl font-bold">
-                    {product.price.toLocaleString()} LE
-                  </span>
-                  {product.originalPrice && product.originalPrice > product.price && (
-                    <span className="text-lg text-gray-400 line-through">
-                      {product.originalPrice.toLocaleString()} LE
-                    </span>
-                  )}
-                  {product.originalPrice && product.originalPrice > product.price && (
-                    <span className="bg-red-600 text-white px-2 py-1 text-sm font-medium rounded">
-                      SALE
+                  {product.discount && product.discount > 0 ? (
+                    <>
+                      <span className="text-2xl lg:text-3xl font-bold">
+                        {Math.round(product.price * (1 - product.discount / 100)).toLocaleString()} LE
+                      </span>
+                      <span className="text-lg text-gray-400 line-through">
+                        {product.price.toLocaleString()} LE
+                      </span>
+                      <span className="bg-red-600 text-white px-2 py-1 text-sm font-medium rounded">
+                        {product.discount}% OFF
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-2xl lg:text-3xl font-bold">
+                      {product.price.toLocaleString()} LE
                     </span>
                   )}
                 </div>
@@ -277,7 +304,7 @@ const ProductDetail = () => {
               {/* Variants Selection */}
               {product.variants && product.variants.length > 0 && (
                 <div>
-                  <label className="block text-sm font-medium mb-3">Size</label>
+                  <label className="block text-sm font-medium mb-3">Name</label>
                   <div className="flex flex-wrap gap-2">
                     {product.variants.map((variant, index) => (
                       <button

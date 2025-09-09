@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -32,34 +32,14 @@ interface FormData {
   transactionScreenshot: any;
 }
 
-const shippingCosts = {
-  'Cairo': 100,
-  'Giza': 100,
-  'Alexandria': 150,
-  'Qailyoubiya': 100,
-  'Buhirah': 150,
-  'Gharbia': 100,
-  'Munofiya': 100,
-  'Damietta': 100,
-  'Qalub': 100,
-  'Dakahliya': 100,
-  'Kafr-Elshiekh': 83,
-  'Sharkia': 100,
-  'Al-Ismailiyyah': 150,
-  'Port-Said': 150,
-  'Suez': 100,
-  'Fayoum': 150,
-  'Bani-Suwayf': 132,
-  'Minya': 152,
-  'Asyout': 152,
-  'Souhag': 152,
-  'Qena': 152,
-  'Aswan': 152,
-  'Luxor': 152,
-  'Marsa Matrouh': 153,
-} as const;
-
-type City = keyof typeof shippingCosts;
+interface City {
+  _id: string;
+  cityName: string;
+  governorate: string;
+  shippingCost: number;
+  codFee: number;
+  isActive: boolean;
+}
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -85,11 +65,37 @@ export default function CheckoutPage() {
   const [screenShotPreview, setScreenShotPreview] = useState<string | null>(null);
   const [appliedPromo, setAppliedPromo] = useState<any>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
+  const [cities, setCities] = useState<City[]>([]);
+  const [loadingCities, setLoadingCities] = useState(true);
 
-  const shippingCost = formData.city ? shippingCosts[formData.city as City] || 0 : 0;
+  // Fetch cities on component mount
+  useEffect(() => {
+    const fetchCities = async () => {
+      try {
+        const response = await fetch('/api/admin/cities');
+        if (response.ok) {
+          const data = await response.json();
+          setCities(data.cities || []);
+        } else {
+          console.error('Failed to fetch cities');
+        }
+      } catch (error) {
+        console.error('Error fetching cities:', error);
+      } finally {
+        setLoadingCities(false);
+      }
+    };
+
+    fetchCities();
+  }, []);
+
+  // Calculate shipping cost based on selected city
+  const selectedCity = cities.find(city => city.cityName === formData.city);
+  const shippingCost = selectedCity ? selectedCity.shippingCost : 0;
+  const codFee = selectedCity && formData.paymentMethod === 'cashOnDelivery' ? selectedCity.codFee : 0;
   const discountAmount = appliedPromo ? appliedPromo.discount : 0;
   const subtotalAfterDiscount = Math.max(0, state.total - discountAmount);
-  const totalWithShipping = subtotalAfterDiscount + shippingCost;
+  const totalWithShipping = subtotalAfterDiscount + shippingCost + codFee;
 
   // Apply promo code
   const applyPromoCode = async () => {
@@ -331,7 +337,7 @@ export default function CheckoutPage() {
         }));
 
         clearCart();
-        router.push(`/?orderId=${data.order.orderId}`);
+        router.push(`/thankyou?orderId=${data.order.orderId}`);
       } else {
         setOrderError(data.error || 'Something went wrong with your order');
       }
@@ -560,6 +566,19 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
+                {/* Paymob Coming Soon Message */}
+                {formData.paymentMethod === 'paymob' && (
+                  <div className="p-4 border border-gray-300 dark:border-gray-600 rounded-md">
+                    <div className="flex items-center justify-center">
+                      <div className="text-center">
+                        <h3 className="font-medium mb-2 text-white">💳 Visa Payment</h3>
+                        <p className="text-sm text-gray-300">Visa payment is coming soon</p>
+                        <p className="text-xs text-gray-400 mt-1">Please select another payment method for now</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* InstaPay Instructions and Screenshot Upload */}
                 {formData.paymentMethod === 'instaPay' && (
                   <div className="p-4 border border-gray-300 dark:border-gray-600 rounded-md">
@@ -666,12 +685,16 @@ export default function CheckoutPage() {
                     onChange={handleInputChange}
                     className={`w-full p-3 bg-transparent border border-white text-white focus:outline-none focus:border-gray-400 transition-colors duration-300 ${errors.city ? 'border-red-500' : ''}`}
                   >
-                    <option value="" className="bg-black text-white">Select a city</option>
-                    {Object.entries(shippingCosts).map(([city]) => (
-                      <option key={city} value={city} className="bg-black text-white">
-                        {city}
-                      </option>
-                    ))}
+                    <option value="" className="bg-black text-white">
+                      {loadingCities ? 'Loading cities...' : 'Select a city'}
+                    </option>
+                    {cities
+                      .filter(city => city.isActive)
+                      .map((city) => (
+                        <option key={city._id} value={city.cityName} className="bg-black text-white">
+                          {city.cityName} - {city.governorate}
+                        </option>
+                      ))}
                   </select>
                   {errors.city && (
                     <p className="text-red-500 text-sm mt-1">{errors.city}</p>
@@ -697,7 +720,7 @@ export default function CheckoutPage() {
                     type="button"
                     onClick={applyPromoCode}
                     disabled={!formData.promoCode.trim()}
-                    className="mt-2 px-4 py-2 bg-gray-800 text-white border border-white hover:bg-gray-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors duration-300 text-sm"
+                    className="mt-2 px-4 py-2 bg-black white border border-white hover:bg-white hover:text-black not-allowed transition-colors duration-300 text-sm"
                   >
                     Apply Code
                   </button>
@@ -737,7 +760,7 @@ export default function CheckoutPage() {
             </div>
 
             {/* Order Summary */}
-            <div className="w-full lg:w-1/3 bg-gray-900 border border-white p-6 rounded-lg h-fit">
+            <div className="w-full lg:w-1/3 bg-black border bowhite p-6 rounded-lg h-fit">
               <h2 className="text-xl font-medium mb-4 text-white">Order Summary</h2>
 
               <div className="space-y-4 mb-6">
@@ -781,11 +804,15 @@ export default function CheckoutPage() {
                 <div className="flex justify-between">
                   <span className="text-white">Shipping</span>
                   <span className="text-white">
-                    {formData.city && Object.prototype.hasOwnProperty.call(shippingCosts, formData.city) ?
-                      `L.E ${shippingCosts[formData.city as keyof typeof shippingCosts]}` :
-                      'Select a city'}
+                    {selectedCity ? `L.E ${selectedCity.shippingCost}` : 'Select a city'}
                   </span>
                 </div>
+                {formData.paymentMethod === 'cashOnDelivery' && selectedCity && selectedCity.codFee > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-white">COD Fee</span>
+                    <span className="text-white">L.E {selectedCity.codFee}</span>
+                  </div>
+                )}
                 <div className="flex justify-between font-medium text-lg pt-2 border-t border-gray-600">
                   <span className="text-white">Total</span>
                   <span className="text-white">L.E {totalWithShipping.toFixed(0)}</span>

@@ -7,10 +7,11 @@ import { motion, useInView } from 'framer-motion';
 import MovingWords from '../sections/MovingWords';
 import Footer from '../sections/Footer';
 import Image from 'next/image';
-import whoImage from '../../public/images/who-image.jpg';
+import aboutImage from '../../public/images/about-image.jpg';
 import Button from '@/components/Button';
+import Mohamed from '../sections/mohamed';
 
-const MohamedwhoProfile = () => {
+const MohamedaboutProfile = () => {
   const {scope, entranceAnimation} = useTextRevealAnimationSimple();
   const inView = useInView(scope, { once: true, margin: "-50px" });
 
@@ -37,7 +38,7 @@ const MohamedwhoProfile = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
             >
-              WHO ARE WE?
+              about ARE WE?
             </motion.h1>
             
             <motion.h2 
@@ -56,16 +57,7 @@ const MohamedwhoProfile = () => {
               transition={{ duration: 0.8, delay: 0.6 }}
             >
               <p className="text-xs sm:text-sm lowercase md:text-base lg:text-lg leading-relaxed mb-6 lg:mb-8 text-white/80  px-2 sm:px-0">
-              Mohamed Dedicated and dynamic sports science professional with a Ph.D. in Biomechanics in
-Sports Training and more than 14 years of coaching experience. Lecturer at the Faculty
-of Sports Sciences, Benha University, Department of Gymnastics and Exercises – Sports
-Training Specialization. Founder of Gravity benha for Calisthenics training. Active
-calisthenics coach and athlete, currently coaching at multiple locations and specializes in
-the training and development of professional athletes,. In addition to coaching, has
-delivered lectures and workshops in various institutions on training load planning and
-periodization. Involved in ongoing scientific research and academic publishing in the
-fields of sports training and biomechanics, with a strong focus on advancing practical and
-Name theoretical knowledge in calisthenics and gymnastics.
+              UNLIMITED is a community brand for athletes, we started our journey and we are here, we train, we coach, we compete, we teach, we sell and we grow.
               </p>
               
               <a href="/shop">
@@ -108,8 +100,8 @@ Name theoretical knowledge in calisthenics and gymnastics.
                 <Image
                   width={1000}
                   height={1000}
-                  src={whoImage}
-                  alt="who-Image"
+                  src={aboutImage}
+                  alt="about-Image"
                   className="w-full h-full object-contain"
                 />
               </div>
@@ -117,6 +109,7 @@ Name theoretical knowledge in calisthenics and gymnastics.
           </motion.div>
         </div>
       </section>
+      <Mohamed />
     <MovingWords />
     <Footer />
   </>
@@ -124,4 +117,4 @@ Name theoretical knowledge in calisthenics and gymnastics.
 
 };
 
-export default MohamedwhoProfile;
+export default MohamedaboutProfile;
