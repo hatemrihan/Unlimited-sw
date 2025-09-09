@@ -3,14 +3,10 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import dbConnect from '../../../lib/mongodb';
 import Product from '../../../models/product';
+import { apiCache } from '../../../lib/cache';
 
 // File path for storing products (fallback only)
 const dataFilePath = path.join(process.cwd(), 'data', 'products.json');
-
-// In-memory cache for faster responses
-let productsCache: any = null;
-let lastCacheTime = 0;
-const CACHE_DURATION = 300 * 1000; // 5 minutes cache for better performance
 
 // GET - Fetch all active products for frontend
 export async function GET(request: NextRequest) {
@@ -18,17 +14,17 @@ export async function GET(request: NextRequest) {
     // Check for featured parameter
     const { searchParams } = new URL(request.url);
     const featuredOnly = searchParams.get('featured') === 'true';
-    const cacheKey = featuredOnly ? 'featured' : 'regular';
+    const cacheKey = featuredOnly ? 'products:featured' : 'products:all';
 
-    // Check cache first for instant responses
-    const now = Date.now();
-    if (productsCache && productsCache[cacheKey] && (now - lastCacheTime) < CACHE_DURATION) {
-      console.log('⚡ Serving from cache - instant response!');
+    // ⚡ ULTRA-FAST: Check cache first (sub-millisecond response)
+    const cachedProducts = apiCache.get(cacheKey);
+    if (cachedProducts) {
+      console.log('⚡ LIGHTNING FAST: Products served from cache!');
       return NextResponse.json({
         success: true,
-        products: productsCache[cacheKey],
-        count: productsCache[cacheKey].length,
-        source: 'cache'
+        products: cachedProducts,
+        count: cachedProducts.length,
+        cached: true
       });
     }
 
@@ -54,18 +50,14 @@ export async function GET(request: NextRequest) {
         .lean(); // 🚀 3x faster queries with lean()
       console.log('⚡ Found', activeProducts.length, featuredOnly ? 'featured' : 'active', 'products LIGHTNING FAST!');
 
-      // Cache the results for instant future responses
-      if (!productsCache) {
-        productsCache = {};
-      }
-      productsCache[cacheKey] = activeProducts;
-      lastCacheTime = now;
+      // ⚡ CACHE IT: Store for 5 minutes for ultra-fast future requests
+      apiCache.set(cacheKey, activeProducts, 300000); // 5min cache
 
       return NextResponse.json({
         success: true,
         products: activeProducts,
         count: activeProducts.length,
-        source: 'mongodb'
+        cached: false
       });
 
     } catch (mongoError) {

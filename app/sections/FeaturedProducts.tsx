@@ -129,11 +129,15 @@ const FeaturedProducts = () => {
                 transition={{duration: 0.2, delay: 0.4 + index * 0.05}}
               >
                 {/* Product Image */}
-                <div className="aspect-square mb-2 lg:mb-3 overflow-hidden bg-gray-800 max-w-[140px] sm:max-w-[160px] lg:max-w-[180px] mx-auto relative">
+                <div 
+                  className="mb-2 lg:mb-3 overflow-hidden bg-gray-800 max-w-[140px] sm:max-w-[160px] lg:max-w-[180px] mx-auto relative"
+                  style={{ aspectRatio: '1080 / 1350' }} // 1080px width × 1350px height
+                >
                   <img
                     src={product.mainImage}
                     alt={product.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    style={{ aspectRatio: '1080 / 1350' }}
                     onError={(e) => {
                       console.error('❌ Featured product image load error:', product.name);
                       e.currentTarget.style.backgroundColor = '#333';

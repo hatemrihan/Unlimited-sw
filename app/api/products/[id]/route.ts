@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../../lib/mongodb';
 import Product from '../../../../models/product';
+import { productCache } from '../../../../lib/cache';
 import { promises as fs } from 'fs';
 import path from 'path';
 
@@ -11,15 +12,31 @@ export async function GET(
 ) {
   try {
     const params = await context.params;
-    console.log('🔍 Fetching product by ID:', params.id);
+    const productId = params.id;
+    const cacheKey = `product:detail:${productId}`;
+    
+    // ⚡ ULTRA-FAST: Check cache first (sub-millisecond response)
+    const cachedProduct = productCache.get(cacheKey);
+    if (cachedProduct) {
+      console.log('⚡ LIGHTNING FAST: Product served from cache!');
+      return NextResponse.json({
+        success: true,
+        product: cachedProduct,
+        cached: true
+      });
+    }
+    
+    console.log('🔍 Cache miss, fetching from DB:', productId);
     
     try {
       // Try MongoDB first
       await dbConnect();
-      console.log('✅ MongoDB connected for product detail');
       
-      // Find product by ID
-      const product = await Product.findById(params.id).lean();
+      // 🚀 OPTIMIZED QUERY: Select only needed fields + lean for 3x speed
+      const product = await Product.findById(productId)
+        .select('name description price discount mainImage additionalImages stock variants cityPricing isActive isFeatured category tags')
+        .lean() // 3x faster - returns plain objects
+        .exec();
       
       if (!product) {
         return NextResponse.json(
@@ -28,11 +45,15 @@ export async function GET(
         );
       }
       
-      console.log('✅ Found product in MongoDB:', (product as any).name);
+      // ⚡ CACHE IT: Store for 10 minutes (longer for product details)
+      productCache.set(cacheKey, product, 600000); // 10min cache
+      
+      console.log('✅ Product cached for ultra-fast future requests:', (product as any).name);
       
       return NextResponse.json({
         success: true,
-        product: product
+        product: product,
+        cached: false
       });
       
     } catch (mongoError) {

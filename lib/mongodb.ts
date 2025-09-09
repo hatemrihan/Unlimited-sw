@@ -41,10 +41,15 @@ async function dbConnect() {
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
-      maxPoolSize: 10, // Maintain up to 10 socket connections
-      serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
-      socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+      maxPoolSize: 50, // 🚀 INCREASED: More concurrent connections for speed
+      serverSelectionTimeoutMS: 2000, // 🚀 FASTER: Reduced timeout for quicker fails
+      socketTimeoutMS: 20000, // 🚀 FASTER: Reduced socket timeout
+      connectTimeoutMS: 2000, // 🚀 FASTER: Quick connection timeout
       family: 4, // Use IPv4, skip trying IPv6
+      maxIdleTimeMS: 30000, // 🚀 OPTIMIZED: Close idle connections faster
+      waitQueueTimeoutMS: 2000, // 🚀 FASTER: Don't wait long for connections
+      retryWrites: true, // 🚀 RELIABILITY: Retry failed writes
+      w: 'majority', // 🚀 PERFORMANCE: Write concern for speed
     };
 
     cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoose) => {

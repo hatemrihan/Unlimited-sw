@@ -237,14 +237,24 @@ const ProductDetail = () => {
                   {allImages.map((image, index) => (
                     <div
                       key={index}
-                      className="flex-shrink-0 w-full aspect-square bg-gray-800 overflow-hidden"
-                      style={{ scrollSnapAlign: 'start' }}
+                      className="flex-shrink-0 w-full bg-gray-800 overflow-hidden"
+                      style={{ 
+                        scrollSnapAlign: 'start',
+                        aspectRatio: '1080 / 1350', // 1080px width × 1350px height
+                        maxWidth: '1080px',
+                        maxHeight: '1350px'
+                      }}
                     >
                       <img
                         src={image}
                         alt={`${product.name} ${index + 1}`}
                         className="w-full h-full object-cover"
                         loading={index === 0 ? 'eager' : 'lazy'}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover'
+                        }}
                       />
                     </div>
                   ))}

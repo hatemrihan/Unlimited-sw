@@ -143,12 +143,16 @@ const Products = () => {
             <div key={product._id} className="bg-black border border-white/10 rounded-lg p-3">
               <div className="flex flex-col gap-2">
                 {/* Product Image */}
-                <div className="w-full h-32 flex-shrink-0">
+                <div 
+                  className="w-full flex-shrink-0"
+                  style={{ aspectRatio: '1080 / 1350', height: 'auto' }} // 1080px width × 1350px height
+                >
                   <div className="relative w-full h-full rounded-lg overflow-hidden">
                     <img
                       src={product.mainImage}
                       alt={product.name}
                       className="w-full h-full object-cover"
+                      style={{ aspectRatio: '1080 / 1350' }}
                       onError={(e) => {
                         e.currentTarget.src = '/images/placeholder.png';
                       }}

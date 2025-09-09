@@ -187,6 +187,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
             <p className="text-gray-500 dark:text-gray-400 text-sm">
               Images: PNG, JPG, GIF | Videos: MP4, MOV
             </p>
+            {label.toLowerCase().includes('product') && (
+              <p className="text-blue-500 dark:text-blue-400 text-xs mt-1 font-medium">
+                💡 Optimal: 1080×1350px for best display
+              </p>
+            )}
             <button
               type="button"
               onClick={() => document.getElementById(`file-input-${label}`)?.click()}

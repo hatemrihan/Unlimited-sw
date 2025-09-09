@@ -334,16 +334,20 @@ const ProductCard = ({ product, onAddToCart, isMobile = false }: {
   return (
     <div className="group block relative">
       <Link href={`/product/${product._id}`} className="block">
-        <div className={`aspect-[3/4] w-full overflow-hidden bg-gray-800 ${isMobile ? 'mb-2' : 'mb-3'} ${isMobile ? 'max-w-[120px]' : 'max-w-[180px]'} mx-auto`}>
+        <div 
+          className={`w-full overflow-hidden bg-gray-800 ${isMobile ? 'mb-2' : 'mb-3'} ${isMobile ? 'max-w-[120px]' : 'max-w-[180px]'} mx-auto`}
+          style={{ aspectRatio: '1080 / 1350' }} // 1080px width × 1350px height
+        >
           {product.mainImage ? (
             <>
               <Image
                 src={product.mainImage}
                 alt={product.name}
-                width={500}
-                height={625}
+                width={1080}
+                height={1350}
                 className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
                 loading="lazy"
+                style={{ aspectRatio: '1080 / 1350' }}
               />
 
               <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">

@@ -31,9 +31,9 @@ export async function POST(request: NextRequest) {
     
     const allCities = [...fayoumCities, ...damiettaCities];
     const results = {
-      added: [],
-      skipped: [],
-      errors: []
+      added: [] as string[],
+      skipped: [] as string[],
+      errors: [] as string[]
     };
     
     // Process each city
@@ -62,7 +62,8 @@ export async function POST(request: NextRequest) {
         results.added.push(`${cityData.cityName}, ${cityData.governorate} (Shipping: ${cityData.shippingCost} LE, COD: ${cityData.codFee} LE)`);
         
       } catch (error) {
-        results.errors.push(`${cityData.cityName}, ${cityData.governorate}: ${error.message}`);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        results.errors.push(`${cityData.cityName}, ${cityData.governorate}: ${errorMessage}`);
       }
     }
     
