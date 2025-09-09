@@ -17,48 +17,50 @@ export async function GET(
     const params = await context.params;
     const { id } = params;
     
-    // Use JSON file fallback for guaranteed stability
-    console.log('📁 Using JSON file fallback for single item fetch');
-
+    // Prefer MongoDB, fallback to JSON file
     try {
-      const dataFilePath = path.join(process.cwd(), 'data', 'intro-items.json');
-      console.log('🔍 Looking for intro items file at:', dataFilePath);
+      await dbConnect();
+      console.log('✅ MongoDB connected for single item');
 
-      // Read all items from file
-      let items = [];
-      try {
-        const data = await fs.readFile(dataFilePath, 'utf8');
-        items = JSON.parse(data);
-        console.log('📖 Successfully read intro items file, parsing data...');
-      } catch (e: unknown) {
-        console.log('❌ Error reading intro items file:', e instanceof Error ? e.message : String(e));
-        items = [];
-      }
-
-      // Find the specific item by ID
-      const item = items.find((item: any) => item._id === id);
-      
+      const item = await IntroItem.findById(id).lean();
       if (!item) {
-        console.log('❌ Intro item not found:', id);
-        return NextResponse.json(
-          { success: false, error: 'Intro item not found' },
-          { status: 404 }
-        );
+        console.log('📝 Not in MongoDB, trying JSON file...');
+        throw new Error('Not in MongoDB');
       }
 
-      console.log('✅ Found intro item:', item._id);
+      return NextResponse.json({ success: true, item });
+    } catch (mongoError) {
+      console.log('❌ MongoDB single fetch failed, using JSON fallback');
 
-      return NextResponse.json({
-        success: true,
-        item: item
-      });
+      try {
+        const dataFilePath = path.join(process.cwd(), 'data', 'intro-items.json');
+        console.log('🔍 Looking for intro items file at:', dataFilePath);
 
-    } catch (fileError) {
-      console.error('❌ File fallback failed for single item:', fileError);
-      return NextResponse.json({
-        success: false,
-        error: 'Could not read data file'
-      }, { status: 500 });
+        // Read all items from file
+        let items = [] as any[];
+        try {
+          const data = await fs.readFile(dataFilePath, 'utf8');
+          items = JSON.parse(data);
+        } catch (e: unknown) {
+          items = [];
+        }
+
+        // Find the specific item by ID
+        const item = items.find((item: any) => item._id === id);
+        
+        if (!item) {
+          console.log('❌ Intro item not found in either MongoDB or file:', id);
+          return NextResponse.json(
+            { success: false, error: 'Intro item not found' },
+            { status: 404 }
+          );
+        }
+
+        return NextResponse.json({ success: true, item });
+      } catch (fileError) {
+        console.error('❌ File fallback failed for single item:', fileError);
+        return NextResponse.json({ success: false, error: 'Could not read data file' }, { status: 500 });
+      }
     }
     
   } catch (error) {

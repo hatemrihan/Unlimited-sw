@@ -7,8 +7,8 @@ export interface IntroItem {
   mainImage: string;
   leftImage: string;
   rightImage: string;
-  description: string;
-  url: string;
+  description?: string;
+  url?: string;
   isVideo: boolean;
   isActive: boolean;
   order: number;
@@ -46,13 +46,15 @@ const IntroItemSchema = new mongoose.Schema({
   // Description text that admin can edit
   description: {
     type: String,
-    required: true,
+    required: false,
+    default: '',
   },
   
   // URL that admin can set for redirection
   url: {
     type: String,
-    required: true,
+    required: false,
+    default: '#',
   },
   
   // Whether main image is video or image

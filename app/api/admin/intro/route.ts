@@ -9,45 +9,42 @@ export async function GET(request: NextRequest) {
   try {
     console.log('📖 Admin fetching intro items...');
 
-    // Skip MongoDB entirely - use JSON files only for guaranteed stability
-    console.log('📁 Using JSON file fallback for guaranteed stability');
-
-    // Fallback to file storage (primary method)
-
+    // Prefer MongoDB, fallback to JSON file
     try {
-      const dataFilePath = path.join(process.cwd(), 'data', 'intro-items.json');
-      console.log('🔍 Looking for intro items file at:', dataFilePath);
+      await dbConnect();
+      console.log('✅ MongoDB connected for admin list');
 
-      // Read all items from file
-      let items = [];
+      const items = await IntroItem.find().sort({ order: 1, createdAt: -1 }).lean();
+      console.log('✅ Found', items.length, 'intro items from MongoDB');
+
+      return NextResponse.json({ success: true, items, count: items.length });
+    } catch (mongoError) {
+      console.log('❌ MongoDB fetch failed, using JSON fallback:', mongoError instanceof Error ? mongoError.message : String(mongoError));
+
       try {
-        const data = await fs.readFile(dataFilePath, 'utf8');
-        items = JSON.parse(data);
-        console.log('📖 Successfully read intro items file, parsing data...');
-      } catch (e: unknown) {
-        console.log('❌ Error reading intro items file:', e instanceof Error ? e.message : String(e));
-        // Return empty array instead of crashing
-        items = [];
+        const dataFilePath = path.join(process.cwd(), 'data', 'intro-items.json');
+        console.log('🔍 Looking for intro items file at:', dataFilePath);
+
+        // Read all items from file
+        let items = [] as any[];
+        try {
+          const data = await fs.readFile(dataFilePath, 'utf8');
+          items = JSON.parse(data);
+          console.log('📖 Successfully read intro items file, parsing data...');
+        } catch (e: unknown) {
+          console.log('❌ Error reading intro items file:', e instanceof Error ? e.message : String(e));
+          items = [];
+        }
+
+        console.log('✅ Found', items.length, 'intro items from file for admin');
+
+        return NextResponse.json({ success: true, items, count: items.length });
+      } catch (fileError) {
+        console.error('❌ File fallback also failed for admin:', fileError);
+        return NextResponse.json({ success: false, items: [], count: 0, error: 'Could not read data file' });
       }
-
-      console.log('✅ Found', items.length, 'intro items from file for admin');
-
-      return NextResponse.json({
-        success: true,
-        items: items,
-        count: items.length
-      });
-
-    } catch (fileError) {
-      console.error('❌ File fallback also failed for admin:', fileError);
-      return NextResponse.json({
-        success: false,
-        items: [],
-        count: 0,
-        error: 'Could not read data file'
-      });
     }
-    
+
   } catch (error) {
     console.error('❌ General error fetching intro items for admin:', error);
     return NextResponse.json(
