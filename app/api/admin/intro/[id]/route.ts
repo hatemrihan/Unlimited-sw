@@ -135,37 +135,99 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    console.log('🗑️ Deleting intro item from MongoDB...');
+    console.log('🗑️ Deleting intro item...');
 
     const params = await context.params;
     const { id } = params;
     
-    // Connect to MongoDB
-    await dbConnect();
-    console.log('✅ MongoDB connected for delete');
+    console.log('🔍 Attempting to delete intro item with ID:', id);
     
-    // Delete intro item from MongoDB
-    const deletedItem = await IntroItem.findByIdAndDelete(id);
+    // Validate ID format
+    if (!id || id.trim() === '') {
+      console.log('❌ Invalid ID provided:', id);
+      return NextResponse.json(
+        { success: false, error: 'Invalid ID provided' },
+        { status: 400 }
+      );
+    }
     
-    if (!deletedItem) {
-      console.log('❌ Intro item not found for deletion:', id);
+    let deletedFromMongoDB = false;
+    let deletedFromFile = false;
+    
+    // Try to delete from MongoDB first
+    try {
+      await dbConnect();
+      console.log('✅ MongoDB connected for delete');
+      
+      const deletedItem = await IntroItem.findByIdAndDelete(id);
+      if (deletedItem) {
+        console.log('✅ Intro item deleted from MongoDB:', deletedItem._id);
+        deletedFromMongoDB = true;
+      } else {
+        console.log('📝 Item not found in MongoDB, trying JSON file...');
+      }
+    } catch (mongoError) {
+      console.log('❌ MongoDB delete failed, trying JSON file...', mongoError instanceof Error ? mongoError.message : String(mongoError));
+    }
+    
+    // Try to delete from JSON file
+    try {
+      const dataFilePath = path.join(process.cwd(), 'data', 'intro-items.json');
+      console.log('🔍 Looking for intro items file at:', dataFilePath);
+
+      // Read current items
+      let items = [];
+      try {
+        const data = await fs.readFile(dataFilePath, 'utf8');
+        items = JSON.parse(data);
+        console.log('📖 Successfully read intro items file');
+      } catch (readError) {
+        console.log('❌ Error reading intro items file:', readError instanceof Error ? readError.message : String(readError));
+        items = [];
+      }
+
+      // Find and remove the item
+      const initialLength = items.length;
+      items = items.filter((item: any) => item._id !== id);
+      
+      if (items.length < initialLength) {
+        // Write updated items back to file
+        await fs.writeFile(dataFilePath, JSON.stringify(items, null, 2));
+        console.log('✅ Intro item deleted from JSON file');
+        deletedFromFile = true;
+      } else {
+        console.log('📝 Item not found in JSON file');
+      }
+    } catch (fileError) {
+      console.error('❌ File delete failed:', fileError);
+    }
+    
+    // Check if deletion was successful from either source
+    if (deletedFromMongoDB || deletedFromFile) {
+      return NextResponse.json({
+        success: true,
+        message: `Intro item deleted successfully from ${deletedFromMongoDB ? 'MongoDB' : 'JSON file'}`
+      });
+    } else {
+      console.log('❌ Intro item not found in either MongoDB or JSON file:', id);
       return NextResponse.json(
         { success: false, error: 'Intro item not found' },
         { status: 404 }
       );
     }
     
-    console.log('✅ Intro item deleted from MongoDB:', deletedItem._id);
-    
-    return NextResponse.json({
-      success: true,
-      message: 'Intro item deleted successfully from MongoDB'
-    });
-    
   } catch (error) {
-    console.error('❌ MongoDB error deleting intro item:', error);
+    console.error('❌ General error deleting intro item:', error);
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return NextResponse.json(
-      { success: false, error: 'Failed to delete intro item from MongoDB' },
+      { 
+        success: false, 
+        error: 'Failed to delete intro item',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

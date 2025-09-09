@@ -2,16 +2,36 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../../lib/mongodb';
 import CityPricing from '../../../../models/cityPricing';
 
+// In-memory cache for faster responses
+let citiesCache: any = null;
+let lastCacheTime = 0;
+const CACHE_DURATION = 600 * 1000; // 10 minutes cache for cities
+
 // GET - Fetch all cities
 export async function GET(request: NextRequest) {
   try {
     console.log('🏙️ Fetching all cities...');
     
+    // Check cache first
+    const now = Date.now();
+    if (citiesCache && (now - lastCacheTime) < CACHE_DURATION) {
+      console.log('✅ Returning cached cities data');
+      return NextResponse.json({
+        success: true,
+        cities: citiesCache,
+        cached: true
+      });
+    }
+    
     await dbConnect();
     
     const cities = await CityPricing.find({}).sort({ governorate: 1, cityName: 1 });
     
-    console.log(`✅ Found ${cities.length} cities`);
+    // Update cache
+    citiesCache = cities;
+    lastCacheTime = now;
+    
+    console.log(`✅ Found ${cities.length} cities (cached for faster access)`);
     
     return NextResponse.json({
       success: true,
@@ -25,6 +45,13 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// Helper function to invalidate cache
+export function invalidateCitiesCache() {
+  citiesCache = null;
+  lastCacheTime = 0;
+  console.log('🗑️ Cities cache invalidated');
 }
 
 // POST - Create new city
@@ -68,6 +95,9 @@ export async function POST(request: NextRequest) {
     
     const savedCity = await newCity.save();
     console.log('✅ City created:', savedCity.cityName);
+    
+    // Invalidate cache
+    invalidateCitiesCache();
     
     return NextResponse.json({
       success: true,

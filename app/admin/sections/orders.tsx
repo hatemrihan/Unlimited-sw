@@ -94,27 +94,21 @@ const Orders = () => {
     const rowsToExport = selectedRows.length > 0 ? selectedRows : table.getFilteredRowModel().rows;
     
     const csvData = [
-      // CSV Headers
-      ['Order ID', 'Customer Name', 'Email', 'Phone', 'Address', 'Products', 'Payment Method', 'Total Amount', 'Status', 'Order Date'],
+      // CSV Headers - Shipping Company Format
+      ['Customer', 'Order ID', 'Email', 'Phone', 'Shipping Address', 'Products', 'Payment Method', 'Total'],
       // CSV Rows
       ...rowsToExport.map(row => {
         const order = row.original;
-        const products = order.products.map(p => `${p.name} (${p.size || 'N/A'}) x${p.quantity}`).join('; ');
+        const products = order.products.map(p => `${p.name}${p.size ? ` (${p.size})` : ''}${p.color ? ` - ${p.color}` : ''} x${p.quantity}`).join('; ');
         return [
-          order.orderId,
           order.customer.name,
+          order.orderId,
           order.customer.email,
           order.customer.phone,
           order.customer.address,
           products,
-          order.paymentMethod === 'instaPay' ? 'InstaPay' : 'Cash on Delivery',
-          `L.E ${order.totalAmount.toLocaleString()}`,
-          order.status.charAt(0).toUpperCase() + order.status.slice(1),
-          new Date(order.orderDate).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-          })
+          order.paymentMethod === 'cashOnDelivery' ? 'COD' : order.paymentMethod === 'instaPay' ? 'InstaPay' : 'Paymob',
+          `${order.totalAmount} L.E`
         ];
       })
     ];
@@ -124,24 +118,45 @@ const Orders = () => {
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `orders_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `shipping_orders_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  // Function to export orders as JSON
+  // Function to export orders as JSON (Shipping Company Format)
   const exportOrdersAsJSON = () => {
     const selectedRows = table.getFilteredSelectedRowModel().rows;
     const rowsToExport = selectedRows.length > 0 ? selectedRows : table.getFilteredRowModel().rows;
     
-    const jsonData = rowsToExport.map(row => row.original);
+    const jsonData = rowsToExport.map(row => {
+      const order = row.original;
+      const products = order.products.map(p => ({
+        name: p.name,
+        size: p.size || null,
+        color: p.color || null,
+        quantity: p.quantity,
+        price: p.price
+      }));
+      
+      return {
+        customer: order.customer.name,
+        orderId: order.orderId,
+        email: order.customer.email,
+        phone: order.customer.phone,
+        shippingAddress: order.customer.address,
+        products: products,
+        paymentMethod: order.paymentMethod === 'cashOnDelivery' ? 'COD' : order.paymentMethod === 'instaPay' ? 'InstaPay' : 'Paymob',
+        total: `${order.totalAmount} L.E`
+      };
+    });
+    
     const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `orders_${new Date().toISOString().split('T')[0]}.json`);
+    link.setAttribute('download', `shipping_orders_${new Date().toISOString().split('T')[0]}.json`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -158,23 +173,16 @@ const Orders = () => {
     
     const excelData = rowsToExport.map(row => {
       const order = row.original;
-      const products = order.products.map(p => `${p.name} (${p.size || 'N/A'}) x${p.quantity}`).join('; ');
+      const products = order.products.map(p => `${p.name}${p.size ? ` (${p.size})` : ''}${p.color ? ` - ${p.color}` : ''} x${p.quantity}`).join('; ');
       return {
+        'Customer': order.customer.name,
         'Order ID': order.orderId,
-        'Customer Name': order.customer.name,
         'Email': order.customer.email,
         'Phone': order.customer.phone,
-        'Address': order.customer.address,
+        'Shipping Address': order.customer.address,
         'Products': products,
-        'Payment Method': order.paymentMethod === 'instaPay' ? 'InstaPay' : 'Cash on Delivery',
-        'Total Amount': order.totalAmount,
-        'Status': order.status.charAt(0).toUpperCase() + order.status.slice(1),
-        'Order Date': new Date(order.orderDate).toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric'
-        }),
-        'InstaPay Receipt': order.transactionScreenshot || 'N/A'
+        'Payment Method': order.paymentMethod === 'cashOnDelivery' ? 'COD' : order.paymentMethod === 'instaPay' ? 'InstaPay' : 'Paymob',
+        'Total': `${order.totalAmount} L.E`
       };
     });
 
@@ -183,10 +191,10 @@ const Orders = () => {
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Orders');
     
     // Auto-size columns
-    const maxWidth = excelData.reduce((w, r) => Math.max(w, r['Customer Name'].length), 10);
+    const maxWidth = excelData.reduce((w, r) => Math.max(w, r['Customer'].length), 10);
     worksheet['!cols'] = [{ wch: maxWidth }];
     
-    XLSX.writeFile(workbook, `orders_${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.writeFile(workbook, `shipping_orders_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   // Function to export orders as PDF
@@ -202,31 +210,27 @@ const Orders = () => {
     
     // Add title
     doc.setFontSize(18);
-    doc.text('Orders Report', 14, 22);
+    doc.text('Shipping Orders Report', 14, 22);
     doc.setFontSize(12);
     doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
     
     // Prepare data for table
     const tableData = rowsToExport.map(row => {
       const order = row.original;
-      const products = order.products.map(p => `${p.name} (${p.size || 'N/A'}) x${p.quantity}`).join('; ');
+      const products = order.products.map(p => `${p.name}${p.size ? ` (${p.size})` : ''}${p.color ? ` - ${p.color}` : ''} x${p.quantity}`).join('; ');
       return [
-        order.orderId,
         order.customer.name,
+        order.orderId,
         order.customer.email,
-        order.paymentMethod === 'instaPay' ? 'InstaPay' : 'Cash on Delivery',
-        `L.E ${order.totalAmount.toLocaleString()}`,
-        order.status.charAt(0).toUpperCase() + order.status.slice(1),
-        new Date(order.orderDate).toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric'
-        })
+        order.customer.phone,
+        order.customer.address.substring(0, 30) + '...', // Truncate address for PDF
+        order.paymentMethod === 'cashOnDelivery' ? 'COD' : order.paymentMethod === 'instaPay' ? 'InstaPay' : 'Paymob',
+        `${order.totalAmount} L.E`
       ];
     });
     
     autoTable(doc, {
-      head: [['Order ID', 'Customer', 'Email', 'Payment', 'Total', 'Status', 'Date']],
+      head: [['Customer', 'Order ID', 'Email', 'Phone', 'Address', 'Payment', 'Total']],
       body: tableData,
       startY: 40,
       styles: {
@@ -243,7 +247,7 @@ const Orders = () => {
       },
     });
     
-    doc.save(`orders_${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`shipping_orders_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   // Function to fetch all orders

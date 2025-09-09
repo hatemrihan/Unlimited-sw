@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../../../lib/mongodb';
 import CityPricing from '../../../../../models/cityPricing';
+import { invalidateCitiesCache } from '../route';
 
 // PUT - Update city
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -42,6 +43,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     
     console.log('✅ City updated:', updatedCity.cityName);
     
+    // Invalidate cache
+    invalidateCitiesCache();
+    
     return NextResponse.json({
       success: true,
       city: updatedCity,
@@ -76,6 +80,9 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     }
     
     console.log('✅ City deleted:', deletedCity.cityName);
+    
+    // Invalidate cache
+    invalidateCitiesCache();
     
     return NextResponse.json({
       success: true,

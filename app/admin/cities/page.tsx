@@ -12,22 +12,31 @@ interface City {
   isActive: boolean;
 }
 
+interface GovernorateData {
+  name: string;
+  shippingCost: number;
+  codFee: number;
+  cities: City[];
+}
+
 const CitiesManagement = () => {
   const router = useRouter();
   const [cities, setCities] = useState<City[]>([]);
+  const [governorates, setGovernorates] = useState<GovernorateData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [editingCity, setEditingCity] = useState<City | null>(null);
-  
-  const [formData, setFormData] = useState({
-    cityName: '',
-    governorate: '',
-    shippingCost: 0,
-    codFee: 0,
-    isActive: true
-  });
+  const [editingGovernorate, setEditingGovernorate] = useState<string | null>(null);
+  const [tempValues, setTempValues] = useState<{[key: string]: {shippingCost: number, codFee: number}}>({});
 
-  // Fetch cities
+  // Egyptian Governorates
+  const egyptianGovernorates = [
+    'Cairo', 'Giza', 'Alexandria', 'Dakahlia', 'Red Sea', 'Beheira',
+    'Fayoum', 'Gharbia', 'Ismailia', 'Menofia', 'Minya', 'Qaliubiya',
+    'New Valley', 'Suez', 'Aswan', 'Assiut', 'Beni Suef', 'Port Said',
+    'Damietta', 'Sharqia', 'South Sinai', 'Kafr El Sheikh', 'Matrouh',
+    'Luxor', 'Qena', 'North Sinai', 'Sohag'
+  ];
+
+  // Fetch cities and group by governorate
   const fetchCities = async () => {
     try {
       const response = await fetch('/api/admin/cities');
@@ -35,6 +44,22 @@ const CitiesManagement = () => {
       
       if (data.success) {
         setCities(data.cities);
+        
+        // Group cities by governorate
+        const groupedData: GovernorateData[] = egyptianGovernorates.map(govName => {
+          const govCities = data.cities.filter((city: City) => city.governorate === govName);
+          
+          // Get the first city's values or default
+          const firstCity = govCities[0];
+          return {
+            name: govName,
+            shippingCost: firstCity?.shippingCost || 100,
+            codFee: firstCity?.codFee || 20,
+            cities: govCities
+          };
+        });
+        
+        setGovernorates(groupedData);
       }
     } catch (error) {
       console.error('Error fetching cities:', error);
@@ -47,267 +72,306 @@ const CitiesManagement = () => {
     fetchCities();
   }, []);
 
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    try {
-      const url = editingCity ? `/api/admin/cities/${editingCity._id}` : '/api/admin/cities';
-      const method = editingCity ? 'PUT' : 'POST';
-      
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
+  // Handle editing governorate
+  const handleEditGovernorate = (govName: string) => {
+    const gov = governorates.find(g => g.name === govName);
+    if (gov) {
+      setTempValues({
+        [govName]: {
+          shippingCost: gov.shippingCost,
+          codFee: gov.codFee
+        }
       });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        alert(editingCity ? 'City updated successfully!' : 'City created successfully!');
-        fetchCities();
-        resetForm();
-      } else {
-        alert('Error: ' + data.error);
-      }
-    } catch (error) {
-      console.error('Error saving city:', error);
-      alert('Failed to save city');
+      setEditingGovernorate(govName);
     }
   };
 
-  // Reset form
-  const resetForm = () => {
-    setFormData({
-      cityName: '',
-      governorate: '',
-      shippingCost: 0,
-      codFee: 0,
-      isActive: true
-    });
-    setEditingCity(null);
-    setShowAddForm(false);
-  };
+  // Handle save governorate
+  const handleSaveGovernorate = async (govName: string) => {
+    const values = tempValues[govName];
+    if (!values) return;
 
-  // Edit city
-  const handleEdit = (city: City) => {
-    setFormData({
-      cityName: city.cityName,
-      governorate: city.governorate,
-      shippingCost: city.shippingCost,
-      codFee: city.codFee,
-      isActive: city.isActive
-    });
-    setEditingCity(city);
-    setShowAddForm(true);
-  };
-
-  // Delete city
-  const handleDelete = async (cityId: string) => {
-    if (!confirm('Are you sure you want to delete this city?')) return;
-    
     try {
-      const response = await fetch(`/api/admin/cities/${cityId}`, {
-        method: 'DELETE',
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        alert('City deleted successfully!');
-        fetchCities();
+      // Update all cities in this governorate
+      const gov = governorates.find(g => g.name === govName);
+      if (!gov) return;
+
+      // If no cities exist for this governorate, create one
+      if (gov.cities.length === 0) {
+        const response = await fetch('/api/admin/cities', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cityName: govName,
+            governorate: govName,
+            shippingCost: values.shippingCost,
+            codFee: values.codFee,
+            isActive: true
+          })
+        });
+        
+        if (response.ok) {
+          alert('Governorate pricing saved!');
+          fetchCities();
+        }
       } else {
-        alert('Error: ' + data.error);
+        // Update all existing cities
+        for (const city of gov.cities) {
+          await fetch(`/api/admin/cities/${city._id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...city,
+              shippingCost: values.shippingCost,
+              codFee: values.codFee
+            })
+          });
+        }
+        alert('Governorate pricing updated!');
+        fetchCities();
       }
+      
+      setEditingGovernorate(null);
+      setTempValues({});
     } catch (error) {
-      console.error('Error deleting city:', error);
-      alert('Failed to delete city');
+      console.error('Error updating governorate:', error);
+      alert('Failed to update governorate pricing');
     }
+  };
+
+  // Export functions
+  const exportAsCSV = () => {
+    const headers = ['Governorate', 'Shipping Cost', 'COD Fee'];
+    const rows = governorates.map(gov => [
+      gov.name,
+      gov.shippingCost.toString(),
+      gov.codFee.toString()
+    ]);
+    
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'governorate-pricing.csv';
+    a.click();
+  };
+
+  const exportAsExcel = () => {
+    // Create HTML table for Excel
+    const table = `
+      <table>
+        <thead>
+          <tr>
+            <th>Governorate</th>
+            <th>Shipping Cost (L.E)</th>
+            <th>COD Fee (L.E)</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${governorates.map(gov => `
+            <tr>
+              <td>${gov.name}</td>
+              <td>${gov.shippingCost}</td>
+              <td>${gov.codFee}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+    
+    const blob = new Blob([table], { type: 'application/vnd.ms-excel' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'governorate-pricing.xls';
+    a.click();
+  };
+
+  const exportAsPDF = () => {
+    // Simple text-based PDF alternative
+    const content = governorates.map(gov => 
+      `${gov.name}: Shipping ${gov.shippingCost} L.E, COD ${gov.codFee} L.E`
+    ).join('\n');
+    
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'governorate-pricing.txt';
+    a.click();
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
+      <div className="min-h-screen bg-black text-white p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center py-12">
+            <div className="text-xl">Loading governorates...</div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-4">
+    <div className="min-h-screen bg-black text-white p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex justify-between items-center mb-8">
           <div>
-            <button
-              onClick={() => router.back()}
-              className="flex items-center gap-2 text-gray-300 hover:text-white mb-4"
-            >
-              <span>←</span>
-              <span>Back to Dashboard</span>
-            </button>
-            <h1 className="text-4xl font-bold">Cities Management</h1>
-            <p className="text-gray-400 mt-2">Manage shipping costs and COD fees for each city</p>
+            <h1 className="text-3xl font-bold text-white">Governorate Pricing Management</h1>
+            <p className="text-gray-400 mt-2">Manage shipping costs and COD fees by governorate</p>
           </div>
-          
           <button
-            onClick={() => setShowAddForm(true)}
-            className="bg-white text-black px-6 py-3 font-medium hover:bg-gray-200 transition-colors"
+            onClick={() => router.push('/admin')}
+            className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
           >
-            Add New City
+            Back to Dashboard
           </button>
         </div>
 
-        {/* Add/Edit Form */}
-        {showAddForm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-black border border-white p-6 rounded-lg max-w-md w-full mx-4">
-              <h2 className="text-2xl font-bold mb-4">
-                {editingCity ? 'Edit City' : 'Add New City'}
-              </h2>
-              
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">City Name *</label>
-                  <input
-                    type="text"
-                    value={formData.cityName}
-                    onChange={(e) => setFormData({ ...formData, cityName: e.target.value })}
-                    className="w-full p-3 bg-transparent border border-white text-white focus:outline-none focus:border-gray-400"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium mb-2">Governorate *</label>
-                  <input
-                    type="text"
-                    value={formData.governorate}
-                    onChange={(e) => setFormData({ ...formData, governorate: e.target.value })}
-                    className="w-full p-3 bg-transparent border border-white text-white focus:outline-none focus:border-gray-400"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium mb-2">Shipping Cost (LE) *</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={formData.shippingCost}
-                    onChange={(e) => setFormData({ ...formData, shippingCost: Number(e.target.value) })}
-                    className="w-full p-3 bg-transparent border border-white text-white focus:outline-none focus:border-gray-400"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium mb-2">COD Fee (LE) *</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={formData.codFee}
-                    onChange={(e) => setFormData({ ...formData, codFee: Number(e.target.value) })}
-                    className="w-full p-3 bg-transparent border border-white text-white focus:outline-none focus:border-gray-400"
-                    required
-                  />
-                </div>
-                
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="isActive"
-                    checked={formData.isActive}
-                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                    className="mr-2"
-                  />
-                  <label htmlFor="isActive" className="text-sm">Active for delivery</label>
-                </div>
-                
-                <div className="flex gap-4 pt-4">
-                  <button
-                    type="submit"
-                    className="flex-1 bg-white text-black py-3 font-medium hover:bg-gray-200 transition-colors"
-                  >
-                    {editingCity ? 'Update City' : 'Create City'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={resetForm}
-                    className="flex-1 border border-white text-white py-3 font-medium hover:bg-white hover:text-black transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+        {/* Export Buttons */}
+        <div className="mb-6 flex gap-4">
+          <button
+            onClick={exportAsCSV}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
+          >
+            Export as CSV
+          </button>
+          <button
+            onClick={exportAsExcel}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+          >
+            Export as Excel
+          </button>
+          <button
+            onClick={exportAsPDF}
+            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
+          >
+            Export as TXT
+          </button>
+        </div>
 
-        {/* Cities List */}
-        <div className="bg-black border border-white/10 rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-white text-black">
-                <tr>
-                  <th className="px-6 py-4 text-left font-medium">City</th>
-                  <th className="px-6 py-4 text-left font-medium">Governorate</th>
-                  <th className="px-6 py-4 text-left font-medium">Shipping Cost</th>
-                  <th className="px-6 py-4 text-left font-medium">COD Fee</th>
-                  <th className="px-6 py-4 text-left font-medium">Status</th>
-                  <th className="px-6 py-4 text-left font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cities.map((city) => (
-                  <tr key={city._id} className="border-b border-white/10">
-                    <td className="px-6 py-4 font-medium">{city.cityName}</td>
-                    <td className="px-6 py-4 text-gray-300">{city.governorate}</td>
-                    <td className="px-6 py-4 text-gray-300">{city.shippingCost} LE</td>
-                    <td className="px-6 py-4 text-gray-300">{city.codFee} LE</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        city.isActive 
-                          ? 'bg-green-600 text-white' 
-                          : 'bg-gray-600 text-gray-300'
-                      }`}>
-                        {city.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
+        {/* Governorates Table */}
+        <div className="bg-gray-900 rounded-lg overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-gray-800">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  Governorate
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  Shipping Cost (L.E)
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  COD Fee (L.E)
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-800">
+              {governorates.map((gov) => (
+                <tr key={gov.name} className="hover:bg-gray-800/50 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-white">{gov.name}</div>
+                    <div className="text-xs text-gray-400">
+                      {gov.cities.length > 0 ? `${gov.cities.length} cities` : 'No cities'}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {editingGovernorate === gov.name ? (
+                      <input
+                        type="number"
+                        value={tempValues[gov.name]?.shippingCost || gov.shippingCost}
+                        onChange={(e) => setTempValues({
+                          ...tempValues,
+                          [gov.name]: {
+                            ...tempValues[gov.name],
+                            shippingCost: Number(e.target.value)
+                          }
+                        })}
+                        className="w-24 px-2 py-1 bg-gray-700 text-white rounded border border-gray-600 focus:border-blue-500 focus:outline-none"
+                      />
+                    ) : (
+                      <span className="text-sm text-white">{gov.shippingCost}</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {editingGovernorate === gov.name ? (
+                      <input
+                        type="number"
+                        value={tempValues[gov.name]?.codFee || gov.codFee}
+                        onChange={(e) => setTempValues({
+                          ...tempValues,
+                          [gov.name]: {
+                            ...tempValues[gov.name],
+                            codFee: Number(e.target.value)
+                          }
+                        })}
+                        className="w-24 px-2 py-1 bg-gray-700 text-white rounded border border-gray-600 focus:border-blue-500 focus:outline-none"
+                      />
+                    ) : (
+                      <span className="text-sm text-white">{gov.codFee}</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    {editingGovernorate === gov.name ? (
                       <div className="flex gap-2">
                         <button
-                          onClick={() => handleEdit(city)}
-                          className="bg-blue-600 text-white px-3 py-1 text-xs hover:bg-blue-700 transition-colors"
+                          onClick={() => handleSaveGovernorate(gov.name)}
+                          className="text-green-400 hover:text-green-300"
                         >
-                          Edit
+                          Save
                         </button>
                         <button
-                          onClick={() => handleDelete(city._id)}
-                          className="bg-red-600 text-white px-3 py-1 text-xs hover:bg-red-700 transition-colors"
+                          onClick={() => {
+                            setEditingGovernorate(null);
+                            setTempValues({});
+                          }}
+                          className="text-gray-400 hover:text-gray-300"
                         >
-                          Delete
+                          Cancel
                         </button>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            
-            {cities.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-gray-400 mb-4">No cities found</p>
-                <button
-                  onClick={() => setShowAddForm(true)}
-                  className="bg-white text-black px-6 py-2 font-medium hover:bg-gray-200 transition-colors"
-                >
-                  Add Your First City
-                </button>
-              </div>
-            )}
+                    ) : (
+                      <button
+                        onClick={() => handleEditGovernorate(gov.name)}
+                        className="text-blue-400 hover:text-blue-300"
+                      >
+                        Edit
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Summary Stats */}
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-gray-900 rounded-lg p-6">
+            <h3 className="text-sm font-medium text-gray-400">Total Governorates</h3>
+            <p className="text-2xl font-bold text-white mt-2">{governorates.length}</p>
+          </div>
+          <div className="bg-gray-900 rounded-lg p-6">
+            <h3 className="text-sm font-medium text-gray-400">Average Shipping Cost</h3>
+            <p className="text-2xl font-bold text-white mt-2">
+              {Math.round(governorates.reduce((sum, g) => sum + g.shippingCost, 0) / governorates.length || 0)} L.E
+            </p>
+          </div>
+          <div className="bg-gray-900 rounded-lg p-6">
+            <h3 className="text-sm font-medium text-gray-400">Average COD Fee</h3>
+            <p className="text-2xl font-bold text-white mt-2">
+              {Math.round(governorates.reduce((sum, g) => sum + g.codFee, 0) / governorates.length || 0)} L.E
+            </p>
           </div>
         </div>
       </div>

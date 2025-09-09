@@ -9,10 +9,8 @@ const AddIntro = () => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    url: '',
     isVideo: false,
-    isActive: true,
-    order: 0
+    isActive: true
   });
   const [images, setImages] = useState({
     mainImage: '',
@@ -54,8 +52,7 @@ const AddIntro = () => {
         },
         body: JSON.stringify({
           ...formData,
-          ...images,
-          order: parseInt(formData.order.toString())
+          ...images
         }),
       });
 
@@ -107,48 +104,19 @@ const AddIntro = () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-white mb-2">
-                  Order
-                </label>
-                <input
-                  type="number"
-                  name="order"
-                  value={formData.order}
-                  onChange={handleInputChange}
-                  className="w-full bg-transparent border border-white/20 text-white px-3 py-2 rounded-lg focus:outline-none focus:border-white/40"
-                  placeholder="Display order"
-                />
-              </div>
             </div>
 
             <div className="mt-4">
               <label className="block text-sm font-medium text-white mb-2">
-                Description *
+                Description (Optional)
               </label>
               <textarea
                 name="description"
                 value={formData.description}
                 onChange={handleInputChange}
-                required
                 rows={3}
                 className="w-full bg-transparent border border-white/20 text-white px-3 py-2 rounded-lg focus:outline-none focus:border-white/40"
-                placeholder="Athlete description or bio"
-              />
-            </div>
-
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-white mb-2">
-                URL *
-              </label>
-              <input
-                type="url"
-                name="url"
-                value={formData.url}
-                onChange={handleInputChange}
-                required
-                className="w-full bg-transparent border border-white/20 text-white px-3 py-2 rounded-lg focus:outline-none focus:border-white/40"
-                placeholder="https://example.com"
+                placeholder="Athlete description or bio (optional)"
               />
             </div>
 

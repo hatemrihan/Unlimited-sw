@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
         name: name.trim(),
         price: price || 0,
         originalPrice: originalPrice || 0,
-        discount: discount || 0,
+        discount: discount && discount > 0 ? discount : undefined,
         mainImage: mainImage.trim(),
         images: images || [],
         video: video || '',

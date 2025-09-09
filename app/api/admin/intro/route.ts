@@ -70,13 +70,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log('📦 Request body:', body);
     
-    const { title, mainImage, leftImage, rightImage, description, url, isVideo, order } = body;
+    const { title, mainImage, leftImage, rightImage, description, isVideo } = body;
     
-    // Validate required fields
-    if (!title || !mainImage || !leftImage || !rightImage || !description || !url) {
+    // Validate required fields (description is now optional)
+    if (!title || !mainImage || !leftImage || !rightImage) {
       console.log('❌ Missing required fields');
       return NextResponse.json(
-        { success: false, error: 'All fields are required' },
+        { success: false, error: 'Title and all images are required' },
         { status: 400 }
       );
     }
@@ -94,11 +94,11 @@ export async function POST(request: NextRequest) {
         mainImage: mainImage.trim(),
         leftImage: leftImage.trim(),
         rightImage: rightImage.trim(),
-        description: description.trim(),
-        url: url.trim(),
+        description: description ? description.trim() : '',
+        url: '#',  // Default URL since it's removed from form
         isVideo: isVideo || false,
         isActive: true,
-        order: order || 0
+        order: 0  // Default order
       });
       
       // Save to MongoDB

@@ -10,7 +10,7 @@ const dataFilePath = path.join(process.cwd(), 'data', 'products.json');
 // In-memory cache for faster responses
 let productsCache: any = null;
 let lastCacheTime = 0;
-const CACHE_DURATION = 30 * 1000; // 30 seconds cache
+const CACHE_DURATION = 300 * 1000; // 5 minutes cache for better performance
 
 // GET - Fetch all active products for frontend
 export async function GET(request: NextRequest) {
