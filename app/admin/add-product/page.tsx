@@ -19,6 +19,7 @@ interface Product {
     name: string;
     stock: number;
     price: number;
+    images?: string[];
   }>;
   stock: number;
   isActive: boolean;

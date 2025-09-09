@@ -48,7 +48,7 @@ const navItems = [
     isExternal: true
   },
   {
-    href: 'https://www.facebook.com/profile.php?id=61568240363167',
+    href: 'https://www.facebook.com/share/1AfmUmnj4f/?mibextid=wwXIfr',
     label: 'Facebook',
     isExternal: true
   },

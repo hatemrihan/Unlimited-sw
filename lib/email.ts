@@ -120,8 +120,8 @@ Thank you for your order! Your order #${orderData.orderId} has been confirmed.
 
 Order Details:
 - Order ID: ${orderData.orderId}
-- Total: ${orderData.total || orderData.totalAmount} L.E
-- Items: ${(orderData.items || orderData.orderItems || []).length} item(s)
+- Total: ${orderData.totalAmount} L.E
+- Items: ${orderData.orderItems.length} item(s)
 
 We'll process your order and send you tracking information soon.
 

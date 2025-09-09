@@ -8,6 +8,9 @@ import { sendOrderConfirmationEmail, sendAdminNotificationEmail } from '../../..
 export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
+  // Store original stock values for rollback if needed
+  const stockRollback: Array<{productId: string, variantName?: string, originalStock: number, originalVariantStock?: number}> = [];
+  
   try {
     // Connect to database
     await dbConnect();
@@ -187,9 +190,6 @@ export async function POST(request: NextRequest) {
 
     // 🔥 CRITICAL: Validate and deduct stock before creating order
     console.log('🔍 Validating stock availability...');
-    
-    // Store original stock values for rollback if needed
-    const stockRollback: Array<{productId: string, variantName?: string, originalStock: number, originalVariantStock?: number}> = [];
     
     // Validate and deduct stock for each product in the order
     for (const orderProduct of orderData.products) {

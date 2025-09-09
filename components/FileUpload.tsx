@@ -7,13 +7,15 @@ interface FileUploadProps {
   currentUrl?: string;
   label: string;
   accept?: string;
+  className?: string;
 }
 
 const FileUpload: React.FC<FileUploadProps> = ({ 
   onUpload, 
   currentUrl, 
   label, 
-  accept = "image/*,video/*,.mp4,.mov,.avi,.webm" 
+  accept = "image/*,video/*,.mp4,.mov,.avi,.webm",
+  className = ""
 }) => {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -143,7 +145,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   };
 
   return (
-    <div>
+    <div className={className}>
       <label className="block text-sm font-medium text-black dark:text-white mb-2">
         {label}
       </label>
