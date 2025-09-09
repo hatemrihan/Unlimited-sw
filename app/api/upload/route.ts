@@ -42,10 +42,8 @@ export async function POST(request: NextRequest) {
 
       // Add video-specific options if it's a video
       if (isVideo) {
-        uploadOptions.video = {
-          quality: 'auto',
-          format: 'mp4'
-        };
+        uploadOptions.quality = 'auto';
+        uploadOptions.format = 'mp4';
       }
 
       console.log('⚙️ Upload options:', uploadOptions);
@@ -73,13 +71,23 @@ export async function POST(request: NextRequest) {
       success: true,
       url: (uploadResponse as any).secure_url,
       public_id: (uploadResponse as any).public_id,
+      resource_type: (uploadResponse as any).resource_type,
       message: 'File uploaded successfully'
     });
 
   } catch (error) {
-    console.error('Error uploading file:', error);
+    console.error('❌ Upload API error:', error);
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      type: typeof error
+    });
     return NextResponse.json(
-      { success: false, error: 'Failed to upload file' },
+      { 
+        success: false, 
+        error: 'Failed to upload file',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

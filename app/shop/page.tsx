@@ -29,7 +29,6 @@ interface Product {
   discount?: number;
   isFeatured?: boolean;
   isActive?: boolean;
-  isOutOfStock?: boolean;
   detailedDescription?: string;
   specifications?: string;
   shippingInfo?: string;
@@ -411,7 +410,7 @@ const ProductCard = ({ product, onAddToCart, isMobile = false }: {
           )}
         </div>
 
-        {(product.isOutOfStock || (product.stock !== undefined && product.stock === 0)) ? (
+        {(product.stock !== undefined && product.stock === 0) ? (
           <button
             disabled
             className="bg-gray-600 text-gray-300 px-4 py-2 text-xs font-medium uppercase tracking-wider cursor-not-allowed"
