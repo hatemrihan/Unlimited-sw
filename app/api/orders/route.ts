@@ -206,8 +206,19 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Check if product has variants
-      if (product.variants && product.variants.length > 0) {
+      // Check if an order specifies a variant
+      if (orderProduct.variant?.name) {
+        // If order specifies a variant, product must have variants
+        if (!product.variants || product.variants.length === 0) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Product ${orderProduct.name} does not have variants`
+            },
+            { status: 400 }
+          );
+        }
+        
         // Find the specific variant
         const variant = product.variants.find((v: any) => 
           v.name === orderProduct.variant?.name

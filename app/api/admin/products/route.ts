@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
         discount: discount && discount > 0 ? discount : undefined,
         mainImage: mainImage.trim(),
         images: images || [],
-        video: video || '',
+        videos: video ? [video] : [], // Fixed: changed 'video' to 'videos' (array)
         description: description.trim(),
         promoCode: promoCode?.trim() || '',
         variants: variants || [],
@@ -160,8 +160,15 @@ export async function POST(request: NextRequest) {
         // Admin badges
         showOutOfStockBadge: !!showOutOfStockBadge,
         showPreorderBadge: !!showPreorderBadge,
-        // Initialize empty city pricing array
-        cityPricing: []
+        // Initialize with default Cairo pricing instead of empty array
+        cityPricing: [{
+          cityName: 'Cairo',
+          governorate: 'Cairo',
+          price: price || 0,
+          shippingCost: 50,
+          codFee: 25,
+          isActive: true
+        }]
       });
 
       // Save to MongoDB
@@ -207,6 +214,7 @@ export async function POST(request: NextRequest) {
 
     } catch (mongoError) {
       console.error('❌ MongoDB error:', mongoError);
+      console.error('❌ Error details:', (mongoError as any).message);
 
       // CRITICAL: For e-commerce, we should NOT fallback to file storage
       // This ensures data integrity - if MongoDB fails, we fail gracefully
@@ -214,7 +222,7 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error: 'Database connection failed. Please try again.',
-          details: 'MongoDB is required for e-commerce data integrity'
+          details: process.env.NODE_ENV === 'development' ? (mongoError as any).message : 'MongoDB is required for e-commerce data integrity'
         },
         { status: 500 }
       );
