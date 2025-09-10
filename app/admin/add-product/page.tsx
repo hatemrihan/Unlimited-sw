@@ -239,7 +239,7 @@ const AddProductPage = () => {
                       <FileUpload
                         label={`Upload for ${variant.name}`}
                         currentUrl=""
-                        onUpload={(url) => {
+                        onUpload={(url, isVideo = false) => {
                           const newVariants = [...product.variants];
                           const currentImages = newVariants[index].images || [];
                           newVariants[index].images = [...currentImages, url];
@@ -292,7 +292,7 @@ const AddProductPage = () => {
                 <FileUpload
                   label="Main Product Image *"
                   currentUrl={product.mainImage}
-                  onUpload={(url) => setProduct({...product, mainImage: url})}
+                  onUpload={(url, isVideo = false) => setProduct({...product, mainImage: url})}
                   accept="image/*"
                 />
               </div>
@@ -343,8 +343,7 @@ const AddProductPage = () => {
                 <FileUpload
                   label="Add More Images/Videos (Optional)"
                   currentUrl=""
-                  onUpload={(url) => {
-                    const isVideo = url.includes('.mp4') || url.includes('.mov') || url.includes('.webm');
+                  onUpload={(url, isVideo = false) => {
                     console.log('🎥 File uploaded:', { url, isVideo });
                     
                     if (isVideo) {

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 
 interface FileUploadProps {
-  onUpload: (url: string) => void;
+  onUpload: (url: string, isVideo?: boolean) => void;
   currentUrl?: string;
   label: string;
   accept?: string;
@@ -100,7 +100,21 @@ const FileUpload: React.FC<FileUploadProps> = ({
       console.log('📡 Fallback upload status:', response.status);
       const data = await response.json().catch(() => ({} as any));
       if (response.ok && data.url) {
-        onUpload(data.url);
+        // Determine if it's a video based on resource_type or file type
+        const isVideo = data.resource_type === 'video' || 
+                       file.type.startsWith('video/') ||
+                       data.url.includes('.mp4') || 
+                       data.url.includes('.mov') || 
+                       data.url.includes('.webm');
+        
+        console.log('🎥 Upload complete:', { 
+          url: data.url, 
+          resource_type: data.resource_type, 
+          file_type: file.type, 
+          isVideo 
+        });
+        
+        onUpload(data.url, isVideo);
         alert('File uploaded successfully!');
       } else {
         throw new Error(data?.details || data?.error || `Upload failed with status ${response.status}`);
