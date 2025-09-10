@@ -43,7 +43,21 @@ interface City {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { state, clearCart } = useCart();
+  
+  // Safe cart access with error handling
+  const cartContext = useCart();
+  if (!cartContext) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-medium mb-4">Loading...</h2>
+          <p>Please wait while we load your cart.</p>
+        </div>
+      </div>
+    );
+  }
+  
+  const { state, clearCart } = cartContext;
 
   const [formData, setFormData] = useState<FormData>({
     firstName: '',
