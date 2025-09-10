@@ -49,6 +49,15 @@ const AddProductPage = () => {
 
     setLoading(true);
     
+    // DEBUG: Log product data before sending
+    console.log('🚀 Submitting product:', {
+      name: product.name,
+      videos: product.videos,
+      videosLength: product.videos ? product.videos.length : 0,
+      images: product.images,
+      imagesLength: product.images ? product.images.length : 0
+    });
+    
     try {
       const response = await fetch('/api/admin/products', {
         method: 'POST',
@@ -336,10 +345,16 @@ const AddProductPage = () => {
                   currentUrl=""
                   onUpload={(url) => {
                     const isVideo = url.includes('.mp4') || url.includes('.mov') || url.includes('.webm');
+                    console.log('🎥 File uploaded:', { url, isVideo });
+                    
                     if (isVideo) {
-                      setProduct({...product, videos: [...(product.videos || []), url]});
+                      const newVideos = [...(product.videos || []), url];
+                      console.log('🎬 Adding to videos array:', newVideos);
+                      setProduct({...product, videos: newVideos});
                     } else {
-                      setProduct({...product, images: [...(product.images || []), url]});
+                      const newImages = [...(product.images || []), url];
+                      console.log('📷 Adding to images array:', newImages);
+                      setProduct({...product, images: newImages});
                     }
                   }}
                   accept="image/*,video/*"

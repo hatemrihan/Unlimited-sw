@@ -120,6 +120,15 @@ export async function POST(request: NextRequest) {
       showOutOfStockBadge, showPreorderBadge
     } = body;
     
+    // DEBUG: Check videos specifically
+    console.log('🎥 DEBUG Videos:', {
+      videos: videos,
+      videosType: typeof videos,
+      videosLength: videos ? videos.length : 'N/A',
+      videosArray: Array.isArray(videos),
+      videosContent: videos
+    });
+    
     // Validate required fields
     if (!name || !mainImage || !description) {
       console.log('❌ Missing required product fields');
