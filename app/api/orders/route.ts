@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../lib/mongodb';
 import Order, { IOrder } from '../../../models/order';
 import Product from '../../../models/product';
+import Notification from '../../../models/notification';
 import { sendOrderConfirmationEmail, sendAdminNotificationEmail } from '../../../lib/email';
 
 // Ensure Node runtime for Nodemailer
@@ -279,6 +280,56 @@ export async function POST(request: NextRequest) {
 
     // Save order to database
     const savedOrder = await Order.create(newOrder);
+
+    // Create admin notification for new order
+    try {
+      console.log('🔔 Creating admin notification for new order...');
+      
+      // Get updated stock levels for notification
+      const stockLevels = [];
+      for (const orderProduct of orderData.products) {
+        const product = await Product.findById(orderProduct.productId);
+        if (product) {
+          if (product.variants && product.variants.length > 0) {
+            const variant = product.variants.find((v: any) => v.name === orderProduct.variant?.name);
+            if (variant) {
+              stockLevels.push({
+                productName: product.name,
+                variantName: variant.name,
+                remainingStock: variant.stock,
+                totalStock: product.stock
+              });
+            }
+          } else {
+            stockLevels.push({
+              productName: product.name,
+              remainingStock: product.stock
+            });
+          }
+        }
+      }
+
+      // Create notification
+      await Notification.create({
+        type: 'order',
+        title: `New Order #${savedOrder.orderId}`,
+        message: `User ${savedOrder.customer.name} made an order for ${savedOrder.products.length} item(s). Total: L.E ${savedOrder.totalAmount}`,
+        data: {
+          orderId: savedOrder.orderId,
+          customerName: savedOrder.customer.name,
+          customerEmail: savedOrder.customer.email,
+          totalAmount: savedOrder.totalAmount,
+          productCount: savedOrder.products.length,
+          stockLevels: stockLevels,
+          paymentMethod: savedOrder.paymentMethod
+        }
+      });
+
+      console.log('✅ Admin notification created successfully');
+    } catch (notificationError) {
+      console.error('❌ Error creating admin notification:', notificationError);
+      // Don't fail the order if notification creation fails
+    }
 
     // Send email notifications (don't block order creation if emails fail)
     try {

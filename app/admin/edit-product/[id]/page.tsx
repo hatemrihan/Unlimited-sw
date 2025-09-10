@@ -12,7 +12,7 @@ interface Product {
   discount?: number;
   mainImage: string;
   images: string[];
-  video?: string;
+  videos?: string[];
   description: string;
   promoCode?: string;
   variants: Array<{
@@ -50,6 +50,7 @@ const EditProductPage = () => {
     discount: 0,
     mainImage: '',
     images: [],
+    videos: [],
     description: '',
     promoCode: '',
     variants: [{ name: '', stock: 0, price: 0, images: [] }],
@@ -461,12 +462,56 @@ const EditProductPage = () => {
                   </div>
                 </div>
                 
-                {/* Product Video */}
+                {/* Product Videos */}
                 <div className="mb-4">
+                  <label className="block text-sm font-medium mb-2 text-white">
+                    Product Videos (Optional)
+                  </label>
+                  
+                  {/* Display current videos */}
+                  {product.videos && product.videos.length > 0 && (
+                    <div className="mb-4">
+                      <div className="text-sm text-gray-300 mb-2">
+                        Uploaded Videos ({product.videos.length}):
+                      </div>
+                      <div className="space-y-2">
+                        {product.videos.map((video, index) => (
+                          <div key={index} className="flex items-center justify-between bg-gray-800 p-2 rounded">
+                            <div className="flex items-center space-x-2">
+                              <video 
+                                src={video} 
+                                className="w-16 h-12 object-cover rounded"
+                                controls={false}
+                              />
+                              <span className="text-sm text-gray-300 truncate">
+                                Video {index + 1}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updatedVideos = product.videos?.filter((_, i) => i !== index) || [];
+                                setProduct({...product, videos: updatedVideos});
+                              }}
+                              className="text-red-400 hover:text-red-300 text-sm"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Upload new video */}
                   <FileUpload
-                    label="Product Video (Optional)"
-                    currentUrl={product.video}
-                    onUpload={(url) => setProduct({...product, video: url})}
+                    label="Add Video"
+                    currentUrl=""
+                    onUpload={(url) => {
+                      console.log('🎥 Video uploaded, adding URL:', url);
+                      const currentVideos = product.videos || [];
+                      setProduct({...product, videos: [...currentVideos, url]});
+                    }}
                     accept="video/*"
                   />
                 </div>

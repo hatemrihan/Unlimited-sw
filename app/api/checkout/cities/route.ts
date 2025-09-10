@@ -69,9 +69,11 @@ export async function GET(request: NextRequest) {
           const existing = cityPricingMap.get(key);
           
           if (existing) {
-            // Add product-specific pricing info
+            // Add product-specific pricing info including shipping and COD fees
             existing.productPricing[product._id.toString()] = {
               price: cityPricing.price,
+              shippingCost: cityPricing.shippingCost || 0,
+              codFee: cityPricing.codFee || 0,
               isActive: cityPricing.isActive
             };
             existing.source = 'mixed'; // Has both global and product-specific

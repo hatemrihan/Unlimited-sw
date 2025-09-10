@@ -10,6 +10,7 @@ import Products from './sections/products';
 import PromoCodes from './sections/promoCodes';
 import Intro from './sections/intro';
 import Reviews from './sections/reviews';
+import Notifications from './sections/notifications';
 import { useSession } from 'next-auth/react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -842,6 +843,16 @@ const AdminDashboard = () => {
                   onClick: () => setActiveSection('dashboard') 
                 },
                 { 
+                  label: 'Notifications', 
+                  href: '#notifications', 
+                  icon: (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4.828 7l2.586 2.586a2 2 0 002.828 0L12 7H4.828zM4.828 17l2.586-2.586a2 2 0 012.828 0L12 17H4.828z" />
+                    </svg>
+                  ), 
+                  onClick: () => setActiveSection('notifications') 
+                },
+                { 
                   label: 'OUR ATHLETES', 
                   href: '#intro', 
                   icon: (
@@ -927,6 +938,7 @@ const AdminDashboard = () => {
 
             {/* Content based on active section */}
             {activeSection === 'dashboard' && renderDashboardContent()}
+            {activeSection === 'notifications' && <Notifications />}
             {activeSection === 'intro' && <Intro />}
             {activeSection === 'reviews' && <Reviews />}
             {activeSection === 'products' && <Products />}

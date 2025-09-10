@@ -97,35 +97,44 @@ export default function CheckoutPage() {
   // Calculate shipping cost based on selected governorate
   const selectedGovernorate = cities.find(city => city.cityName === formData.city);
   
-  // Use the highest shipping cost among all products in the cart
-  // (This is a common e-commerce pattern - customer pays one shipping fee)
-  let maxShippingCost = 0;
+  // Calculate shipping cost: use product-specific rates if available, otherwise global default
+  let shippingCost = 0;
+  let codFee = 0;
+  
   if (selectedGovernorate) {
     // Check if any products have custom shipping rates
-    let hasCustomRates = false;
+    let hasProductSpecificRates = false;
+    let maxProductShippingCost = 0;
+    let maxProductCodFee = 0;
+    
     for (const item of state.items) {
       const productSpecificPricing = (selectedGovernorate as any).productPricing?.[item.id];
       if (productSpecificPricing && productSpecificPricing.isActive !== false) {
-        hasCustomRates = true;
-        break;
+        hasProductSpecificRates = true;
+        // Use product-specific shipping cost and COD fee
+        maxProductShippingCost = Math.max(maxProductShippingCost, productSpecificPricing.shippingCost || 0);
+        maxProductCodFee = Math.max(maxProductCodFee, productSpecificPricing.codFee || 0);
       }
     }
     
-    if (hasCustomRates) {
-      console.log('⚠️ Some products have custom shipping rates - using global default for now');
-      console.log('📝 Future enhancement: implement product-specific shipping cost logic');
+    if (hasProductSpecificRates) {
+      // Use the highest product-specific shipping cost and COD fee
+      shippingCost = maxProductShippingCost;
+      codFee = maxProductCodFee;
+      console.log(`✅ Using product-specific rates: shipping=${shippingCost}, cod=${codFee}`);
+    } else {
+      // Use global default shipping cost and COD fee
+      shippingCost = selectedGovernorate.shippingCost;
+      codFee = selectedGovernorate.codFee;
+      console.log(`✅ Using global default rates: shipping=${shippingCost}, cod=${codFee}`);
     }
-    
-    // For now, use global default shipping cost
-    // TODO: Implement proper product-specific shipping cost calculation
-    maxShippingCost = selectedGovernorate.shippingCost;
   }
   
-  const shippingCost = maxShippingCost;
-  const codFee = selectedGovernorate && formData.paymentMethod === 'cashOnDelivery' ? selectedGovernorate.codFee : 0;
+  // Apply COD fee only for cash on delivery payment method
+  const finalCodFee = formData.paymentMethod === 'cashOnDelivery' ? codFee : 0;
   const discountAmount = appliedPromo ? appliedPromo.discount : 0;
   const subtotalAfterDiscount = Math.max(0, state.total - discountAmount);
-  const totalWithShipping = subtotalAfterDiscount + shippingCost + codFee;
+  const totalWithShipping = subtotalAfterDiscount + shippingCost + finalCodFee;
 
   // Apply promo code
   const applyPromoCode = async () => {
@@ -232,8 +241,9 @@ export default function CheckoutPage() {
             name: item.name,
             price: item.price,
             quantity: item.quantity,
-            size: item.variant?.size,
-            color: item.variant?.color,
+            variant: item.variant ? {
+              name: item.variant.name
+            } : undefined,
             image: item.image
           })),
           paymentMethod: formData.paymentMethod,
@@ -330,8 +340,9 @@ export default function CheckoutPage() {
           name: item.name,
           price: item.price,
           quantity: item.quantity,
-          size: item.variant?.size,
-          color: item.variant?.color,
+          variant: item.variant ? {
+            name: item.variant.name
+          } : undefined,
           image: item.image
         })),
         paymentMethod: formData.paymentMethod,
@@ -834,13 +845,13 @@ export default function CheckoutPage() {
                 <div className="flex justify-between">
                   <span className="text-white">Shipping</span>
                   <span className="text-white">
-                    {selectedGovernorate ? `L.E ${selectedGovernorate.shippingCost}` : 'Select a governorate'}
+                    {selectedGovernorate ? `L.E ${shippingCost}` : 'Select a governorate'}
                   </span>
                 </div>
-                {formData.paymentMethod === 'cashOnDelivery' && selectedGovernorate && selectedGovernorate.codFee > 0 && (
+                {formData.paymentMethod === 'cashOnDelivery' && finalCodFee > 0 && (
                   <div className="flex justify-between">
                     <span className="text-white">COD Fee</span>
-                    <span className="text-white">L.E {selectedGovernorate.codFee}</span>
+                    <span className="text-white">L.E {finalCodFee}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-medium text-lg pt-2 border-t border-gray-600">

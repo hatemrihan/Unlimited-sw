@@ -95,14 +95,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     for (const gp of cityPricing) {
       const govName = gp.governorate;
       const price = Number(gp.price) || 0;
+      const shippingCost = Number(gp.shippingCost) || 0;
+      const codFee = Number(gp.codFee) || 0;
       const isActive = gp.isActive !== false;
 
-      // FIXED: DO NOT update global CityPricing collection!
-      // Product-specific shipping costs should ONLY be stored in Product.cityPricing
-      // The global CityPricing collection should remain unchanged
-      
-      console.log(`📦 Setting product-specific pricing for ${govName}: price=${price}, active=${isActive}`);
-      console.log(`⚠️ NOT updating global shipping costs - this is product-specific only`);
+      // Store product-specific pricing including shipping costs and COD fees
+      console.log(`📦 Setting product-specific pricing for ${govName}: price=${price}, shipping=${shippingCost}, cod=${codFee}, active=${isActive}`);
 
       // Fetch all cities for this governorate to create product-specific entries
       const govCities = await CityPricing.find({ governorate: govName });
@@ -111,6 +109,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           cityName: city.cityName,
           governorate: govName,
           price,
+          shippingCost,
+          codFee,
           isActive,
         });
       }

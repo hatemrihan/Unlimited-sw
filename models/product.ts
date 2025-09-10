@@ -9,7 +9,7 @@ export interface Product {
   discount?: number;
   mainImage: string;
   images: string[];
-  video?: string;  // Product video URL (optional)
+  videos?: string[];  // Product videos URLs (optional array)
   description: string;
   promoCode: string;
   variants: Array<{
@@ -88,12 +88,10 @@ const ProductSchema = new mongoose.Schema({
     type: String,
   }],
   
-  // Product video (optional)
-  video: {
+  // Product videos (optional array)
+  videos: [{
     type: String,
-    required: false,
-    default: '',
-  },
+  }],
   
   // Product description
   description: {
@@ -177,6 +175,8 @@ const ProductSchema = new mongoose.Schema({
     cityName: { type: String, required: true },
     governorate: { type: String, required: true },
     price: { type: Number, required: true, min: 0 },
+    shippingCost: { type: Number, default: 0, min: 0 },
+    codFee: { type: Number, default: 0, min: 0 },
     isActive: { type: Boolean, default: true },
   }],
 }, {

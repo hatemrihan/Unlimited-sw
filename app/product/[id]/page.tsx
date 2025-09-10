@@ -308,19 +308,25 @@ const ProductDetail = () => {
                 </div>
               )}
               
-              {/* Product Video if available */}
-              {product.video && (
+              {/* Product Videos if available */}
+              {product.videos && product.videos.length > 0 && (
                 <div className="mt-4">
-                  <h3 className="text-sm font-medium text-gray-300 mb-2">Product Video</h3>
-                  <div className="aspect-video overflow-hidden bg-gray-800 rounded">
-                    <video
-                      src={product.video}
-                      controls
-                      className="w-full h-full object-cover"
-                      poster={product.mainImage}
-                    >
-                      Your browser does not support the video tag.
-                    </video>
+                  <h3 className="text-sm font-medium text-gray-300 mb-2">
+                    Product Videos ({product.videos.length})
+                  </h3>
+                  <div className="space-y-4">
+                    {product.videos.map((video, index) => (
+                      <div key={index} className="aspect-video overflow-hidden bg-gray-800 rounded">
+                        <video
+                          src={video}
+                          controls
+                          className="w-full h-full object-cover"
+                          poster={product.mainImage}
+                        >
+                          Your browser does not support the video tag.
+                        </video>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}

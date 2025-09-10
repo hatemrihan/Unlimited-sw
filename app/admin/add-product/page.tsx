@@ -12,7 +12,7 @@ interface Product {
   discount?: number;
   mainImage: string;
   images: string[];
-  video?: string;
+  videos?: string[];
   description: string;
   promoCode?: string;
   variants: Array<{
@@ -48,7 +48,7 @@ const AddProductPage = () => {
     discount: 0,
     mainImage: '',
     images: [],
-    video: '',
+    videos: [],
     description: '',
     promoCode: '',
     variants: [{ name: '', stock: 0, price: 0, images: [] }],
@@ -71,7 +71,7 @@ const AddProductPage = () => {
     try {
       console.log('🛍️ Adding product:', {
         ...newProduct,
-        video: newProduct.video ? `✅ Video URL: ${newProduct.video}` : '❌ No video'
+        videos: newProduct.videos ? `✅ Videos: ${newProduct.videos.length} uploaded` : '❌ No videos'
       });
       
       // Validate required fields
@@ -420,14 +420,55 @@ const AddProductPage = () => {
                   </div>
                 </div>
                 
-                {/* Product Video */}
+                {/* Product Videos */}
                 <div className="mb-4">
+                  <label className="block text-sm font-medium mb-2 text-white">
+                    Product Videos (Optional)
+                  </label>
+                  
+                  {/* Display current videos */}
+                  {newProduct.videos && newProduct.videos.length > 0 && (
+                    <div className="mb-4">
+                      <div className="text-sm text-gray-300 mb-2">
+                        Uploaded Videos ({newProduct.videos.length}):
+                      </div>
+                      <div className="space-y-2">
+                        {newProduct.videos.map((video, index) => (
+                          <div key={index} className="flex items-center justify-between bg-gray-800 p-2 rounded">
+                            <div className="flex items-center space-x-2">
+                              <video 
+                                src={video} 
+                                className="w-16 h-12 object-cover rounded"
+                                controls={false}
+                              />
+                              <span className="text-sm text-gray-300 truncate">
+                                Video {index + 1}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updatedVideos = newProduct.videos?.filter((_, i) => i !== index) || [];
+                                setNewProduct({...newProduct, videos: updatedVideos});
+                              }}
+                              className="text-red-400 hover:text-red-300 text-sm"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Upload new video */}
                   <FileUpload
-                    label="Product Video (Optional)"
-                    currentUrl={newProduct.video}
+                    label="Add Video"
+                    currentUrl=""
                     onUpload={(url) => {
-                      console.log('🎥 Video uploaded, setting URL:', url);
-                      setNewProduct({...newProduct, video: url});
+                      console.log('🎥 Video uploaded, adding URL:', url);
+                      const currentVideos = newProduct.videos || [];
+                      setNewProduct({...newProduct, videos: [...currentVideos, url]});
                     }}
                     accept="video/*"
                   />
