@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
     console.log('📦 Product request body:', body);
     
     const { 
-      name, price, originalPrice, discount, mainImage, images, video, description, promoCode, 
+      name, price, originalPrice, discount, mainImage, images, videos, description, promoCode, 
       variants, stock, isActive, isFeatured, order,
       detailedDescription, specifications, shippingInfo, faqs,
       showOutOfStockBadge, showPreorderBadge
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
         discount: discount && discount > 0 ? discount : undefined,
         mainImage: mainImage.trim(),
         images: images || [],
-        videos: video ? [video] : [], // Fixed: changed 'video' to 'videos' (array)
+        videos: videos || [], // Use videos array from frontend
         description: description.trim(),
         promoCode: promoCode?.trim() || '',
         variants: variants || [],
