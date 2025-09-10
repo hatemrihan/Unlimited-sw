@@ -392,7 +392,8 @@ export default function CheckoutPage() {
         }));
 
         clearCart();
-        router.push(`/thankyou?orderId=${data.order.orderId}`);
+        // Use window.location for reliable redirect
+        window.location.href = `/thankyou?orderId=${data.order.orderId}`;
       } else {
         setOrderError(data.error || 'Something went wrong with your order');
       }

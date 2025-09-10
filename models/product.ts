@@ -180,7 +180,7 @@ const ProductSchema = new mongoose.Schema({
     isActive: { type: Boolean, default: true },
   }],
 }, {
-  // Add timestamps for tracking
+  // Add timestamps for tracking 
   timestamps: true,
 });
 

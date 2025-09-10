@@ -1,20 +1,20 @@
 'use client'
 
-import React, { useEffect, useState, Suspense } from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Nav from '../sections/Nav'
 
 function ThankYouContent() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const [orderId, setOrderId] = useState<string | null>(null)
   const [orderDetails, setOrderDetails] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   
   useEffect(() => {
-    // Get order ID from URL parameters
-    const orderIdParam = searchParams.get('orderId')
+    // Get order ID from URL parameters using window.location
+    const urlParams = new URLSearchParams(window.location.search)
+    const orderIdParam = urlParams.get('orderId')
 
     if (orderIdParam) {
       console.log('🎉 Order completed successfully:', orderIdParam)
@@ -33,7 +33,7 @@ function ThankYouContent() {
     } else {
       console.log('Thank-you page accessed without order ID')
       // Redirect to home if no order ID
-      router.push('/')
+      window.location.href = '/'
       return
     }
 
@@ -45,7 +45,7 @@ function ThankYouContent() {
         sessionStorage.removeItem('lastOrder')
       }
     }
-  }, [searchParams, router])
+  }, [])
   
 
   
@@ -137,16 +137,5 @@ function ThankYouContent() {
 }
 
 export default function ThankYouPage() {
-  return (
-    <Suspense fallback={
-      <>
-        <Nav />
-        <div className="min-h-screen bg-black pt-20 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#b3b3b3]"></div>
-        </div>
-      </>
-    }>
-      <ThankYouContent />
-    </Suspense>
-  )
+  return <ThankYouContent />
 } 

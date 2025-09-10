@@ -114,99 +114,109 @@ const CartPage = () => {
                 {cartState.items.map((item) => {
                   console.log('Cart item:', item.name, 'Stock:', item.stock, 'Quantity:', item.quantity);
                   return (
-                  <div key={`${item.id}-${JSON.stringify(item.variant)}`} className="flex items-start sm:items-center gap-3 sm:gap-4 lg:gap-6 py-4 sm:py-6 border-b border-gray-700 last:border-b-0">
-                    
-                    {/* Product Image */}
-                    <div
-                      className="w-20 h-20 lg:w-24 lg:h-24 bg-gray-800 overflow-hidden flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity duration-300"
-                      onClick={() => router.push(`/product/${item.id}`)}
-                    >
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    
-                    {/* Product Info */}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-white font-medium text-sm lg:text-base mb-1">
-                        {item.nameArabic || item.name}
-                      </h3>
+                  <div key={`${item.id}-${JSON.stringify(item.variant)}`} className="bg-gray-900/50 rounded-lg p-4 mb-4">
+                    {/* Mobile Layout - Stack vertically */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                       
-                      {item.variant && (
-                        <p className="text-gray-400 text-xs lg:text-sm">
-                          {item.variant.name}
-                        </p>
-                      )}
-                    </div>
-                    
-                    {/* Quantity Controls */}
-                    <div className="flex flex-col items-center space-y-1 sm:space-y-2">
-                      <div className="flex items-center space-x-2 sm:space-x-3 lg:space-x-4">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleUpdateQuantity(item.id, item.variant, item.quantity - 1);
-                          }}
-                          disabled={item.quantity <= 1}
-                          className={`w-8 h-8 sm:w-10 sm:h-10 border-2 flex items-center justify-center font-bold text-lg sm:text-xl transition-all duration-300 rounded-md ${
-                            item.quantity <= 1
-                              ? 'border-gray-600 text-gray-600 cursor-not-allowed bg-gray-800'
-                              : 'border-white text-white hover:bg-white hover:text-black bg-transparent active:scale-95'
-                          }`}
-                          style={{ zIndex: 10 }}
+                      {/* Top Row - Image and Product Info */}
+                      <div className="flex items-start gap-4 flex-1">
+                        {/* Product Image */}
+                        <div
+                          className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-800 overflow-hidden flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity duration-300 rounded-lg"
+                          onClick={() => router.push(`/product/${item.id}`)}
                         >
-                          -
-                        </button>
-                        <span className="text-white font-bold w-8 sm:w-10 text-center text-lg sm:text-xl bg-gray-800 px-2 py-1 rounded">
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        
+                        {/* Product Info */}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-white font-medium text-sm sm:text-base mb-2 leading-tight">
+                            {item.nameArabic || item.name}
+                          </h3>
+                          
+                          {item.variant && (
+                            <p className="text-gray-400 text-xs sm:text-sm mb-2">
+                              {item.variant.name}
+                            </p>
+                          )}
+                          
+                          {/* Price - Show on mobile */}
+                          <p className="text-white font-bold text-sm sm:hidden">
+                            {(item.price * item.quantity).toLocaleString()} L.E
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Bottom Row - Quantity and Price */}
+                      <div className="flex items-center justify-between sm:justify-end sm:gap-6">
+                        {/* Quantity Controls */}
+                        <div className="flex items-center space-x-3">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleUpdateQuantity(item.id, item.variant, item.quantity - 1);
+                            }}
+                            disabled={item.quantity <= 1}
+                            className={`w-8 h-8 border flex items-center justify-center font-bold text-sm transition-all duration-300 rounded ${
+                              item.quantity <= 1
+                                ? 'border-gray-600 text-gray-600 cursor-not-allowed bg-gray-800'
+                                : 'border-white text-white hover:bg-white hover:text-black bg-transparent'
+                            }`}
+                          >
+                            -
+                          </button>
+                          <span className="text-white font-bold w-8 text-center text-sm bg-gray-800 px-2 py-1 rounded">
                           {item.quantity}
                         </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleUpdateQuantity(item.id, item.variant, item.quantity + 1);
+                            }}
+                            disabled={item.stock !== undefined && item.quantity >= item.stock}
+                            className={`w-8 h-8 border flex items-center justify-center font-bold text-sm transition-all duration-300 rounded ${
+                              item.stock !== undefined && item.quantity >= item.stock
+                                ? 'border-gray-600 text-gray-600 cursor-not-allowed bg-gray-800'
+                                : 'border-white text-white hover:bg-white hover:text-black bg-transparent'
+                            }`}
+                          >
+                            +
+                          </button>
+                        </div>
+                        
+                        {/* Price - Desktop only */}
+                        <div className="hidden sm:block text-right">
+                          <div className="text-white font-bold text-base">
+                            {(item.price * item.quantity).toLocaleString()} L.E
+                          </div>
+                        </div>
+                        
+                        {/* Remove Button */}
                         <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleUpdateQuantity(item.id, item.variant, item.quantity + 1);
+                          onClick={() => {
+                            // Find the exact item with variant to remove
+                            const itemToRemove = cartState.items.find(cartItem => 
+                              cartItem.id === item.id && 
+                              JSON.stringify(cartItem.variant) === JSON.stringify(item.variant)
+                            );
+                            if (itemToRemove) {
+                              removeItem(itemToRemove.id, itemToRemove.variant);
+                            }
                           }}
-                          disabled={item.stock !== undefined && item.quantity >= item.stock}
-                          className={`w-8 h-8 sm:w-10 sm:h-10 border-2 flex items-center justify-center font-bold text-lg sm:text-xl transition-all duration-300 rounded-md ${
-                            item.stock !== undefined && item.quantity >= item.stock
-                              ? 'border-gray-600 text-gray-600 cursor-not-allowed bg-gray-800'
-                              : 'border-white text-white hover:bg-white hover:text-black bg-transparent active:scale-95'
-                          }`}
-                          style={{ zIndex: 10 }}
+                          className="text-red-400 hover:text-red-300 text-xs font-medium transition-colors duration-300"
                         >
-                          +
+                          Remove
                         </button>
                       </div>
                     </div>
-                    
-                    {/* Price */}
-                    <div className="text-right">
-                      <div className="text-white font-bold text-sm lg:text-base">
-                        {(item.price * item.quantity).toLocaleString()} L.E
-                      </div>
-                    </div>
-                    
-                    {/* Remove Button */}
-                    <button
-                      onClick={() => {
-                        // Find the exact item with variant to remove
-                        const itemToRemove = cartState.items.find(cartItem => 
-                          cartItem.id === item.id && 
-                          JSON.stringify(cartItem.variant) === JSON.stringify(item.variant)
-                        );
-                        if (itemToRemove) {
-                          removeItem(itemToRemove.id, itemToRemove.variant);
-                        }
-                      }}
-                      className="text-gray-400 hover:text-white transition-colors duration-300 ml-2"
-                    >
-                      Remove
-                    </button>
                   </div>
                   );
                 })}
