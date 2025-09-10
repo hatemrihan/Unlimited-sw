@@ -6,11 +6,12 @@ const Products = () => {
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
 
-  // Function to fetch all products
-  const fetchProducts = async () => {
+  // Function to fetch all products with optional force refresh
+  const fetchProducts = async (forceRefresh = false) => {
     try {
-      console.log('🛍️ Admin fetching products...');
-      const response = await fetch('/api/admin/products');
+      console.log('🛍️ Admin fetching products...', forceRefresh ? '(FORCE REFRESH)' : '');
+      const url = forceRefresh ? '/api/admin/products?refresh=true' : '/api/admin/products';
+      const response = await fetch(url);
       console.log('📡 Admin products API response status:', response.status);
 
       if (response.ok) {
@@ -69,8 +70,19 @@ const Products = () => {
 
 
 
+  // Load products on component mount and check for refresh parameter
   useEffect(() => {
-    fetchProducts();
+    // Check if we're coming from a delete operation (force refresh)
+    const urlParams = new URLSearchParams(window.location.search);
+    const forceRefresh = urlParams.get('refresh') === 'true';
+    
+    fetchProducts(forceRefresh);
+    
+    // Clean up URL parameters after refresh
+    if (forceRefresh) {
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
   }, []);
 
   return (
@@ -83,8 +95,18 @@ const Products = () => {
         <div className="h-1 w-24 sm:w-32 md:w-40 bg-white"></div>
       </div>
 
-      {/* Action Button */}
-      <div className="flex justify-end mb-6">
+      {/* Action Buttons */}
+      <div className="flex justify-between items-center mb-6">
+        <button
+          onClick={() => fetchProducts(true)}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg border border-blue-500/20 hover:border-blue-400/40 transition-all duration-300 font-medium flex items-center gap-2"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Refresh
+        </button>
+        
         <button
           onClick={() => router.push('/admin/add-product')}
           className="bg-black text-white px-6 py-3 rounded-lg border border-white/20 hover:bg-white hover:text-black transition-all duration-300 font-medium flex items-center gap-2"
@@ -183,15 +205,16 @@ const Products = () => {
                         {product.price.toLocaleString()} L.E
                       </span>
                       <div className="text-xs space-y-1">
+                        {/* Stock Status Badge */}
                         <div className={`px-2 py-1 rounded-full text-xs font-medium ${
                           product.stock > 0 
                             ? 'bg-green-900 text-green-200' 
                             : 'bg-red-900 text-red-200'
                         }`}>
-                          Total: {product.stock}
+                          {product.stock > 0 ? 'In Stock' : 'Out of Stock'}
                         </div>
                         
-                        {/* Variant Stock Details */}
+                        {/* Variant Stock Details - Only show if variants exist */}
                         {product.variants && product.variants.length > 0 && (
                           <div className="space-y-1">
                             {product.variants.map((variant: any, idx: number) => (

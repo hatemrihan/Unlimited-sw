@@ -97,12 +97,12 @@ export default function CheckoutPage() {
   // Calculate shipping cost based on selected governorate
   const selectedGovernorate = cities.find(city => city.cityName === formData.city);
   
-  // Calculate shipping cost: use product-specific rates if available, otherwise global default
+  // Calculate shipping cost: ONLY product-specific rates (NO GLOBAL DEFAULTS)
   let shippingCost = 0;
   let codFee = 0;
   
   if (selectedGovernorate) {
-    // Check if any products have custom shipping rates
+    // Check if products have specific shipping rates
     let hasProductSpecificRates = false;
     let maxProductShippingCost = 0;
     let maxProductCodFee = 0;
@@ -123,10 +123,10 @@ export default function CheckoutPage() {
       codFee = maxProductCodFee;
       console.log(`✅ Using product-specific rates: shipping=${shippingCost}, cod=${codFee}`);
     } else {
-      // Use global default shipping cost and COD fee
-      shippingCost = selectedGovernorate.shippingCost;
-      codFee = selectedGovernorate.codFee;
-      console.log(`✅ Using global default rates: shipping=${shippingCost}, cod=${codFee}`);
+      // NO GLOBAL DEFAULTS - Show error if no product-specific rates
+      console.error('❌ No product-specific shipping rates found');
+      setOrderError('Shipping costs not configured for selected products. Please contact support.');
+      return;
     }
   }
   

@@ -81,8 +81,9 @@ const DeleteProductPage = () => {
         // Show success message
         alert('Product deleted successfully!');
         
-        // Redirect back to products page
-        router.back();
+        // 🚀 CRITICAL: Force refresh products list to show real-time changes
+        // Clear any cached data and redirect to products with refresh
+        router.push('/admin?refresh=true&section=products');
       } else {
         console.error('❌ Failed to delete product');
         alert('Failed to delete product. Please try again.');

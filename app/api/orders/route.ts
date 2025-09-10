@@ -190,9 +190,9 @@ export async function POST(request: NextRequest) {
     }
 
     // 🔥 CRITICAL: Validate and deduct stock before creating order
-    console.log('🔍 Validating stock availability...');
+    console.log('🔍 Validating and deducting stock atomically...');
     
-    // Validate and deduct stock for each product in the order
+    // Validate and deduct stock for each product in the order using atomic operations
     for (const orderProduct of orderData.products) {
       const product = await Product.findById(orderProduct.productId);
       
@@ -242,13 +242,36 @@ export async function POST(request: NextRequest) {
           originalVariantStock: variant.stock
         });
 
-        // Deduct variant stock
-        variant.stock -= orderProduct.quantity;
-        
-        // Also deduct from total product stock
-        product.stock -= orderProduct.quantity;
-        
-        console.log(`📦 Deducted ${orderProduct.quantity} from variant ${variant.name} of ${product.name}. Variant stock: ${variant.stock}, Total stock: ${product.stock}`);
+        // Use atomic update to prevent race conditions
+        const updateResult = await Product.findOneAndUpdate(
+          {
+            _id: product._id,
+            'variants.name': variant.name,
+            'variants.stock': { $gte: orderProduct.quantity },
+            stock: { $gte: orderProduct.quantity }
+          },
+          {
+            $inc: {
+              'variants.$.stock': -orderProduct.quantity,
+              stock: -orderProduct.quantity
+            }
+          },
+          { new: true }
+        );
+
+        if (!updateResult) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Insufficient stock for ${orderProduct.name} (${variant.name}). Stock may have been updated by another order.`
+            },
+            { status: 400 }
+          );
+        }
+
+        // Get updated variant stock for logging
+        const updatedVariant = updateResult.variants.find((v: any) => v.name === variant.name);
+        console.log(`📦 Atomically deducted ${orderProduct.quantity} from variant ${variant.name} of ${product.name}. Variant stock: ${updatedVariant?.stock}, Total stock: ${updateResult.stock}`);
       } else {
         // Check main product stock
         if (product.stock < orderProduct.quantity) {
@@ -267,13 +290,30 @@ export async function POST(request: NextRequest) {
           originalStock: product.stock
         });
 
-        // Deduct main product stock
-        product.stock -= orderProduct.quantity;
-        console.log(`📦 Deducted ${orderProduct.quantity} from ${product.name}. New stock: ${product.stock}`);
-      }
+        // Use atomic update to prevent race conditions
+        const updateResult = await Product.findOneAndUpdate(
+          {
+            _id: product._id,
+            stock: { $gte: orderProduct.quantity }
+          },
+          {
+            $inc: { stock: -orderProduct.quantity }
+          },
+          { new: true }
+        );
 
-      // Save the updated product
-      await product.save();
+        if (!updateResult) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Insufficient stock for ${orderProduct.name}. Stock may have been updated by another order.`
+            },
+            { status: 400 }
+          );
+        }
+
+        console.log(`📦 Atomically deducted ${orderProduct.quantity} from ${product.name}. New stock: ${updateResult.stock}`);
+      }
     }
 
     console.log('✅ Stock validation and deduction completed successfully');

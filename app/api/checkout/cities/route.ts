@@ -1,39 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../../lib/mongodb';
-import CityPricing from '../../../../models/cityPricing';
 import Product from '../../../../models/product';
 
-// GET - Fetch cities with product-specific pricing if available
+// GET - Fetch cities with ONLY product-specific pricing (NO GLOBAL DEFAULTS)
 export async function GET(request: NextRequest) {
   try {
-    console.log('🏪 Fetching cities for checkout...');
+    console.log('🏪 Fetching cities for checkout - PRODUCT-SPECIFIC ONLY...');
     
     // Get productIds from query parameters
     const { searchParams } = new URL(request.url);
     const productIdsParam = searchParams.get('productIds');
     const productIds = productIdsParam ? productIdsParam.split(',') : [];
     
-    await dbConnect();
-    
-    // Get global default cities
-    const globalCities = await CityPricing.find({ isActive: true }).sort({ governorate: 1, cityName: 1 });
-    
-    // If no products specified, return global defaults
     if (productIds.length === 0) {
-      console.log('✅ Returning global default shipping rates');
       return NextResponse.json({
-        success: true,
-        cities: globalCities.map(city => ({
-          _id: city._id,
-          cityName: city.cityName,
-          governorate: city.governorate,
-          shippingCost: city.shippingCost,
-          codFee: city.codFee,
-          isActive: city.isActive,
-          source: 'global_default'
-        }))
-      });
+        success: false,
+        error: 'No products specified. Product-specific shipping required.'
+      }, { status: 400 });
     }
+    
+    await dbConnect();
     
     // Get products with their city-specific pricing
     const products = await Product.find({ 
@@ -41,88 +27,69 @@ export async function GET(request: NextRequest) {
       isActive: true 
     }).select('_id name cityPricing');
     
-    console.log(`📦 Found ${products.length} products with potential custom pricing`);
+    console.log(`📦 Found ${products.length} products with city-specific pricing`);
     
-    // Create a map of city -> product-specific pricing
-    const cityPricingMap = new Map<string, any>();
-    
-    // First, populate with global defaults
-    for (const city of globalCities) {
-      const key = `${city.cityName}_${city.governorate}`;
-      cityPricingMap.set(key, {
-        _id: city._id,
-        cityName: city.cityName,
-        governorate: city.governorate,
-        shippingCost: city.shippingCost,
-        codFee: city.codFee,
-        isActive: city.isActive,
-        source: 'global_default',
-        productPricing: {}
-      });
+    if (products.length === 0) {
+      return NextResponse.json({
+        success: false,
+        error: 'No active products found'
+      }, { status: 400 });
     }
     
-    // Then, overlay product-specific pricing
+    // Create a map of governorate -> product-specific pricing
+    const governorateMap = new Map<string, any>();
+    
+    // Process each product's city-specific pricing
     for (const product of products) {
       if (product.cityPricing && product.cityPricing.length > 0) {
         for (const cityPricing of product.cityPricing) {
-          const key = `${cityPricing.cityName}_${cityPricing.governorate}`;
-          const existing = cityPricingMap.get(key);
+          const gov = cityPricing.governorate;
           
-          if (existing) {
-            // Add product-specific pricing info including shipping and COD fees
-            existing.productPricing[product._id.toString()] = {
-              price: cityPricing.price,
-              shippingCost: cityPricing.shippingCost || 0,
-              codFee: cityPricing.codFee || 0,
-              isActive: cityPricing.isActive
-            };
-            existing.source = 'mixed'; // Has both global and product-specific
+          if (!governorateMap.has(gov)) {
+            // Create new governorate entry
+            governorateMap.set(gov, {
+              _id: `gov_${gov}`,
+              cityName: gov,
+              governorate: gov,
+              shippingCost: 0, // Will be calculated from products
+              codFee: 0, // Will be calculated from products
+              isActive: cityPricing.isActive,
+              source: 'product_specific',
+              productPricing: {}
+            });
           }
+          
+          const govEntry = governorateMap.get(gov);
+          
+          // Add product-specific pricing
+          govEntry.productPricing[product._id.toString()] = {
+            price: cityPricing.price,
+            shippingCost: cityPricing.shippingCost || 0,
+            codFee: cityPricing.codFee || 0,
+            isActive: cityPricing.isActive
+          };
+          
+          // Update governorate shipping cost to highest among products
+          govEntry.shippingCost = Math.max(govEntry.shippingCost, cityPricing.shippingCost || 0);
+          govEntry.codFee = Math.max(govEntry.codFee, cityPricing.codFee || 0);
         }
-      }
-    }
-    
-    const cities = Array.from(cityPricingMap.values());
-    
-    // 🏛️ GROUP BY GOVERNORATES ONLY (not individual cities)
-    const governorateMap = new Map<string, any>();
-    
-    for (const city of cities) {
-      const gov = city.governorate;
-      
-      if (!governorateMap.has(gov)) {
-        // Use the first city's pricing as the governorate pricing
-        governorateMap.set(gov, {
-          _id: city._id,
-          cityName: gov, // Use governorate name as city name
-          governorate: gov,
-          shippingCost: city.shippingCost,
-          codFee: city.codFee,
-          isActive: city.isActive,
-          source: city.source,
-          productPricing: city.productPricing
-        });
-      } else {
-        // If multiple cities in same governorate, use the lowest shipping cost
-        const existing = governorateMap.get(gov);
-        if (city.shippingCost < existing.shippingCost) {
-          existing.shippingCost = city.shippingCost;
-        }
-        if (city.codFee < existing.codFee) {
-          existing.codFee = city.codFee;
-        }
-        // Merge product pricing
-        Object.assign(existing.productPricing, city.productPricing);
       }
     }
     
     const governorates = Array.from(governorateMap.values());
     
-    console.log(`✅ Returning ${governorates.length} GOVERNORATES (not individual cities)`);
+    if (governorates.length === 0) {
+      return NextResponse.json({
+        success: false,
+        error: 'No product-specific shipping costs found. Please set shipping costs for your products.'
+      }, { status: 400 });
+    }
+    
+    console.log(`✅ Returning ${governorates.length} GOVERNORATES with product-specific pricing`);
     
     return NextResponse.json({
       success: true,
-      cities: governorates // Keep the same field name for compatibility
+      cities: governorates
     });
     
   } catch (error) {

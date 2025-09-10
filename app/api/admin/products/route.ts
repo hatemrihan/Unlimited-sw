@@ -6,7 +6,7 @@ import { invalidateProductsCache } from '../../products/route';
 // In-memory cache for admin products - SUPER FAST RESPONSES
 let adminProductsCache: any = null;
 let adminCacheTime = 0;
-const ADMIN_CACHE_DURATION = 120 * 1000; // 2 minutes cache for admin
+const ADMIN_CACHE_DURATION = 1 * 1000; // 1 second cache - ULTRA FAST like Amazon/Shopify
 
 // GET - Fetch products for admin dashboard with OPTIMIZED PERFORMANCE
 export async function GET(request: NextRequest) {
@@ -16,13 +16,14 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20'); // Only load 20 at a time
     const search = searchParams.get('search') || '';
+    const forceRefresh = searchParams.get('refresh') === 'true'; // Force refresh bypass
     const skip = (page - 1) * limit;
     
     const cacheKey = `${page}-${limit}-${search}`;
     
-    // ⚡ SUPER FAST: Check cache first for instant responses
+    // ⚡ SUPER FAST: Check cache first for instant responses (unless force refresh)
     const now = Date.now();
-    if (adminProductsCache && adminProductsCache[cacheKey] && (now - adminCacheTime) < ADMIN_CACHE_DURATION) {
+    if (!forceRefresh && adminProductsCache && adminProductsCache[cacheKey] && (now - adminCacheTime) < ADMIN_CACHE_DURATION) {
       console.log('⚡ Admin serving from cache - INSTANT response!');
       return NextResponse.json({
         ...adminProductsCache[cacheKey],

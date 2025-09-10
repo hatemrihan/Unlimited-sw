@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../../../lib/mongodb';
 import Product from '../../../../../models/product';
+import { invalidateAdminProductsCache } from '../route';
 
 // GET - Fetch a single product by ID
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -88,6 +89,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     console.log('✅ Product featured status updated:', updatedProduct._id);
 
+    // 🚀 CRITICAL: Invalidate cache immediately for real-time updates
+    invalidateAdminProductsCache();
+    console.log('🗑️ Admin products cache invalidated after featured toggle');
+
     return NextResponse.json({
       success: true,
       product: updatedProduct,
@@ -133,6 +138,10 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     }
 
     console.log('✅ Product deleted successfully:', deletedProduct._id);
+
+    // 🚀 CRITICAL: Invalidate cache immediately for real-time updates
+    invalidateAdminProductsCache();
+    console.log('🗑️ Admin products cache invalidated after deletion');
 
     return NextResponse.json({
       success: true,
@@ -219,6 +228,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     console.log('✅ Product updated successfully:', updatedProduct._id);
+
+    // 🚀 CRITICAL: Invalidate cache immediately for real-time updates
+    invalidateAdminProductsCache();
+    console.log('🗑️ Admin products cache invalidated after update');
 
     return NextResponse.json({
       success: true,

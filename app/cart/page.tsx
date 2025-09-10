@@ -79,9 +79,19 @@ const CartPage = () => {
               ← Continue Shopping
             </button>
             
-            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-bold uppercase tracking-wider">
-              CART
-            </h1>
+            <div className="flex items-center justify-between">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-bold uppercase tracking-wider">
+                CART
+              </h1>
+              
+              {/* Debug Info */}
+              <div className="flex items-center gap-4">
+                <div className="text-sm text-gray-400">
+                  Items: {cartState.itemCount} | Total: L.E {cartState.total.toLocaleString()}
+                </div>
+                
+              </div>
+            </div>
           </div>
 
           {cartState.items.length === 0 ? (
@@ -133,27 +143,41 @@ const CartPage = () => {
                     
                     {/* Quantity Controls */}
                     <div className="flex flex-col items-center space-y-1 sm:space-y-2">
-                      <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-4">
+                      <div className="flex items-center space-x-2 sm:space-x-3 lg:space-x-4">
                         <button
-                          onClick={() => handleUpdateQuantity(item.id, item.variant, item.quantity - 1)}
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleUpdateQuantity(item.id, item.variant, item.quantity - 1);
+                          }}
                           disabled={item.quantity <= 1}
-                          className={`w-6 h-6 sm:w-8 sm:h-8 border flex items-center justify-center font-bold text-sm sm:text-lg transition-colors duration-300 ${
+                          className={`w-8 h-8 sm:w-10 sm:h-10 border-2 flex items-center justify-center font-bold text-lg sm:text-xl transition-all duration-300 rounded-md ${
                             item.quantity <= 1
-                              ? 'border-gray-600 text-gray-600 cursor-not-allowed'
-                              : 'border-white text-white hover:bg-white hover:text-black'
+                              ? 'border-gray-600 text-gray-600 cursor-not-allowed bg-gray-800'
+                              : 'border-white text-white hover:bg-white hover:text-black bg-transparent active:scale-95'
                           }`}
+                          style={{ zIndex: 10 }}
                         >
                           -
                         </button>
-                        <span className="text-white font-medium w-6 sm:w-8 text-center text-sm sm:text-base">{item.quantity}</span>
+                        <span className="text-white font-bold w-8 sm:w-10 text-center text-lg sm:text-xl bg-gray-800 px-2 py-1 rounded">
+                          {item.quantity}
+                        </span>
                         <button
-                          onClick={() => handleUpdateQuantity(item.id, item.variant, item.quantity + 1)}
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleUpdateQuantity(item.id, item.variant, item.quantity + 1);
+                          }}
                           disabled={item.stock !== undefined && item.quantity >= item.stock}
-                          className={`w-6 h-6 sm:w-8 sm:h-8 border flex items-center justify-center font-bold text-sm sm:text-lg transition-colors duration-300 ${
+                          className={`w-8 h-8 sm:w-10 sm:h-10 border-2 flex items-center justify-center font-bold text-lg sm:text-xl transition-all duration-300 rounded-md ${
                             item.stock !== undefined && item.quantity >= item.stock
-                              ? 'border-gray-600 text-gray-600 cursor-not-allowed'
-                              : 'border-white text-white hover:bg-white hover:text-black'
+                              ? 'border-gray-600 text-gray-600 cursor-not-allowed bg-gray-800'
+                              : 'border-white text-white hover:bg-white hover:text-black bg-transparent active:scale-95'
                           }`}
+                          style={{ zIndex: 10 }}
                         >
                           +
                         </button>
