@@ -2,12 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../lib/mongodb';
 import Product from '../../../models/product';
 
-export async function POST(request: NextRequest) {
+export async function GET() {
   try {
     console.log('🧪 TEST: Starting product creation test...');
     
-    const body = await request.json();
-    console.log('🧪 TEST: Request body:', JSON.stringify(body, null, 2));
+    const body = {
+      name: 'Test Product ' + Date.now(),
+      price: 100,
+      mainImage: 'https://example.com/test.jpg',
+      description: 'Test description'
+    };
+    console.log('🧪 TEST: Using test data:', JSON.stringify(body, null, 2));
     
     // Test MongoDB connection
     console.log('🧪 TEST: Connecting to MongoDB...');

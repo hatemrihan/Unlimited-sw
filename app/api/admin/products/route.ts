@@ -215,6 +215,8 @@ export async function POST(request: NextRequest) {
     } catch (mongoError) {
       console.error('❌ MongoDB error:', mongoError);
       console.error('❌ Error details:', (mongoError as any).message);
+      console.error('❌ Error name:', (mongoError as any).name);
+      console.error('❌ Full error:', JSON.stringify(mongoError, Object.getOwnPropertyNames(mongoError)));
 
       // CRITICAL: For e-commerce, we should NOT fallback to file storage
       // This ensures data integrity - if MongoDB fails, we fail gracefully
@@ -222,7 +224,9 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error: 'Database connection failed. Please try again.',
-          details: process.env.NODE_ENV === 'development' ? (mongoError as any).message : 'MongoDB is required for e-commerce data integrity'
+          details: (mongoError as any).message || 'MongoDB is required for e-commerce data integrity',
+          errorName: (mongoError as any).name,
+          timestamp: new Date().toISOString()
         },
         { status: 500 }
       );
