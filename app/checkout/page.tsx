@@ -44,21 +44,7 @@ interface City {
 export default function CheckoutPage() {
   const router = useRouter();
   
-  // Safe cart access with error handling
-  const cartContext = useCart();
-  if (!cartContext) {
-    return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-medium mb-4">Loading...</h2>
-          <p>Please wait while we load your cart.</p>
-        </div>
-      </div>
-    );
-  }
-  
-  const { state, clearCart } = cartContext;
-
+  // All hooks must be called at the top level
   const [formData, setFormData] = useState<FormData>({
     firstName: '',
     lastName: '',
@@ -81,6 +67,22 @@ export default function CheckoutPage() {
   const [promoError, setPromoError] = useState<string | null>(null);
   const [cities, setCities] = useState<City[]>([]);
   const [loadingCities, setLoadingCities] = useState(true);
+  
+  // Safe cart access with error handling
+  const cartContext = useCart();
+  
+  if (!cartContext) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-medium mb-4">Loading...</h2>
+          <p>Please wait while we load your cart.</p>
+        </div>
+      </div>
+    );
+  }
+  
+  const { state, clearCart } = cartContext;
 
   // Fetch cities with product-specific pricing on component mount
   useEffect(() => {

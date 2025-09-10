@@ -205,7 +205,7 @@ const AddProductPage = () => {
                                 {isVideo ? (
                                   <video src={media} className="w-full h-16 object-cover rounded" muted />
                                 ) : (
-                                  <img src={media} className="w-full h-16 object-cover rounded" />
+                                  <img src={media} alt={`Variant ${variant.name} media`} className="w-full h-16 object-cover rounded" />
                                 )}
                                 <button
                                   onClick={() => {
@@ -296,7 +296,7 @@ const AddProductPage = () => {
                     {/* Show images */}
                     {product.images?.map((img, index) => (
                       <div key={`img-${index}`} className="relative group">
-                        <img src={img} className="w-full h-16 object-cover rounded" />
+                        <img src={img} alt="Product additional image" className="w-full h-16 object-cover rounded" />
                         <button
                           onClick={() => {
                             const newImages = product.images.filter((_, i) => i !== index);
