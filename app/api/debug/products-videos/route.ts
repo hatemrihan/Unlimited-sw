@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     // Log detailed info for products with videos
     productsWithVideos.forEach(p => {
       console.log(`🎬 Product "${p.name}": ${p.videos.length} videos`);
-      p.videos.forEach((video, index) => {
+      p.videos.forEach((video: string, index: number) => {
         console.log(`   Video ${index + 1}: ${video}`);
       });
     });
