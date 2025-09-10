@@ -44,7 +44,7 @@ interface City {
 export default function CheckoutPage() {
   const router = useRouter();
   
-  // All hooks must be called at the top level
+  // All hooks must be called at the top level - BEFORE any conditional logic
   const [formData, setFormData] = useState<FormData>({
     firstName: '',
     lastName: '',
@@ -70,26 +70,18 @@ export default function CheckoutPage() {
   
   // Safe cart access with error handling
   const cartContext = useCart();
-  
-  if (!cartContext) {
-    return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-medium mb-4">Loading...</h2>
-          <p>Please wait while we load your cart.</p>
-        </div>
-      </div>
-    );
-  }
-  
-  const { state, clearCart } = cartContext;
 
   // Fetch cities with product-specific pricing on component mount
   useEffect(() => {
+    if (!cartContext?.state?.items?.length) {
+      setLoadingCities(false);
+      return; // Early return if no cart context or items
+    }
+    
     const fetchCities = async () => {
       try {
         // Get product IDs from cart
-        const productIds = state.items.map(item => item.id).join(',');
+        const productIds = cartContext.state.items.map(item => item.id).join(',');
         
         // Fetch cities with product-specific pricing
         const response = await fetch(`/api/checkout/cities${productIds ? `?productIds=${productIds}` : ''}`);
@@ -108,7 +100,39 @@ export default function CheckoutPage() {
     };
 
     fetchCities();
-  }, [state.items]); // Re-fetch when cart items change
+  }, [cartContext?.state?.items]); // Re-fetch when cart items change
+
+  // Handle loading state and missing cart context
+  if (!cartContext) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-medium mb-4">Loading...</h2>
+          <p>Please wait while we load your cart.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const { state, clearCart } = cartContext;
+
+  // Handle empty cart
+  if (state.items.length === 0) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center" suppressHydrationWarning>
+        <div className="text-center">
+          <h2 className="text-2xl font-medium mb-4 text-[#b3b3b3]">Your cart is empty</h2>
+          <p className="text-[#b3b3b3]/70 mb-6">Add some products to your cart before checking out</p>
+          <Link
+            href="/shop"
+            className="inline-block bg-[#b3b3b3] text-black px-6 py-2 rounded hover:bg-white transition-colors duration-300"
+          >
+            Continue Shopping
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   // Calculate shipping cost based on selected governorate
   const selectedGovernorate = cities.find(city => city.cityName === formData.city);
@@ -187,24 +211,6 @@ export default function CheckoutPage() {
       setAppliedPromo(null);
     }
   };
-
-  // Handle empty cart
-  if (state.items.length === 0) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center" suppressHydrationWarning>
-        <div className="text-center">
-          <h2 className="text-2xl font-medium mb-4 text-[#b3b3b3]">Your cart is empty</h2>
-          <p className="text-[#b3b3b3]/70 mb-6">Add some products to your cart before checking out</p>
-          <Link
-            href="/shop"
-            className="inline-block px-8 py-4 bg-[#b3b3b3] text-black font-bold uppercase tracking-wider hover:bg-[#b3b3b3]/80 transition-colors duration-300"
-          >
-            Continue Shopping
-          </Link>
-        </div>
-      </div>
-    );
-  }
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
