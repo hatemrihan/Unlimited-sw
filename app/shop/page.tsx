@@ -349,7 +349,7 @@ const ProductCard = ({ product, onAddToCart, isMobile = false }: {
   onAddToCart: (product: Product) => void;
   isMobile?: boolean;
 }) => {
-  const hasDiscount = product.discount && Number(product.discount) > 0;
+  const hasDiscount = product.discount && Number(product.discount) > 0 && Number(product.discount) !== 0;
   const discountAmount = product.discount || 0;
   const finalPrice = hasDiscount ? product.price - (product.price * discountAmount / 100) : product.price;
 

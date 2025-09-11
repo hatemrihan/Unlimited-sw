@@ -15,6 +15,7 @@ const ProductDetail = () => {
   const [product, setProduct] = useState<Product | null>(null);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [refreshedProduct, setRefreshedProduct] = useState<Product | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<{
     name: string;
     stock: number;
@@ -41,8 +42,8 @@ const ProductDetail = () => {
       try {
         console.log('🔍 Fetching product details for ID:', params.id);
         
-        // Fetch current product
-        const productResponse = await fetch(`/api/products/${params.id}`);
+        // Fetch current product with cache-busting to get latest prices
+        const productResponse = await fetch(`/api/products/${params.id}?t=${Date.now()}`);
         
         if (productResponse.ok) {
           const productData = await productResponse.json();
@@ -55,6 +56,12 @@ const ProductDetail = () => {
             faqs: productData.product.faqs
           });
           setProduct(productData.product);
+          setRefreshedProduct(productData.product); // Store refreshed data
+          console.log('🔄 Product prices refreshed:', { 
+            price: productData.product.price, 
+            originalPrice: productData.product.originalPrice,
+            discount: productData.product.discount 
+          });
           
           // Set first variant as default
           if (productData.product.variants && productData.product.variants.length > 0) {
