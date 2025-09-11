@@ -375,13 +375,13 @@ const ProductDetail = () => {
                 <h1 className="text-2xl lg:text-4xl font-bold mb-4">{product.name}</h1>
                 
                 <div className="flex items-center space-x-4 mb-2">
-                  {product.discount && product.discount > 0 ? (
+                  {product.discount && product.discount > 0 && product.originalPrice ? (
                     <>
                       <span className="text-2xl lg:text-3xl font-bold">
-                        {Math.round(product.price * (1 - product.discount / 100)).toLocaleString()} LE
+                        {product.price.toLocaleString()} LE
                       </span>
                       <span className="text-lg text-gray-400 line-through">
-                        {product.price.toLocaleString()} LE
+                        {product.originalPrice.toLocaleString()} LE
                       </span>
                       <span className="bg-red-600 text-white px-2 py-1 text-sm font-medium rounded">
                         {product.discount}% OFF

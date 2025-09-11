@@ -349,9 +349,8 @@ const ProductCard = ({ product, onAddToCart, isMobile = false }: {
   onAddToCart: (product: Product) => void;
   isMobile?: boolean;
 }) => {
-  const hasDiscount = product.discount && Number(product.discount) > 0 && Number(product.discount) !== 0;
-  const discountAmount = product.discount || 0;
-  const finalPrice = hasDiscount ? product.price - (product.price * discountAmount / 100) : product.price;
+  const hasDiscount = product.discount && Number(product.discount) > 0 && product.originalPrice;
+  const finalPrice = product.price; // Price is already the final discounted price
 
   return (
     <div className="group block relative">
@@ -405,8 +404,8 @@ const ProductCard = ({ product, onAddToCart, isMobile = false }: {
 
         <div className={`font-light ${isMobile ? 'text-xs' : 'text-sm'} mb-2`}>
           <span className="text-[#b3b3b3]">{finalPrice} L.E</span>
-          {hasDiscount && (
-            <span className="ml-2 text-gray-500 line-through text-xs">{product.price} L.E</span>
+          {hasDiscount && product.originalPrice && (
+            <span className="ml-2 text-gray-500 line-through text-xs">{product.originalPrice} L.E</span>
           )}
         </div>
 
