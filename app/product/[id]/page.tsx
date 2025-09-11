@@ -187,17 +187,36 @@ const ProductDetail = () => {
     );
   }
 
-  // Get images based on selected variant or default product images
-  const getDisplayImages = () => {
+  // Helper function to detect if a URL is a video
+  const isVideoUrl = (url: string) => {
+    return url.includes('.mp4') || 
+           url.includes('.mov') || 
+           url.includes('.avi') || 
+           url.includes('.webm') || 
+           url.includes('video/upload');
+  };
+
+  // Get all media (images + videos) based on selected variant or default product media
+  const getDisplayMedia = () => {
+    let media: string[] = [];
+    
     // If variant is selected and has images, use variant images
     if (selectedVariant && selectedVariant.images && selectedVariant.images.length > 0) {
-      return selectedVariant.images;
+      media = selectedVariant.images;
+    } else {
+      // Otherwise, use main product images (main + additional)
+      media = [product.mainImage, ...(product.images || [])].filter(Boolean);
     }
-    // Otherwise, use main product images (main + additional)
-    return [product.mainImage, ...(product.images || [])].filter(Boolean);
+    
+    // Add product videos if available
+    if (product.videos && product.videos.length > 0) {
+      media = [...media, ...product.videos];
+    }
+    
+    return media;
   };
   
-  const allImages = getDisplayImages();
+  const allMedia = getDisplayMedia();
 
   return (
     <>
@@ -240,7 +259,7 @@ const ProductDetail = () => {
                     setCurrentImageIndex(newIndex);
                   }}
                 >
-                  {allImages.map((image, index) => (
+                  {allMedia.map((media, index) => (
                     <div
                       key={index}
                       className="flex-shrink-0 w-full bg-gray-800 overflow-hidden"
@@ -251,85 +270,88 @@ const ProductDetail = () => {
                         maxHeight: '1350px'
                       }}
                     >
-                      <img
-                        src={image}
-                        alt={`${product.name} ${index + 1}`}
-                        className="w-full h-full object-cover"
-                        loading={index === 0 ? 'eager' : 'lazy'}
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover'
-                        }}
-                      />
+                      {isVideoUrl(media) ? (
+                        <video
+                          src={media}
+                          className="w-full h-full object-cover"
+                          controls
+                          preload="metadata"
+                          playsInline
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover'
+                          }}
+                        />
+                      ) : (
+                        <img
+                          src={media}
+                          alt={`${product.name} ${index + 1}`}
+                          className="w-full h-full object-cover"
+                          loading={index === 0 ? 'eager' : 'lazy'}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover'
+                          }}
+                        />
+                      )}
                     </div>
                   ))}
                 </div>
                 
                 {/* Image Counter */}
-                {allImages.length > 1 && (
+                {allMedia.length > 1 && (
                   <div className="absolute bottom-6 right-4 bg-black/70 text-white px-2 py-1 rounded-full text-sm">
-                    {currentImageIndex + 1} / {allImages.length}
+                    {currentImageIndex + 1} / {allMedia.length}
                   </div>
                 )}
               </motion.div>
               
               {/* Thumbnail Navigation (Optional - for desktop) */}
-              {allImages.length > 1 && (
+              {allMedia.length > 1 && (
                 <div className="hidden lg:grid grid-cols-4 gap-2">
-                  {allImages.map((image, index) => (
+                  {allMedia.map((media, index) => (
                     <button
                       key={index}
                       onClick={() => {
-                        // Scroll to the specific image
+                        // Scroll to the specific media
                         const gallery = document.querySelector('.flex.overflow-x-auto');
                         if (gallery) {
-                          const imageWidth = gallery.clientWidth;
+                          const mediaWidth = gallery.clientWidth;
                           gallery.scrollTo({
-                            left: index * imageWidth,
+                            left: index * mediaWidth,
                             behavior: 'smooth'
                           });
                         }
                         setCurrentImageIndex(index);
                       }}
-                      className={`aspect-square overflow-hidden bg-gray-800 border-2 transition-colors duration-300 ${
+                      className={`aspect-square overflow-hidden bg-gray-800 border-2 transition-colors duration-300 rounded-lg ${
                         currentImageIndex === index 
                           ? 'border-white' 
                           : 'border-transparent hover:border-gray-400'
                       }`}
                     >
-                      <img
-                        src={image}
-                        alt={`${product.name} ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
+                      {isVideoUrl(media) ? (
+                        <video
+                          src={media}
+                          className="w-full h-full object-cover"
+                          preload="metadata"
+                          playsInline
+                          muted
+                        />
+                      ) : (
+                        <img
+                          src={media}
+                          alt={`${product.name} ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      )}
                     </button>
                   ))}
                 </div>
               )}
               
-              {/* Product Videos if available */}
-              {product.videos && product.videos.length > 0 && (
-                <div className="mt-4">
-                  <h3 className="text-sm font-medium text-gray-300 mb-2">
-                    Product Videos ({product.videos.length})
-                  </h3>
-                  <div className="space-y-4">
-                    {product.videos.map((video, index) => (
-                      <div key={index} className="aspect-video overflow-hidden bg-gray-800 rounded">
-                        <video
-                          src={video}
-                          controls
-                          className="w-full h-full object-cover"
-                          poster={product.mainImage}
-                        >
-                          Your browser does not support the video tag.
-                        </video>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </motion.div>
             
             {/* Right Side - Product Info */}
