@@ -34,7 +34,7 @@ export default function ProtectedAdminRoute({ children }: ProtectedAdminRoutePro
     }
 
     // Check if user's email is in the allowed list
-    const allowedEmails = ["hatemrihan100@gmail.com", "Muhamed.alkady@gmail.com"];
+    const allowedEmails = ["hatemrihan100@gmail.com", "muhamed.alkady@gmail.com"];
     console.log("User email:", session.user?.email);
     console.log("Allowed emails:", allowedEmails);
     

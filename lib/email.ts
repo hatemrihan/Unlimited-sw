@@ -176,7 +176,7 @@ export async function sendAdminNotificationEmail(orderData: OrderEmailData) {
         name: 'UNLIMITED-SW Store',
         address: 'orders@unlimited-sw.com' // Use your domain email for better deliverability
       },
-      to: ['hatemrihan100@gmail.com', 'Muhamed.alkady@gmail.com'], // Admin emails
+      to: ['hatemrihan100@gmail.com', 'muhamed.alkady@gmail.com'], // Admin emails
       subject: `🛒 New Order #${orderData.orderId} - UNLIMITED-SW`,
       html: emailHtml,
     };
