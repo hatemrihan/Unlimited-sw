@@ -129,7 +129,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     console.log('✅ Product city pricing updated:', updatedProduct.name);
     
     // 🚀 CRITICAL: Invalidate ALL caches immediately for real-time updates
-    const { id: productId } = await params;
     invalidateAdminProductsCache();
     invalidateProductsCache();
     productCache.delete(`product:detail:${productId}`);
