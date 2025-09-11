@@ -491,13 +491,23 @@ const ProductDetail = () => {
                   className="group cursor-pointer"
                   onClick={() => window.location.href = `/product/${relatedProduct._id}`}
                 >
-                  {/* Product Image - Matching Products.tsx sizing */}
+                  {/* Product Media - Matching Products.tsx sizing */}
                   <div className="aspect-square mb-2 lg:mb-3 overflow-hidden bg-gray-800 max-w-[140px] sm:max-w-[160px] lg:max-w-[180px] mx-auto">
-                    <img
-                      src={relatedProduct.mainImage}
-                      alt={relatedProduct.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
+                    {isVideoUrl(relatedProduct.mainImage) ? (
+                      <video
+                        src={relatedProduct.mainImage}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        preload="metadata"
+                        playsInline
+                        muted
+                      />
+                    ) : (
+                      <img
+                        src={relatedProduct.mainImage}
+                        alt={relatedProduct.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    )}
                   </div>
 
                   {/* Product Info - Matching Products.tsx styling */}
