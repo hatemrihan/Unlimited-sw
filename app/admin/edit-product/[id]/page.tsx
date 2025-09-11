@@ -320,9 +320,9 @@ const EditProductPage = () => {
                         
                         {/* Add variant image button */}
                         <FileUpload
-                          label={`Add Image for ${variant.name || 'Variant'}`}
-                          accept="image/*"
-                          onUpload={(url) => {
+                          label={`Add Media for ${variant.name || 'Variant'}`}
+                          accept="image/*,video/*"
+                          onUpload={(url, isVideo = false) => {
                             const newVariants = [...(product.variants || [])];
                             const currentImages = variant.images || [];
                             newVariants[index] = { ...variant, images: [...currentImages, url] };
@@ -428,93 +428,89 @@ const EditProductPage = () => {
             {/* Right Side - Upload Images */}
             <div className="space-y-4 lg:space-y-6">
               <div>
-                <h3 className="text-lg font-semibold text-white mb-4">Upload Images</h3>
+                <h3 className="text-lg font-semibold text-white mb-4">Upload Media</h3>
                 
-                {/* Main Product Image */}
-                <div className="mb-4">
+                {/* Unified Product Media Upload */}
+                <div className="mb-6">
                   <FileUpload
-                    label="Main Product Image *"
-                    currentUrl={product.mainImage}
-                    onUpload={(url) => setProduct({...product, mainImage: url})}
-                    accept="image/*"
+                    label="Product Media (Images & Videos)"
+                    currentUrl=""
+                    onUpload={(url, isVideo = false) => {
+                      console.log('🎥 Product media uploaded:', { url, isVideo });
+                      
+                      // If no main image is set and this is an image, set as main
+                      if (!product.mainImage && !isVideo) {
+                        setProduct({...product, mainImage: url});
+                      } else {
+                        if (isVideo) {
+                          const newVideos = [...(product.videos || []), url];
+                          console.log('🎬 Adding to videos array:', newVideos);
+                          setProduct({...product, videos: newVideos});
+                        } else {
+                          const newImages = [...(product.images || []), url];
+                          console.log('📷 Adding to images array:', newImages);
+                          setProduct({...product, images: newImages});
+                        }
+                      }
+                    }}
+                    accept="image/*,video/*"
                   />
-                </div>
-                
-                {/* Additional Images - Support 9+ images */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-white mb-2">Additional Images (Upload up to 12 images)</label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((index) => (
-                      <div key={index}>
-                        <FileUpload
-                          label={`Image ${index + 2}`}
-                          currentUrl={product.images?.[index]}
-                          onUpload={(url) => {
-                            const currentImages = product.images || [];
-                            const newImages = [...currentImages];
-                            newImages[index] = url;
-                            setProduct({...product, images: newImages});
-                          }}
-                          accept="image/*"
-                        />
-                      </div>
-                    ))}
+                  
+                  {/* Show all uploaded media */}
+                  <div className="mt-4">
+                    <h4 className="text-sm font-medium mb-2 text-gray-300">Uploaded Media</h4>
+                    <div className="grid grid-cols-4 gap-2">
+                      {/* Show main image */}
+                      {product.mainImage && (
+                        <div className="relative group">
+                          <img src={product.mainImage} alt="Main product image" className="w-full h-16 object-cover rounded" />
+                          <button
+                            onClick={() => setProduct({...product, mainImage: ''})}
+                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100"
+                          >
+                            ×
+                          </button>
+                          <div className="absolute bottom-1 left-1 bg-black/70 text-white text-xs px-1 rounded">🏆 Main</div>
+                        </div>
+                      )}
+                      
+                      {/* Show additional images */}
+                      {product.images?.map((img, index) => (
+                        <div key={`img-${index}`} className="relative group">
+                          <img src={img} alt="Product image" className="w-full h-16 object-cover rounded" />
+                          <button
+                            onClick={() => {
+                              const newImages = product.images?.filter((_, i) => i !== index) || [];
+                              setProduct({...product, images: newImages});
+                            }}
+                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100"
+                          >
+                            ×
+                          </button>
+                          <div className="absolute bottom-1 left-1 bg-black/70 text-white text-xs px-1 rounded">📷</div>
+                        </div>
+                      ))}
+                      
+                      {/* Show videos */}
+                      {product.videos?.map((video, index) => (
+                        <div key={`vid-${index}`} className="relative group">
+                          <video src={video} className="w-full h-16 object-cover rounded" muted />
+                          <button
+                            onClick={() => {
+                              const newVideos = product.videos?.filter((_, i) => i !== index) || [];
+                              setProduct({...product, videos: newVideos});
+                            }}
+                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100"
+                          >
+                            ×
+                          </button>
+                          <div className="absolute bottom-1 left-1 bg-black/70 text-white text-xs px-1 rounded">🎥</div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
                 
-                {/* Product Videos */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-2 text-white">
-                    Product Videos (Optional)
-                  </label>
-                  
-                  {/* Display current videos */}
-                  {product.videos && product.videos.length > 0 && (
-                    <div className="mb-4">
-                      <div className="text-sm text-gray-300 mb-2">
-                        Uploaded Videos ({product.videos.length}):
-                      </div>
-                      <div className="space-y-2">
-                        {product.videos.map((video, index) => (
-                          <div key={index} className="flex items-center justify-between bg-gray-800 p-2 rounded">
-                            <div className="flex items-center space-x-2">
-                              <video 
-                                src={video} 
-                                className="w-16 h-12 object-cover rounded"
-                                controls={false}
-                              />
-                              <span className="text-sm text-gray-300 truncate">
-                                Video {index + 1}
-                              </span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const updatedVideos = product.videos?.filter((_, i) => i !== index) || [];
-                                setProduct({...product, videos: updatedVideos});
-                              }}
-                              className="text-red-400 hover:text-red-300 text-sm"
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Upload new video */}
-                  <FileUpload
-                    label="Add Video"
-                    currentUrl=""
-                    onUpload={(url) => {
-                      console.log('🎥 Video uploaded, adding URL:', url);
-                      const currentVideos = product.videos || [];
-                      setProduct({...product, videos: [...currentVideos, url]});
-                    }}
-                    accept="video/*"
-                  />
-                </div>
               </div>
 
               {/* Product Visibility Options */}

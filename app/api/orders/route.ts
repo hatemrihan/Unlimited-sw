@@ -389,6 +389,8 @@ export async function POST(request: NextRequest) {
       const emailData = {
         customerEmail: savedOrder.customer.email,
         customerName: savedOrder.customer.name,
+        customerFirstName: orderData.customer.firstName || savedOrder.customer.name.split(' ')[0] || '',
+        customerLastName: orderData.customer.lastName || savedOrder.customer.name.split(' ').slice(1).join(' ') || '',
         orderId: savedOrder.orderId,
         orderItems: savedOrder.products.map(product => ({
           name: product.name,
@@ -406,9 +408,13 @@ export async function POST(request: NextRequest) {
         shippingAddress: {
           governorate: orderData.customer.governorate || '',
           city: orderData.customer.city || '',
-          address: savedOrder.customer.address
+          address: orderData.customer.address || savedOrder.customer.address,
+          apartment: orderData.customer.apartment || ''
         },
-        customerPhone: savedOrder.customer.phone
+        customerPhone: savedOrder.customer.phone,
+        customerNotes: orderData.notes || '',
+        promoCode: orderData.promoCode || '',
+        discountAmount: orderData.discountAmount || 0
       } as any;
 
       // Send directly via Nodemailer (avoids NEXTAUTH_URL issues)

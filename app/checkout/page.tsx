@@ -254,9 +254,14 @@ export default function CheckoutPage() {
         const orderData = {
           customer: {
             name: `${formData.firstName.trim()} ${formData.lastName.trim()}`,
+            firstName: formData.firstName.trim(),
+            lastName: formData.lastName.trim(),
             email: formData.email.trim(),
             phone: formData.phone.trim(),
-            address: `${formData.address.trim()}${formData.apartment ? ', ' + formData.apartment.trim() : ''}${formData.city ? ', ' + formData.city : ''}`
+            address: formData.address.trim(),
+            apartment: formData.apartment.trim(),
+            city: formData.city,
+            governorate: selectedGovernorate?.governorate || ''
           },
           products: state.items.map((item: any) => ({
             productId: item.id,
@@ -353,9 +358,14 @@ export default function CheckoutPage() {
       const orderData = {
         customer: {
           name: `${formData.firstName.trim()} ${formData.lastName.trim()}`,
+          firstName: formData.firstName.trim(),
+          lastName: formData.lastName.trim(),
           email: formData.email.trim(),
           phone: formData.phone.trim(),
-          address: `${formData.address.trim()}${formData.apartment ? ', ' + formData.apartment.trim() : ''}${formData.city ? ', ' + formData.city : ''}`
+          address: formData.address.trim(),
+          apartment: formData.apartment.trim(),
+          city: formData.city,
+          governorate: selectedGovernorate?.governorate || ''
         },
         products: state.items.map((item: any) => ({
           productId: item.id,
@@ -374,8 +384,8 @@ export default function CheckoutPage() {
         shippingCost: shippingCost,
         promoCode: appliedPromo ? appliedPromo.code : '',
         discountAmount: discountAmount,
+        notes: formData.notes.trim(),
         status: 'pending',
-        notes: formData.notes || '',
         orderDate: new Date().toISOString()
       };
 

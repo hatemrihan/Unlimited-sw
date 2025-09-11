@@ -70,7 +70,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
         const cloudData = await cloudRes.json();
         if (cloudRes.ok && cloudData.secure_url) {
           console.log('✅ Direct upload success:', cloudData.secure_url);
-          onUpload(cloudData.secure_url);
+          console.log('🎥 Direct upload - passing isVideo:', isVideo);
+          onUpload(cloudData.secure_url, isVideo);
           alert('✅ Video/Image uploaded successfully!');
           return;
         } else {

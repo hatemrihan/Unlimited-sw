@@ -134,7 +134,7 @@ const Products = () => {
                   {/* Badges Container - Stacked Vertically */}
                   <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
                     {/* Discount Badge */}
-                    {product.discount && product.discount > 0 && (
+                    {product.discount && Number(product.discount) > 0 && (
                       <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
                         {product.discount}% OFF
                       </div>

@@ -42,8 +42,6 @@ interface Product {
   }[];
   stock?: number;
   order?: number;
-  showOutOfStockBadge?: boolean;
-  showPreorderBadge?: boolean;
 }
 
 export default function Shop() {
@@ -66,26 +64,48 @@ export default function Shop() {
   useEffect(() => {
     const fetchAllProducts = async () => {
       try {
-        console.log('🚀 OPTIMIZED: Fetching products with single API call...');
+        // Fast fetch without showing loading state
 
-        // 🚀 OPTIMIZED: Single API call instead of two
-        const response = await fetch('/api/products');
+        // Fetch both regular and featured products
+        const [regularResponse, featuredResponse] = await Promise.all([
+          fetch('/api/products'),
+          fetch('/api/products?featured=true')
+        ]);
 
-        if (response.ok) {
-          const data = await response.json();
-          if (data.products) {
-            console.log(`⚡ Loaded ${data.products.length} products instantly from cache!`);
-            
-            // Separate featured products from the single response
-            const allProducts = data.products;
-            const featuredList = allProducts.filter((product: any) => product.isFeatured);
-            
-            setProducts(allProducts);
-            setFeaturedProducts(featuredList);
+        let allProducts: Product[] = [];
+        let featuredList: Product[] = [];
+
+        // Process regular products
+        if (regularResponse.ok) {
+          const regularData = await regularResponse.json();
+          if (regularData.products) {
+            allProducts = regularData.products;
           }
-        } else {
-          throw new Error('Failed to fetch products');
         }
+
+        // Process featured products
+        if (featuredResponse.ok) {
+          const featuredData = await featuredResponse.json();
+          if (featuredData.products) {
+            featuredList = featuredData.products;
+            setFeaturedProducts(featuredData.products);
+          }
+        }
+
+        // Ensure featured products are marked as featured
+        const markedFeaturedList = featuredList.map(product => ({
+          ...product,
+          isFeatured: true
+        }));
+
+        // Combine all products and remove duplicates
+        const combinedProducts = [...allProducts, ...markedFeaturedList].filter(
+          (product, index, self) => index === self.findIndex(p => p._id === product._id)
+        );
+
+
+
+        setProducts(combinedProducts);
 
       } catch (err: unknown) {
         console.error('Error fetching products:', err);
@@ -329,27 +349,23 @@ const ProductCard = ({ product, onAddToCart, isMobile = false }: {
   onAddToCart: (product: Product) => void;
   isMobile?: boolean;
 }) => {
-  const hasDiscount = product.discount && product.discount > 0;
+  const hasDiscount = product.discount && Number(product.discount) > 0;
   const discountAmount = product.discount || 0;
   const finalPrice = hasDiscount ? product.price - (product.price * discountAmount / 100) : product.price;
 
   return (
     <div className="group block relative">
       <Link href={`/product/${product._id}`} className="block">
-        <div 
-          className={`w-full overflow-hidden bg-gray-800 ${isMobile ? 'mb-2' : 'mb-3'} ${isMobile ? 'max-w-[120px]' : 'max-w-[180px]'} mx-auto`}
-          style={{ aspectRatio: '1080 / 1350' }} // 1080px width × 1350px height
-        >
+        <div className={`aspect-[3/4] w-full overflow-hidden bg-gray-800 ${isMobile ? 'mb-2' : 'mb-3'} ${isMobile ? 'max-w-[120px]' : 'max-w-[180px]'} mx-auto`}>
           {product.mainImage ? (
             <>
               <Image
                 src={product.mainImage}
                 alt={product.name}
-                width={1080}
-                height={1350}
+                width={500}
+                height={625}
                 className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
                 loading="lazy"
-                style={{ aspectRatio: '1080 / 1350' }}
               />
 
               <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
@@ -359,17 +375,16 @@ const ProductCard = ({ product, onAddToCart, isMobile = false }: {
                   </div>
                 )}
                 
-                {/* Badge System - Only show if explicitly enabled */}
-                {product.showOutOfStockBadge && (
-                  <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
-                    OUT OF STOCK
-                  </div>
-                )}
-                
-                {product.showPreorderBadge && (
-                  <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
-                    PREORDER
-                  </div>
+                {/* Stock Badges - Both when stock is 0 */}
+                {product.stock !== undefined && product.stock === 0 && (
+                  <>
+                    <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
+                      OUT OF STOCK
+                    </div>
+                    <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
+                      PREORDER
+                    </div>
+                  </>
                 )}
               </div>
             </>

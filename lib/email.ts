@@ -59,6 +59,8 @@ verifyTransporter();
 export interface OrderEmailData {
   customerEmail: string;
   customerName: string;
+  customerFirstName?: string;
+  customerLastName?: string;
   orderId: string;
   orderItems: Array<{
     name: string;
@@ -77,8 +79,12 @@ export interface OrderEmailData {
     governorate: string;
     city: string;
     address: string;
+    apartment?: string;
   };
   customerPhone: string;
+  customerNotes?: string;
+  promoCode?: string;
+  discountAmount?: number;
 }
 
 export async function sendOrderConfirmationEmail(orderData: OrderEmailData) {
@@ -223,26 +229,40 @@ function generateOrderEmailTemplate(orderData: OrderEmailData): string {
         <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.9;">Calisthenics Equipment</p>
       </div>
 
-      <!-- Thank You Message -->
-      <div style="text-align: center; margin-bottom: 30px;">
-        <h2 style="color: #000; font-size: 24px; margin-bottom: 10px;">🎉 Thank You for Your Order!</h2>
-        <p style="font-size: 16px; color: #666;">Hi ${orderData.customerName}, your order has been successfully placed.</p>
+      <!-- Order Completion Header -->
+      <div style="text-align: center; margin-bottom: 30px; padding: 20px; background: #f0f8ff; border-radius: 8px; border: 2px solid #000;">
+        <h1 style="color: #000; font-size: 32px; margin-bottom: 10px; font-weight: bold;">
+          🎉 ${orderData.orderItems.map(item => item.name).join(', ')} [#${orderData.orderId}] COMPLETED!
+        </h1>
+        <p style="font-size: 18px; color: #333; margin: 0;">Hi ${orderData.customerFirstName || orderData.customerName}, your order has been successfully placed!</p>
       </div>
 
-      <!-- Order Details -->
+      <!-- Complete Customer Information -->
       <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-        <h3 style="margin-top: 0; color: #000;">Order Details</h3>
-        <p><strong>Order ID:</strong> #${orderData.orderId}</p>
-        <p><strong>Payment Method:</strong> ${orderData.paymentMethod === 'cashOnDelivery' ? 'Cash on Delivery' : orderData.paymentMethod === 'instaPay' ? 'InstaPay' : 'Paymob'}</p>
-        <p><strong>Phone:</strong> ${orderData.customerPhone}</p>
+        <h3 style="margin-top: 0; color: #000;">👤 Customer Information</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+          <div>
+            <p style="margin: 5px 0;"><strong>First Name:</strong> ${orderData.customerFirstName || orderData.customerName.split(' ')[0] || 'N/A'}</p>
+            <p style="margin: 5px 0;"><strong>Last Name:</strong> ${orderData.customerLastName || orderData.customerName.split(' ').slice(1).join(' ') || 'N/A'}</p>
+            <p style="margin: 5px 0;"><strong>Email:</strong> ${orderData.customerEmail}</p>
+            <p style="margin: 5px 0;"><strong>Phone:</strong> ${orderData.customerPhone}</p>
+          </div>
+          <div>
+            <p style="margin: 5px 0;"><strong>Order ID:</strong> #${orderData.orderId}</p>
+            <p style="margin: 5px 0;"><strong>Payment Method:</strong> ${orderData.paymentMethod === 'cashOnDelivery' ? 'Cash on Delivery' : orderData.paymentMethod === 'instaPay' ? 'InstaPay' : 'Paymob'}</p>
+            ${orderData.promoCode ? `<p style="margin: 5px 0;"><strong>Promo Code:</strong> ${orderData.promoCode}</p>` : ''}
+            ${orderData.customerNotes ? `<p style="margin: 5px 0;"><strong>Notes:</strong> ${orderData.customerNotes}</p>` : ''}
+          </div>
+        </div>
       </div>
 
-      <!-- Shipping Address -->
+      <!-- Complete Shipping Address -->
       <div style="background: #f0f8ff; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
         <h3 style="margin-top: 0; color: #000;">🚚 Shipping Address</h3>
         <p style="margin: 5px 0;"><strong>Governorate:</strong> ${orderData.shippingAddress.governorate}</p>
         <p style="margin: 5px 0;"><strong>City:</strong> ${orderData.shippingAddress.city}</p>
         <p style="margin: 5px 0;"><strong>Address:</strong> ${orderData.shippingAddress.address}</p>
+        ${orderData.shippingAddress.apartment ? `<p style="margin: 5px 0;"><strong>Apartment/Building:</strong> ${orderData.shippingAddress.apartment}</p>` : ''}
       </div>
 
       <!-- Order Items -->
@@ -267,8 +287,13 @@ function generateOrderEmailTemplate(orderData: OrderEmailData): string {
         <h3 style="margin-top: 0;">💰 Order Summary</h3>
         <div style="display: flex; justify-content: space-between; margin: 10px 0;">
           <span>Subtotal:</span>
-          <span>${(orderData.totalAmount - orderData.shippingCost).toLocaleString()} LE</span>
+          <span>${(orderData.totalAmount - orderData.shippingCost + (orderData.discountAmount || 0)).toLocaleString()} LE</span>
         </div>
+        ${orderData.discountAmount && orderData.discountAmount > 0 ? `
+        <div style="display: flex; justify-content: space-between; margin: 10px 0; color: #4CAF50;">
+          <span>Discount (${orderData.promoCode || 'Applied'}):</span>
+          <span>-${orderData.discountAmount.toLocaleString()} LE</span>
+        </div>` : ''}
         <div style="display: flex; justify-content: space-between; margin: 10px 0;">
           <span>Shipping:</span>
           <span>${orderData.shippingCost.toLocaleString()} LE</span>

@@ -208,7 +208,8 @@ const AddProductPage = () => {
                       {variant.images && variant.images.length > 0 && (
                         <div className="grid grid-cols-4 gap-2 mb-3">
                           {variant.images.map((media, mediaIndex) => {
-                            const isVideo = media.includes('.mp4') || media.includes('.mov') || media.includes('.webm');
+                            // Detect video based on URL patterns (fallback method)
+                            const isVideo = media.includes('.mp4') || media.includes('.mov') || media.includes('.webm') || media.includes('video/upload');
                             return (
                               <div key={mediaIndex} className="relative group">
                                 {isVideo ? (
@@ -235,11 +236,12 @@ const AddProductPage = () => {
                         </div>
                       )}
 
-                      {/* SINGLE UPLOAD FIELD - IMAGES AND VIDEOS */}
+                      {/* VARIANT MEDIA UPLOAD - ALWAYS VISIBLE */}
                       <FileUpload
-                        label={`Upload for ${variant.name}`}
+                        label={`${variant.name} Media (Images & Videos)`}
                         currentUrl=""
                         onUpload={(url, isVideo = false) => {
+                          console.log(`🎥 ${variant.name} media uploaded:`, { url, isVideo });
                           const newVariants = [...product.variants];
                           const currentImages = newVariants[index].images || [];
                           newVariants[index].images = [...currentImages, url];
@@ -283,29 +285,58 @@ const AddProductPage = () => {
           {/* Right Side - Upload Main Image */}
           <div className="space-y-6">
             
-            {/* Upload Section */}
+            {/* Media Upload Section */}
             <div>
-              <h2 className="text-xl font-semibold mb-4">Upload Image</h2>
+              <h2 className="text-xl font-semibold mb-4">Product Media</h2>
               
-              {/* Main Product Image - ONLY ONE */}
+              {/* Main Product Media - Images & Videos */}
               <div className="mb-6">
                 <FileUpload
-                  label="Main Product Image *"
-                  currentUrl={product.mainImage}
-                  onUpload={(url, isVideo = false) => setProduct({...product, mainImage: url})}
-                  accept="image/*"
+                  label="Product Media (Images & Videos) *"
+                  currentUrl=""
+                  onUpload={(url, isVideo = false) => {
+                    console.log('🎥 Product media uploaded:', { url, isVideo });
+                    
+                    // For main product, set first upload as mainImage if not set
+                    if (!product.mainImage && !isVideo) {
+                      setProduct({...product, mainImage: url});
+                    } else {
+                      if (isVideo) {
+                        const newVideos = [...(product.videos || []), url];
+                        console.log('🎬 Adding to videos array:', newVideos);
+                        setProduct({...product, videos: newVideos});
+                      } else {
+                        const newImages = [...(product.images || []), url];
+                        console.log('📷 Adding to images array:', newImages);
+                        setProduct({...product, images: newImages});
+                      }
+                    }
+                  }}
+                  accept="image/*,video/*"
                 />
-              </div>
-
-              {/* Show uploaded additional media */}
-              {((product.images && product.images.length > 0) || (product.videos && product.videos.length > 0)) && (
-                <div className="mb-6">
-                  <h3 className="text-sm font-medium mb-2">Additional Media</h3>
+                
+                {/* Show uploaded media */}
+                <div className="mt-4">
+                  <h4 className="text-sm font-medium mb-2 text-gray-300">Uploaded Media</h4>
                   <div className="grid grid-cols-4 gap-2">
-                    {/* Show images */}
+                    {/* Show main image */}
+                    {product.mainImage && (
+                      <div className="relative group">
+                        <img src={product.mainImage} alt="Main product image" className="w-full h-16 object-cover rounded" />
+                        <button
+                          onClick={() => setProduct({...product, mainImage: ''})}
+                          className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100"
+                        >
+                          ×
+                        </button>
+                        <div className="absolute bottom-1 left-1 bg-black/70 text-white text-xs px-1 rounded">🏆 Main</div>
+                      </div>
+                    )}
+                    
+                    {/* Show additional images */}
                     {product.images?.map((img, index) => (
                       <div key={`img-${index}`} className="relative group">
-                        <img src={img} alt="Product additional image" className="w-full h-16 object-cover rounded" />
+                        <img src={img} alt="Product image" className="w-full h-16 object-cover rounded" />
                         <button
                           onClick={() => {
                             const newImages = product.images.filter((_, i) => i !== index);
@@ -318,6 +349,7 @@ const AddProductPage = () => {
                         <div className="absolute bottom-1 left-1 bg-black/70 text-white text-xs px-1 rounded">📷</div>
                       </div>
                     ))}
+                    
                     {/* Show videos */}
                     {product.videos?.map((video, index) => (
                       <div key={`vid-${index}`} className="relative group">
@@ -336,28 +368,6 @@ const AddProductPage = () => {
                     ))}
                   </div>
                 </div>
-              )}
-
-              {/* Additional Media Upload */}
-              <div className="mb-6">
-                <FileUpload
-                  label="Add More Images/Videos (Optional)"
-                  currentUrl=""
-                  onUpload={(url, isVideo = false) => {
-                    console.log('🎥 File uploaded:', { url, isVideo });
-                    
-                    if (isVideo) {
-                      const newVideos = [...(product.videos || []), url];
-                      console.log('🎬 Adding to videos array:', newVideos);
-                      setProduct({...product, videos: newVideos});
-                    } else {
-                      const newImages = [...(product.images || []), url];
-                      console.log('📷 Adding to images array:', newImages);
-                      setProduct({...product, images: newImages});
-                    }
-                  }}
-                  accept="image/*,video/*"
-                />
               </div>
 
               {/* Product Options */}
