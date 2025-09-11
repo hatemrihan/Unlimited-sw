@@ -67,39 +67,66 @@ export default function CheckoutPage() {
   const [promoError, setPromoError] = useState<string | null>(null);
   const [cities, setCities] = useState<City[]>([]);
   const [loadingCities, setLoadingCities] = useState(true);
+  const [refreshedPrices, setRefreshedPrices] = useState<Record<string, number>>({});
   
   // Safe cart access with error handling
   const cartContext = useCart();
 
-  // Fetch cities with product-specific pricing on component mount
+  // Fetch cities with product-specific pricing and refresh prices on component mount
   useEffect(() => {
     if (!cartContext?.state?.items?.length) {
       setLoadingCities(false);
       return; // Early return if no cart context or items
     }
     
-    const fetchCities = async () => {
+    const fetchCitiesAndRefreshPrices = async () => {
       try {
         // Get product IDs from cart
-        const productIds = cartContext.state.items.map(item => item.id).join(',');
+        const productIds = cartContext.state.items.map(item => item.id);
+        const productIdsString = productIds.join(',');
         
-        // Fetch cities with product-specific pricing
-        const response = await fetch(`/api/checkout/cities${productIds ? `?productIds=${productIds}` : ''}`);
-        if (response.ok) {
-          const data = await response.json();
-          setCities(data.cities || []);
+        // Fetch cities with product-specific pricing AND refresh product prices in parallel
+        const [citiesResponse, ...priceResponses] = await Promise.all([
+          fetch(`/api/checkout/cities${productIdsString ? `?productIds=${productIdsString}` : ''}`),
+          ...productIds.map(id => fetch(`/api/products/${id}`))
+        ]);
+        
+        // Handle cities response
+        if (citiesResponse.ok) {
+          const citiesData = await citiesResponse.json();
+          setCities(citiesData.cities || []);
           console.log('✅ Loaded cities with product-specific pricing');
         } else {
           console.error('Failed to fetch cities');
         }
+        
+        // Handle price responses
+        const priceMap: Record<string, number> = {};
+        const priceResults = await Promise.all(
+          priceResponses.map(async (response, index) => {
+            if (response.ok) {
+              const data = await response.json();
+              return { id: productIds[index], price: data.product?.price || 0 };
+            }
+            return { id: productIds[index], price: 0 };
+          })
+        );
+        
+        priceResults.forEach(({ id, price }) => {
+          priceMap[id] = price;
+        });
+        
+        setRefreshedPrices(priceMap);
+        console.log('🔄 Checkout prices refreshed from server:', priceMap);
+        
       } catch (error) {
-        console.error('Error fetching cities:', error);
+        console.error('Error fetching cities and prices:', error);
       } finally {
         setLoadingCities(false);
       }
     };
 
-    fetchCities();
+    fetchCitiesAndRefreshPrices();
   }, [cartContext?.state?.items]); // Re-fetch when cart items change
 
   // Handle loading state and missing cart context
@@ -170,10 +197,16 @@ export default function CheckoutPage() {
     }
   }
   
+  // Calculate subtotal using refreshed prices when available
+  const refreshedSubtotal = state.items.reduce((sum, item) => {
+    const currentPrice = refreshedPrices[item.id] || item.price;
+    return sum + (currentPrice * item.quantity);
+  }, 0);
+  
   // Apply COD fee only for cash on delivery payment method
   const finalCodFee = formData.paymentMethod === 'cashOnDelivery' ? codFee : 0;
   const discountAmount = appliedPromo ? appliedPromo.discount : 0;
-  const subtotalAfterDiscount = Math.max(0, state.total - discountAmount);
+  const subtotalAfterDiscount = Math.max(0, refreshedSubtotal - discountAmount);
   const totalWithShipping = subtotalAfterDiscount + shippingCost + finalCodFee;
 
   // Apply promo code
@@ -858,7 +891,7 @@ export default function CheckoutPage() {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-white">L.E {(item.price * item.quantity).toFixed(0)}</p>
+                      <p className="text-white">L.E {((refreshedPrices[item.id] || item.price) * item.quantity).toFixed(0)}</p>
                     </div>
                   </div>
                 ))}
@@ -867,7 +900,7 @@ export default function CheckoutPage() {
               <div className="border-t border-gray-600 pt-4 space-y-2">
                 <div className="flex justify-between">
                   <span className="text-white">Subtotal</span>
-                  <span className="text-white">L.E {state.total.toFixed(0)}</span>
+                  <span className="text-white">L.E {refreshedSubtotal.toFixed(0)}</span>
                 </div>
                 {appliedPromo && (
                   <div className="flex justify-between text-green-400">

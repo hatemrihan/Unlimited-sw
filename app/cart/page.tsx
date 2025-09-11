@@ -151,8 +151,7 @@ const CartPage = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
-              
-              {/* Left Side - Cart Items */}
+                            {/* Left Side - Cart Items */}
               <div className="lg:col-span-2">
                 {cartState.items.map((item) => {
                   console.log('Cart item:', item.name, 'Stock:', item.stock, 'Quantity:', item.quantity);
@@ -190,9 +189,6 @@ const CartPage = () => {
                           {/* Price - Show on mobile */}
                           <p className="text-white font-bold text-sm sm:hidden">
                             {((refreshedPrices[item.id] || item.price) * item.quantity).toLocaleString()} L.E
-                            {refreshedPrices[item.id] && refreshedPrices[item.id] !== item.price && (
-                              <span className="text-green-400 text-xs ml-1">(Updated)</span>
-                            )}
                           </p>
                         </div>
                       </div>
@@ -242,9 +238,6 @@ const CartPage = () => {
                         <div className="hidden sm:block text-right">
                           <div className="text-white font-bold text-base">
                             {((refreshedPrices[item.id] || item.price) * item.quantity).toLocaleString()} L.E
-                            {refreshedPrices[item.id] && refreshedPrices[item.id] !== item.price && (
-                              <span className="text-green-400 text-xs ml-2">(Updated)</span>
-                            )}
                           </div>
                         </div>
                         
