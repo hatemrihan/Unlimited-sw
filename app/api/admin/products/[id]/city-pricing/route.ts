@@ -38,8 +38,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           governorate: govName,
           price: existingGovPricing?.price ?? product.price ?? 0,
           isActive: existingGovPricing?.isActive !== false,
-          shippingCost: city.shippingCost,
-          codFee: city.codFee,
+          // Use product-specific shipping costs if available, otherwise fall back to global defaults
+          shippingCost: existingGovPricing?.shippingCost ?? city.shippingCost,
+          codFee: existingGovPricing?.codFee ?? city.codFee,
         };
       }
     }

@@ -72,6 +72,8 @@ const ProductCityPricingPage = () => {
       
       if (result.success) {
         alert('City pricing updated successfully!');
+        // Refresh the data to show updated values
+        await fetchData();
       } else {
         alert('Error: ' + result.error);
       }
@@ -142,6 +144,16 @@ const ProductCityPricingPage = () => {
             </div>
             
             <div className="flex gap-4">
+              <button
+                onClick={() => {
+                  setLoading(true);
+                  fetchData();
+                }}
+                disabled={loading}
+                className="bg-blue-600 text-white px-4 py-2 font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+              >
+                {loading ? 'Refreshing...' : 'Refresh Data'}
+              </button>
               <button
                 onClick={applyBasePriceToAll}
                 className="bg-gray-600 text-white px-4 py-2 font-medium hover:bg-gray-700 transition-colors"
