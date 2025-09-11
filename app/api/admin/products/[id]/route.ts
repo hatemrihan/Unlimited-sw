@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../../../lib/mongodb';
 import Product from '../../../../../models/product';
 import { invalidateAdminProductsCache } from '../route';
+import { invalidateProductsCache } from '../../../products/route';
+import { productCache } from '../../../../../lib/cache';
 
 // GET - Fetch a single product by ID
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -89,9 +91,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     console.log('✅ Product featured status updated:', updatedProduct._id);
 
-    // 🚀 CRITICAL: Invalidate cache immediately for real-time updates
+    // 🚀 CRITICAL: Invalidate ALL caches immediately for real-time updates
     invalidateAdminProductsCache();
-    console.log('🗑️ Admin products cache invalidated after featured toggle');
+    invalidateProductsCache();
+    productCache.delete(`product:detail:${productId}`);
+    console.log('🗑️ All product caches invalidated after featured toggle');
 
     return NextResponse.json({
       success: true,
@@ -139,9 +143,11 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     console.log('✅ Product deleted successfully:', deletedProduct._id);
 
-    // 🚀 CRITICAL: Invalidate cache immediately for real-time updates
+    // 🚀 CRITICAL: Invalidate ALL caches immediately for real-time updates
     invalidateAdminProductsCache();
-    console.log('🗑️ Admin products cache invalidated after deletion');
+    invalidateProductsCache();
+    productCache.delete(`product:detail:${productId}`);
+    console.log('🗑️ All product caches invalidated after deletion');
 
     return NextResponse.json({
       success: true,
@@ -229,9 +235,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     console.log('✅ Product updated successfully:', updatedProduct._id);
 
-    // 🚀 CRITICAL: Invalidate cache immediately for real-time updates
+    // 🚀 CRITICAL: Invalidate ALL caches immediately for real-time updates
     invalidateAdminProductsCache();
-    console.log('🗑️ Admin products cache invalidated after update');
+    invalidateProductsCache();
+    productCache.delete(`product:detail:${productId}`);
+    console.log('🗑️ All product caches invalidated after update');
 
     return NextResponse.json({
       success: true,

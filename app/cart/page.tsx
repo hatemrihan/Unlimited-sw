@@ -9,14 +9,57 @@ const CartPage = () => {
   const router = useRouter();
   const { state: cartState, updateQuantity, removeItem, clearCart } = useCart();
   const [loading, setLoading] = useState<boolean>(true);
+  const [refreshedPrices, setRefreshedPrices] = useState<Record<string, number>>({});
 
-  // Load cart items from localStorage on mount
+  // Load cart items and refresh prices from server
   useEffect(() => {
-    setLoading(false);
-  }, []);
+    const refreshCartPrices = async () => {
+      if (cartState.items.length === 0) {
+        setLoading(false);
+        return;
+      }
 
-  // Calculate totals
-  const subtotal = cartState.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      try {
+        // Get unique product IDs from cart
+        const productIds = [...new Set(cartState.items.map(item => item.id))];
+        
+        // Fetch current prices from server
+        const pricePromises = productIds.map(async (id) => {
+          try {
+            const response = await fetch(`/api/products/${id}`);
+            if (response.ok) {
+              const data = await response.json();
+              return { id, price: data.product?.price || 0 };
+            }
+          } catch (error) {
+            console.error(`Failed to fetch price for product ${id}:`, error);
+          }
+          return { id, price: 0 };
+        });
+
+        const priceResults = await Promise.all(pricePromises);
+        const priceMap: Record<string, number> = {};
+        priceResults.forEach(({ id, price }) => {
+          priceMap[id] = price;
+        });
+
+        setRefreshedPrices(priceMap);
+        console.log('🔄 Cart prices refreshed from server:', priceMap);
+      } catch (error) {
+        console.error('❌ Error refreshing cart prices:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    refreshCartPrices();
+  }, [cartState.items.length]);
+
+  // Calculate totals using refreshed prices when available
+  const subtotal = cartState.items.reduce((sum, item) => {
+    const currentPrice = refreshedPrices[item.id] || item.price;
+    return sum + (currentPrice * item.quantity);
+  }, 0);
   const total = subtotal; // Add shipping/tax calculation here if needed
 
   // Handle quantity updates with stock validation
@@ -100,7 +143,7 @@ const CartPage = () => {
               <h2 className="text-2xl lg:text-3xl font-medium text-gray-300 mb-4">Your cart is empty</h2>
               <p className="text-gray-400 mb-8">Add some calisthenics equipment to get started!</p>
               <button
-                onClick={() => router.push('/')}
+                onClick={() => router.push('/shop')}
                 className="bg-white text-black px-8 py-3 font-bold uppercase tracking-wider hover:bg-gray-100 transition-colors duration-300"
               >
                 Continue Shopping
@@ -146,7 +189,10 @@ const CartPage = () => {
                           
                           {/* Price - Show on mobile */}
                           <p className="text-white font-bold text-sm sm:hidden">
-                            {(item.price * item.quantity).toLocaleString()} L.E
+                            {((refreshedPrices[item.id] || item.price) * item.quantity).toLocaleString()} L.E
+                            {refreshedPrices[item.id] && refreshedPrices[item.id] !== item.price && (
+                              <span className="text-green-400 text-xs ml-1">(Updated)</span>
+                            )}
                           </p>
                         </div>
                       </div>
@@ -195,7 +241,10 @@ const CartPage = () => {
                         {/* Price - Desktop only */}
                         <div className="hidden sm:block text-right">
                           <div className="text-white font-bold text-base">
-                            {(item.price * item.quantity).toLocaleString()} L.E
+                            {((refreshedPrices[item.id] || item.price) * item.quantity).toLocaleString()} L.E
+                            {refreshedPrices[item.id] && refreshedPrices[item.id] !== item.price && (
+                              <span className="text-green-400 text-xs ml-2">(Updated)</span>
+                            )}
                           </div>
                         </div>
                         

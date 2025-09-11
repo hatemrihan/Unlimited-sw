@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../../../../lib/mongodb';
 import Product from '../../../../../../models/product';
 import CityPricing from '../../../../../../models/cityPricing';
+import { invalidateAdminProductsCache } from '../../route';
+import { invalidateProductsCache } from '../../../../products/route';
+import { productCache } from '../../../../../../lib/cache';
 
 // GET - Get city pricing for a specific product
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -124,6 +127,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     );
     
     console.log('✅ Product city pricing updated:', updatedProduct.name);
+    
+    // 🚀 CRITICAL: Invalidate ALL caches immediately for real-time updates
+    const { id: productId } = await params;
+    invalidateAdminProductsCache();
+    invalidateProductsCache();
+    productCache.delete(`product:detail:${productId}`);
+    console.log('🗑️ All product caches invalidated after city pricing update');
     
     return NextResponse.json({
       success: true,
