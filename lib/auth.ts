@@ -1,8 +1,8 @@
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 
-// Allowed emails array
-const allowedEmails = ["hatemrihan100@gmail.com", "muhamed.alkady@gmail.com"];
+// Admin emails array (for admin dashboard access)
+const adminEmails = ["hatemrihan100@gmail.com", "muhamed.alkady@gmail.com"];
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -14,14 +14,13 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
           async signIn({ user }) {
       console.log("SignIn callback - User email:", user.email);
-      console.log("Allowed emails:", allowedEmails);
       
-      // Check if user's email is in the allowed list
-      if (user.email && allowedEmails.includes(user.email)) {
-        console.log("Email authorized, allowing sign in");
+      // Allow ALL users to sign in with Google (not just admins)
+      if (user.email) {
+        console.log("Valid email, allowing sign in for:", user.email);
         return true;
       } else {
-        console.log("Email not authorized, denying sign in");
+        console.log("No email provided, denying sign in");
         return false;
       }
     },
@@ -30,6 +29,8 @@ export const authOptions: NextAuthOptions = {
         token.email = user.email;
         token.name = user.name;
         token.picture = user.image;
+        // Add admin flag to token
+        token.isAdmin = user.email ? adminEmails.includes(user.email) : false;
       }
       return token;
     },
@@ -38,6 +39,8 @@ export const authOptions: NextAuthOptions = {
         session.user.email = token.email;
         session.user.name = token.name;
         session.user.image = token.picture;
+        // Add admin flag to session
+        session.user.isAdmin = token.isAdmin as boolean;
       }
       return session;
     },
@@ -47,14 +50,15 @@ export const authOptions: NextAuthOptions = {
       if (url.startsWith("/")) return `${baseUrl}${url}`;
       // If it's the same origin, allow it
       else if (new URL(url).origin === baseUrl) return url;
-      // Otherwise, redirect to admin
-      return `${baseUrl}/admin`;
+      // Otherwise, redirect to home page (not admin)
+      return `${baseUrl}/`;
     },
   },
-  pages: {
-    signIn: "/admin/login",
-    error: "/admin/login",
-  },
+  // Remove custom pages - use NextAuth default sign-in page
+  // pages: {
+  //   signIn: "/admin/login",
+  //   error: "/admin/login",
+  // },
   session: {
     strategy: "jwt",
   },

@@ -33,13 +33,12 @@ export default function ProtectedAdminRoute({ children }: ProtectedAdminRoutePro
       return;
     }
 
-    // Check if user's email is in the allowed list
-    const allowedEmails = ["hatemrihan100@gmail.com", "muhamed.alkady@gmail.com"];
+    // Check if user has admin privileges
     console.log("User email:", session.user?.email);
-    console.log("Allowed emails:", allowedEmails);
+    console.log("Is admin:", session.user?.isAdmin);
     
-    if (session.user?.email && !allowedEmails.includes(session.user.email)) {
-      console.log("Email not authorized, redirecting to access denied");
+    if (!session.user?.isAdmin) {
+      console.log("User not authorized as admin, redirecting to access denied");
       router.push("/access-denied");
       return;
     }

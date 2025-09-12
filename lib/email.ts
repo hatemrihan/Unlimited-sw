@@ -249,7 +249,7 @@ function generateOrderEmailTemplate(orderData: OrderEmailData): string {
           </div>
           <div>
             <p style="margin: 5px 0;"><strong>Order ID:</strong> #${orderData.orderId}</p>
-            <p style="margin: 5px 0;"><strong>Payment Method:</strong> ${orderData.paymentMethod === 'cashOnDelivery' ? 'Cash on Delivery' : orderData.paymentMethod === 'instaPay' ? 'InstaPay' : 'Paymob'}</p>
+            <p style="margin: 5px 0;"><strong>Payment Method:</strong> ${orderData.paymentMethod === 'cashOnDelivery' ? 'Cash on Delivery' : 'InstaPay'}</p>
             ${orderData.promoCode ? `<p style="margin: 5px 0;"><strong>Promo Code:</strong> ${orderData.promoCode}</p>` : ''}
             ${orderData.customerNotes ? `<p style="margin: 5px 0;"><strong>Notes:</strong> ${orderData.customerNotes}</p>` : ''}
           </div>
@@ -389,7 +389,7 @@ function generateAdminEmailTemplate(orderData: OrderEmailData): string {
       </table>
 
       <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
-        <p style="margin: 5px 0;"><strong>Payment Method:</strong> ${orderData.paymentMethod === 'cashOnDelivery' ? 'Cash on Delivery' : orderData.paymentMethod === 'instaPay' ? 'InstaPay' : 'Paymob'}</p>
+        <p style="margin: 5px 0;"><strong>Payment Method:</strong> ${orderData.paymentMethod === 'cashOnDelivery' ? 'Cash on Delivery' : 'InstaPay'}</p>
         <p style="margin: 5px 0;"><strong>Shipping Cost:</strong> ${orderData.shippingCost.toLocaleString()} LE</p>
         <p style="margin: 5px 0; font-size: 18px;"><strong>Total Amount:</strong> ${orderData.totalAmount.toLocaleString()} LE</p>
       </div>

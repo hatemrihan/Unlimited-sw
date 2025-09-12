@@ -69,7 +69,7 @@ interface Order {
   totalAmount: number;
   subtotal: number;
   shippingCost: number;
-  paymentMethod: 'cashOnDelivery' | 'instaPay' | 'paymob';
+  paymentMethod: 'cashOnDelivery' | 'instaPay';
   status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
   orderDate: string;
   createdAt: string;
@@ -107,7 +107,7 @@ const Orders = () => {
           order.customer.phone,
           order.customer.address,
           products,
-          order.paymentMethod === 'cashOnDelivery' ? 'COD' : order.paymentMethod === 'instaPay' ? 'InstaPay' : 'Paymob',
+          order.paymentMethod === 'cashOnDelivery' ? 'COD' : 'InstaPay',
           `${order.totalAmount} L.E`
         ];
       })
@@ -147,7 +147,7 @@ const Orders = () => {
         phone: order.customer.phone,
         shippingAddress: order.customer.address,
         products: products,
-        paymentMethod: order.paymentMethod === 'cashOnDelivery' ? 'COD' : order.paymentMethod === 'instaPay' ? 'InstaPay' : 'Paymob',
+        paymentMethod: order.paymentMethod === 'cashOnDelivery' ? 'COD' : 'InstaPay',
         total: `${order.totalAmount} L.E`
       };
     });
@@ -181,7 +181,7 @@ const Orders = () => {
         'Phone': order.customer.phone,
         'Shipping Address': order.customer.address,
         'Products': products,
-        'Payment Method': order.paymentMethod === 'cashOnDelivery' ? 'COD' : order.paymentMethod === 'instaPay' ? 'InstaPay' : 'Paymob',
+        'Payment Method': order.paymentMethod === 'cashOnDelivery' ? 'COD' : 'InstaPay',
         'Total': `${order.totalAmount} L.E`
       };
     });
@@ -233,7 +233,7 @@ const Orders = () => {
         order.customer.email,
         order.customer.phone,
         order.customer.address, // full address
-        order.paymentMethod === 'cashOnDelivery' ? 'COD' : order.paymentMethod === 'instaPay' ? 'InstaPay' : 'Paymob',
+        order.paymentMethod === 'cashOnDelivery' ? 'COD' : 'InstaPay',
         `${order.totalAmount} L.E`
       ];
     });
@@ -432,11 +432,9 @@ const Orders = () => {
       return (
         <div className="text-white">
           <span className={`inline-flex px-2 py-1 text-xs rounded ${
-            method === 'instaPay' ? 'bg-blue-100 text-blue-800' : 
-            method === 'paymob' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+            method === 'instaPay' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
           }`}>
-            {method === 'instaPay' ? 'InstaPay' : 
-             method === 'paymob' ? 'Paymob' : 'Cash on Delivery'}
+            {method === 'instaPay' ? 'InstaPay' : 'Cash on Delivery'}
           </span>
         </div>
       );

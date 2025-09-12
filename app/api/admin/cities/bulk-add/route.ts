@@ -28,8 +28,27 @@ export async function POST(request: NextRequest) {
       { cityName: 'Zarqa', governorate: 'Damietta', shippingCost: 30, codFee: 8 },
       { cityName: 'Kafr Saad', governorate: 'Damietta', shippingCost: 30, codFee: 8 },
     ];
+
+    // Additional Requested Governorates
+    const additionalGovernorates = [
+      // Sohag Governorate (Upper Egypt - higher shipping cost)
+      { cityName: 'Sohag', governorate: 'Sohag', shippingCost: 45, codFee: 12 },
+      
+      // South Sinai Governorate (Red Sea area - premium shipping)
+      { cityName: 'Sharm El Sheikh', governorate: 'South Sinai', shippingCost: 60, codFee: 15 },
+      
+      // Qena Governorate (Upper Egypt)
+      { cityName: 'Qena', governorate: 'Qena', shippingCost: 45, codFee: 12 },
+      
+      // New Valley Governorate (Western Desert - remote area)
+      { cityName: 'Kharga', governorate: 'New Valley', shippingCost: 70, codFee: 18 },
+      { cityName: 'Dakhla', governorate: 'New Valley', shippingCost: 70, codFee: 18 },
+      
+      // Matrouh Governorate (North Coast)
+      { cityName: 'Marsa Matrouh', governorate: 'Matrouh', shippingCost: 50, codFee: 15 },
+    ];
     
-    const allCities = [...fayoumCities, ...damiettaCities];
+    const allCities = [...fayoumCities, ...damiettaCities, ...additionalGovernorates];
     const results = {
       added: [] as string[],
       skipped: [] as string[],

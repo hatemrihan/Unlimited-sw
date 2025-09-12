@@ -28,7 +28,7 @@ interface FormData {
   city: string;
   notes: string;
   promoCode: string;
-  paymentMethod: 'cashOnDelivery' | 'instaPay' | 'paymob';
+  paymentMethod: 'cashOnDelivery' | 'instaPay';
   transactionScreenshot: any;
 }
 
@@ -68,9 +68,34 @@ export default function CheckoutPage() {
   const [cities, setCities] = useState<City[]>([]);
   const [loadingCities, setLoadingCities] = useState(true);
   const [refreshedPrices, setRefreshedPrices] = useState<Record<string, number>>({});
+  const [paymentSettings, setPaymentSettings] = useState({ codEnabled: true, instaPayEnabled: true });
   
   // Safe cart access with error handling
   const cartContext = useCart();
+
+  // Fetch payment settings
+  useEffect(() => {
+    const fetchPaymentSettings = async () => {
+      try {
+        const response = await fetch('/api/admin/payment-settings');
+        const data = await response.json();
+        
+        if (data.success) {
+          setPaymentSettings(data.settings);
+          
+          // If COD is disabled and current payment method is COD, switch to InstaPay
+          if (!data.settings.codEnabled && formData.paymentMethod === 'cashOnDelivery') {
+            setFormData(prev => ({ ...prev, paymentMethod: 'instaPay' }));
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching payment settings:', error);
+        // Keep default settings on error
+      }
+    };
+
+    fetchPaymentSettings();
+  }, []);
 
   // Fetch cities with product-specific pricing and refresh prices on component mount
   useEffect(() => {
@@ -281,85 +306,7 @@ export default function CheckoutPage() {
     setIsSubmitting(true);
 
     try {
-      // Handle Paymob payment
-      if (formData.paymentMethod === 'paymob') {
-        // Prepare order data for Paymob
-        const orderData = {
-          customer: {
-            name: `${formData.firstName.trim()} ${formData.lastName.trim()}`,
-            firstName: formData.firstName.trim(),
-            lastName: formData.lastName.trim(),
-            email: formData.email.trim(),
-            phone: formData.phone.trim(),
-            address: formData.address.trim(),
-            apartment: formData.apartment.trim(),
-            city: formData.city,
-            governorate: selectedGovernorate?.governorate || ''
-          },
-          products: state.items.map((item: any) => ({
-            productId: item.id,
-            name: item.name,
-            price: item.price,
-            quantity: item.quantity,
-            variant: item.variant ? {
-              name: item.variant.name
-            } : undefined,
-            image: item.image
-          })),
-          paymentMethod: formData.paymentMethod,
-          totalAmount: totalWithShipping,
-          subtotal: state.total,
-          shippingCost: shippingCost,
-          promoCode: appliedPromo ? appliedPromo.code : '',
-          discountAmount: discountAmount,
-          status: 'pending',
-          notes: formData.notes || '',
-          orderDate: new Date().toISOString()
-        };
-
-        // Create order first
-        const orderResponse = await fetch('/api/orders', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(orderData),
-        });
-
-        const orderData_result = await orderResponse.json();
-
-        if (orderResponse.ok && orderData_result.success) {
-          // Get Paymob payment URL
-          const paymobResponse = await fetch('/api/paymob/create-payment', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              orderId: orderData_result.order.orderId,
-              amount: totalWithShipping,
-              customer: orderData.customer,
-              products: orderData.products
-            }),
-          });
-
-          const paymobData = await paymobResponse.json();
-
-          if (paymobResponse.ok && paymobData.success) {
-            // Redirect to Paymob payment page
-            window.location.href = paymobData.payment_url;
-            return;
-          } else {
-            setOrderError(paymobData.error || 'Failed to create Paymob payment');
-            setIsSubmitting(false);
-            return;
-          }
-        } else {
-          setOrderError(orderData_result.error || 'Failed to create order');
-          setIsSubmitting(false);
-          return;
-        }
-      }
+      // PayMob payment method removed as requested
 
       // Handle screenshot upload if InstaPay is selected
       let screenshotUrl = null;
@@ -605,27 +552,30 @@ export default function CheckoutPage() {
                     Payment Method *
                   </label>
                   <div className="space-y-3">
-                    <div className="flex items-center">
-                      <div className="relative">
-                        <input
-                          type="radio"
-                          id="cashOnDelivery"
-                          name="paymentMethod"
-                          value="cashOnDelivery"
-                          checked={formData.paymentMethod === 'cashOnDelivery'}
-                          onChange={handleInputChange}
-                          className="sr-only"
-                        />
-                        <div className={`w-4 h-4 rounded-full border-2 border-white mr-2 flex items-center justify-center cursor-pointer ${
-                          formData.paymentMethod === 'cashOnDelivery' ? 'bg-black' : 'bg-transparent'
-                        }`} onClick={() => setFormData(prev => ({ ...prev, paymentMethod: 'cashOnDelivery' }))}>
-                          {formData.paymentMethod === 'cashOnDelivery' && (
-                            <div className="w-2 h-2 rounded-full bg-white"></div>
-                          )}
+                    {/* Cash on Delivery - Admin Controlled */}
+                    {paymentSettings.codEnabled && (
+                      <div className="flex items-center">
+                        <div className="relative">
+                          <input
+                            type="radio"
+                            id="cashOnDelivery"
+                            name="paymentMethod"
+                            value="cashOnDelivery"
+                            checked={formData.paymentMethod === 'cashOnDelivery'}
+                            onChange={handleInputChange}
+                            className="sr-only"
+                          />
+                          <div className={`w-4 h-4 rounded-full border-2 border-white mr-2 flex items-center justify-center cursor-pointer ${
+                            formData.paymentMethod === 'cashOnDelivery' ? 'bg-black' : 'bg-transparent'
+                          }`} onClick={() => setFormData(prev => ({ ...prev, paymentMethod: 'cashOnDelivery' }))}>
+                            {formData.paymentMethod === 'cashOnDelivery' && (
+                              <div className="w-2 h-2 rounded-full bg-white"></div>
+                            )}
+                          </div>
                         </div>
+                        <label htmlFor="cashOnDelivery" className="text-sm cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, paymentMethod: 'cashOnDelivery' }))}>Cash on Delivery</label>
                       </div>
-                      <label htmlFor="cashOnDelivery" className="text-sm cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, paymentMethod: 'cashOnDelivery' }))}>Cash on Delivery</label>
-                    </div>
+                    )}
 
                     <div className="flex items-center">
                       <div className="relative">
@@ -649,42 +599,9 @@ export default function CheckoutPage() {
                       <label htmlFor="instaPay" className="text-sm cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, paymentMethod: 'instaPay' }))}>Pay with InstaPay</label>
                     </div>
 
-                    <div className="flex items-center">
-                      <div className="relative">
-                        <input
-                          type="radio"
-                          id="paymob"
-                          name="paymentMethod"
-                          value="paymob"
-                          checked={formData.paymentMethod === 'paymob'}
-                          onChange={handleInputChange}
-                          className="sr-only"
-                        />
-                        <div className={`w-4 h-4 rounded-full border-2 border-white mr-2 flex items-center justify-center cursor-pointer ${
-                          formData.paymentMethod === 'paymob' ? 'bg-black' : 'bg-transparent'
-                        }`} onClick={() => setFormData(prev => ({ ...prev, paymentMethod: 'paymob' }))}>
-                          {formData.paymentMethod === 'paymob' && (
-                            <div className="w-2 h-2 rounded-full bg-white"></div>
-                          )}
-                        </div>
-                      </div>
-                      <label htmlFor="paymob" className="text-sm cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, paymentMethod: 'paymob' }))}>PAY WITH PAYMOB</label>
-                    </div>
                   </div>
                 </div>
 
-                {/* Paymob Coming Soon Message */}
-                {formData.paymentMethod === 'paymob' && (
-                  <div className="p-4 border border-gray-300 dark:border-gray-600 rounded-md">
-                    <div className="flex items-center justify-center">
-                      <div className="text-center">
-                        <h3 className="font-medium mb-2 text-white">💳 Visa Payment</h3>
-                        <p className="text-sm text-gray-300">Visa payment is coming soon</p>
-                        <p className="text-xs text-gray-400 mt-1">Please select another payment method for now</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
 
                 {/* InstaPay Instructions and Screenshot Upload */}
                 {formData.paymentMethod === 'instaPay' && (
@@ -736,22 +653,6 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
-                {/* Paymob Payment Instructions */}
-                {formData.paymentMethod === 'paymob' && (
-                  <div className="p-4 border border-gray-300 dark:border-gray-600 rounded-md">
-                    <div className="mb-4">
-                      <h3 className="font-medium mb-2">Paymob Payment Instructions</h3>
-                      <p className="text-sm mb-2">You will be redirected to Paymob's secure payment gateway to complete your payment.</p>
-                      <p className="text-sm mb-2">Supported payment methods:</p>
-                      <ul className="text-sm list-disc list-inside space-y-1 text-gray-300">
-                        <li>Credit/Debit Cards (Visa, Mastercard)</li>
-                        <li>Mobile Wallets (Fawry, Valu)</li>
-                        <li>Bank Transfer</li>
-                        <li>Cash on Delivery (COD)</li>
-                      </ul>
-                    </div>
-                  </div>
-                )}
 
                 <div>
                   <label className="block text-sm font-medium mb-1">
