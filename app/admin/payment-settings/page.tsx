@@ -3,6 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ProtectedAdminRoute from '@/components/auth/protected-admin-route';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { AlertCircle, CreditCard, Banknote, ArrowLeft, Save } from "lucide-react";
 
 interface PaymentSettings {
   codEnabled: boolean;
@@ -83,11 +87,9 @@ const PaymentSettingsPage = () => {
   if (loading) {
     return (
       <ProtectedAdminRoute>
-        <div className="min-h-screen bg-black text-white p-8">
-          <div className="max-w-4xl mx-auto">
-            <div className="flex items-center justify-center py-20">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-            </div>
+        <div className="min-h-screen bg-white">
+          <div className="flex items-center justify-center py-20">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
           </div>
         </div>
       </ProtectedAdminRoute>
@@ -96,109 +98,152 @@ const PaymentSettingsPage = () => {
 
   return (
     <ProtectedAdminRoute>
-      <div className="min-h-screen bg-black text-white p-8">
-        <div className="max-w-4xl mx-auto">
+      <div className="min-h-screen bg-white">
+        <div className="max-w-7xl mx-auto p-6 space-y-6">
           
           {/* Header */}
-          <div className="mb-8">
-            <button
-              onClick={() => router.push('/admin')}
-              className="text-gray-400 hover:text-white mb-4 flex items-center"
-            >
-              ← Back to Dashboard
-            </button>
-            
-            <h1 className="text-3xl font-bold mb-2">Payment Settings</h1>
-            <p className="text-gray-400">
-              Control which payment methods are available to customers during checkout.
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push('/admin')}
+                className="text-gray-600 hover:text-gray-900"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Dashboard
+              </Button>
+            </div>
+          </div>
+
+          <div className="border-b border-gray-200 pb-4">
+            <h1 className="text-2xl font-bold text-gray-900">Payment Settings</h1>
+            <p className="text-gray-600 mt-1">
+              Control which payment methods are available to customers during checkout
             </p>
           </div>
 
           {/* Success/Error Message */}
           {message && (
-            <div className={`mb-6 p-4 rounded-lg ${
+            <Card className={`border ${
               message.type === 'success' 
-                ? 'bg-green-600/20 border border-green-600/30 text-green-400' 
-                : 'bg-red-600/20 border border-red-600/30 text-red-400'
+                ? 'border-green-200 bg-green-50' 
+                : 'border-red-200 bg-red-50'
             }`}>
-              {message.text}
-            </div>
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-2">
+                  <AlertCircle className={`h-5 w-5 ${
+                    message.type === 'success' ? 'text-green-600' : 'text-red-600'
+                  }`} />
+                  <span className={`text-sm font-medium ${
+                    message.type === 'success' ? 'text-green-800' : 'text-red-800'
+                  }`}>
+                    {message.text}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
           )}
 
-          {/* Payment Methods Control */}
-          <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
-            <h2 className="text-xl font-semibold mb-6">Payment Methods</h2>
-            
-            <div className="space-y-6">
-              
-              {/* InstaPay - Always Enabled */}
-              <div className="flex items-center justify-between p-4 bg-gray-800 rounded-lg border border-gray-700">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
-                    💳
+          {/* Payment Methods */}
+          <div className="grid gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-gray-900">Payment Methods</CardTitle>
+                <CardDescription>
+                  Configure which payment options are available to your customers
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                
+                {/* InstaPay - Always Enabled */}
+                <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg bg-gray-50">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <CreditCard className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">InstaPay</h3>
+                      <p className="text-sm text-gray-600">Mobile payment with screenshot verification</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-medium">InstaPay</h3>
-                    <p className="text-sm text-gray-400">Mobile payment with screenshot verification</p>
+                  <div className="flex items-center space-x-3">
+                    <span className="text-sm font-medium text-green-700 bg-green-100 px-2 py-1 rounded-md">
+                      Always Enabled
+                    </span>
+                    <Switch checked={true} disabled className="opacity-50" />
                   </div>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <span className="text-green-400 text-sm font-medium">Always Enabled</span>
-                  <div className="w-12 h-6 bg-green-600 rounded-full flex items-center justify-end px-1">
-                    <div className="w-4 h-4 bg-white rounded-full"></div>
-                  </div>
-                </div>
-              </div>
 
-              {/* Cash on Delivery - Admin Controlled */}
-              <div className="flex items-center justify-between p-4 bg-gray-800 rounded-lg border border-gray-700">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-yellow-600 rounded-lg flex items-center justify-center">
-                    💵
+                {/* Cash on Delivery - Admin Controlled */}
+                <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                      <Banknote className="h-6 w-6 text-orange-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">Cash on Delivery (COD)</h3>
+                      <p className="text-sm text-gray-600">Pay when the product is delivered</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-medium">Cash on Delivery (COD)</h3>
-                    <p className="text-sm text-gray-400">Pay when the product is delivered</p>
+                  <div className="flex items-center space-x-3">
+                    <span className={`text-sm font-medium px-2 py-1 rounded-md ${
+                      settings.codEnabled 
+                        ? 'text-green-700 bg-green-100' 
+                        : 'text-red-700 bg-red-100'
+                    }`}>
+                      {settings.codEnabled ? 'Enabled' : 'Disabled'}
+                    </span>
+                    <Switch
+                      checked={settings.codEnabled}
+                      onCheckedChange={(checked) => 
+                        setSettings(prev => ({ ...prev, codEnabled: checked }))
+                      }
+                    />
                   </div>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <span className={`text-sm font-medium ${settings.codEnabled ? 'text-green-400' : 'text-red-400'}`}>
-                    {settings.codEnabled ? 'Enabled' : 'Disabled'}
-                  </span>
-                  <button
-                    onClick={() => setSettings(prev => ({ ...prev, codEnabled: !prev.codEnabled }))}
-                    className={`w-12 h-6 rounded-full flex items-center transition-colors duration-300 ${
-                      settings.codEnabled ? 'bg-green-600 justify-end' : 'bg-gray-600 justify-start'
-                    } px-1`}
-                  >
-                    <div className="w-4 h-4 bg-white rounded-full"></div>
-                  </button>
-                </div>
-              </div>
 
-            </div>
+              </CardContent>
+            </Card>
+
+            {/* Info Card */}
+            <Card className="border-blue-200 bg-blue-50">
+              <CardContent className="p-4">
+                <div className="flex items-start space-x-3">
+                  <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-blue-900 mb-2">How it works</h4>
+                    <ul className="text-sm text-blue-800 space-y-1">
+                      <li>• <strong>InstaPay:</strong> Always available to customers (cannot be disabled)</li>
+                      <li>• <strong>Cash on Delivery:</strong> You can enable/disable this option anytime</li>
+                      <li>• Changes take effect immediately on the checkout page</li>
+                      <li>• PayMob has been completely removed as requested</li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Save Button */}
-          <div className="mt-8 flex justify-end">
-            <button
+          <div className="flex justify-end">
+            <Button
               onClick={saveSettings}
               disabled={saving}
-              className="bg-white text-black px-6 py-3 rounded-lg font-medium hover:bg-gray-100 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-gray-900 hover:bg-gray-800 text-white"
             >
-              {saving ? 'Saving...' : 'Save Changes'}
-            </button>
-          </div>
-
-          {/* Info Section */}
-          <div className="mt-8 p-4 bg-blue-600/20 border border-blue-600/30 rounded-lg">
-            <h3 className="font-medium text-blue-400 mb-2">ℹ️ How it works:</h3>
-            <ul className="text-sm text-blue-300 space-y-1">
-              <li>• <strong>InstaPay:</strong> Always available to customers (cannot be disabled)</li>
-              <li>• <strong>Cash on Delivery:</strong> You can enable/disable this option anytime</li>
-              <li>• Changes take effect immediately on the checkout page</li>
-              <li>• PayMob has been completely removed as requested</li>
-            </ul>
+              {saving ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Changes
+                </>
+              )}
+            </Button>
           </div>
 
         </div>
