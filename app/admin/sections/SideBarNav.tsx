@@ -288,7 +288,7 @@ const SidebarNav = ({
           </button>
 
           {/* Navigation Items */}
-          <div ref={navItemsRef} className="flex-1">
+          <div ref={navItemsRef} className="flex-1 overflow-y-auto pr-2">
             <ul className="space-y-2">
               {items.map((item, i) => {
                 const isActive = activeHref === item.href;

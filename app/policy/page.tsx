@@ -28,7 +28,7 @@ Delivery Time
 Order Tracking & Support
   For updates or questions, contact us vias:
 
-  Phone/WhatsApp: 0104 4878774
+  Phone/WhatsApp: 01006176203
   Email: [unlimited.egy.1@gmail.com](mailto:unlimited.egy.1@gmail.com)
 Damaged in Transit
   If your item arrives damaged during shipping, we will replace it at no extra cost. All other cases are not eligible for replacement, refund, or re‑shipment.
