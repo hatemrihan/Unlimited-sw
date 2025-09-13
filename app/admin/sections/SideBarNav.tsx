@@ -267,9 +267,9 @@ const SidebarNav = ({
     <>
       {/* Desktop Sidebar */}
       <div className="hidden md:flex fixed left-0 top-0 h-full w-64 bg-black shadow-lg z-50">
-        <div className="flex flex-col w-full p-6">
+        <div className="flex flex-col w-full p-6 h-full">
           {/* Logo Section */}
-          <div className="mb-8">
+          <div className="mb-8 flex-shrink-0">
             <div className="text-white font-bold text-xl">
           UNLIMITED-SW
             </div>
@@ -278,7 +278,7 @@ const SidebarNav = ({
           {/* Visit Store Button */}
           <button 
             onClick={onVisitStore}
-            className="w-full bg-white text-black py-3 px-4 rounded-lg font-semibold text-sm mb-6 flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors"
+            className="w-full bg-white text-black py-3 px-4 rounded-lg font-semibold text-sm mb-6 flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors flex-shrink-0"
           >
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
               <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
@@ -288,7 +288,7 @@ const SidebarNav = ({
           </button>
 
           {/* Navigation Items */}
-          <div ref={navItemsRef} className="flex-1 overflow-y-auto pr-2">
+          <div ref={navItemsRef} className="flex-1 min-h-0 overflow-y-auto pr-2">
             <ul className="space-y-2">
               {items.map((item, i) => {
                 const isActive = activeHref === item.href;
@@ -399,7 +399,7 @@ const SidebarNav = ({
           </div>
 
           {/* User Section */}
-          <div className="mt-auto pt-6 border-t border-gray-700">
+          <div className="mt-auto pt-6 border-t border-gray-700 flex-shrink-0">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                 <span className="text-sm font-bold text-white">{userInitial}</span>
