@@ -817,7 +817,7 @@ export default function CheckoutPage() {
                 </div>
                 {formData.paymentMethod === 'cashOnDelivery' && finalCodFee > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-white">COD Fee</span>
+                    <span className="text-white">Cash on Delivery Fee</span>
                     <span className="text-white">L.E {finalCodFee}</span>
                   </div>
                 )}
