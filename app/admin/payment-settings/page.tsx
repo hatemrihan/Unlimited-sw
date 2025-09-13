@@ -119,7 +119,7 @@ const PaymentSettingsPage = () => {
           <div className="border-b border-gray-200 pb-4">
             <h1 className="text-2xl font-bold text-gray-900">Payment Settings</h1>
             <p className="text-gray-600 mt-1">
-              Control which payment methods are available to customers during checkout
+              Control payment ya doctor mn hena.
             </p>
           </div>
 
@@ -212,12 +212,12 @@ const PaymentSettingsPage = () => {
                 <div className="flex items-start space-x-3">
                   <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
                   <div>
-                    <h4 className="font-semibold text-blue-900 mb-2">How it works</h4>
+                    <h4 className="font-semibold text-blue-900 mb-2">ازاي بيشتغل</h4>
                     <ul className="text-sm text-blue-800 space-y-1">
-                      <li>• <strong>InstaPay:</strong> Always available to customers (cannot be disabled)</li>
-                      <li>• <strong>Cash on Delivery:</strong> You can enable/disable this option anytime</li>
-                      <li>• Changes take effect immediately on the checkout page</li>
-                      <li>• PayMob has been completely removed as requested</li>
+                      <li>• <strong>InstaPay:</strong> دايمًا متاح للعميل (ومينفعش يتقفل)</li>
+                      <li>• <strong>Cash on Delivery:</strong> تقدر تفتحو أو تقفلو في أي وقت</li>
+                      <li>• أي تعديل بيظهر فورًا في صفحة الدفع</li>
+                      
                     </ul>
                   </div>
                 </div>
