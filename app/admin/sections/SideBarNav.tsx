@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { gsap } from 'gsap';
-import { useSession, signOut } from 'next-auth/react';
+// Authentication handled by password now, not NextAuth
 
 interface NavItem {
   label: string;
@@ -43,7 +43,7 @@ const SidebarNav = ({
   userName = 'Admin',
   onVisitStore
 }: SidebarNavProps) => {
-  const { data: session } = useSession();
+  // Admin authentication is now handled by password
   const resolvedPillTextColor = pillTextColor ?? baseColor;
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const circleRefs = useRef<(HTMLSpanElement | null)[]>([]);
@@ -230,27 +230,21 @@ const SidebarNav = ({
 
   const handleLogout = async () => {
     try {
-      await signOut({ callbackUrl: '/admin/login' });
+      // Call logout API to clear cookie
+      await fetch('/api/admin/auth', {
+        method: 'DELETE',
+      });
+      
+      // Redirect to login page
+      window.location.href = '/admin/login';
     } catch (error) {
       console.error('Logout error:', error);
     }
   };
 
-  // Get user info from session
-  const userEmail = session?.user?.email || 'admin@example.com';
-  const userInitial = userEmail.charAt(0).toUpperCase();
-  
-  // Show loading state if session is being fetched
-  if (!session) {
-    return (
-      <div className="hidden md:flex fixed left-0 top-0 h-full w-64 bg-black shadow-lg z-50">
-        <div className="flex flex-col w-full p-6 items-center justify-center">
-          <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
-          <div className="text-white text-sm mt-4">Loading...</div>
-        </div>
-      </div>
-    );
-  }
+  // Admin user info
+  const userEmail = 'admin@unlimited-sw.com';
+  const userInitial = 'A';
 
   const cssVars = {
     ['--base']: baseColor,
