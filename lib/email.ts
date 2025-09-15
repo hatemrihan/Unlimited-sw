@@ -378,6 +378,8 @@ function generateAdminEmailTemplate(orderData: OrderEmailData): string {
       <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
         <p style="margin: 5px 0;"><strong>Payment Method:</strong> ${orderData.paymentMethod === 'cashOnDelivery' ? 'Cash on Delivery' : 'InstaPay'}</p>
         <p style="margin: 5px 0;"><strong>Shipping Cost:</strong> ${orderData.shippingCost.toLocaleString()} LE</p>
+        ${orderData.codFee && orderData.codFee > 0 ? `<p style="margin: 5px 0;"><strong>COD Fee:</strong> ${orderData.codFee.toLocaleString()} LE</p>` : ''}
+        ${orderData.discountAmount && orderData.discountAmount > 0 ? `<p style="margin: 5px 0; color: #28a745;"><strong>Discount (${orderData.promoCode}):</strong> -${orderData.discountAmount.toLocaleString()} LE</p>` : ''}
         <p style="margin: 5px 0; font-size: 18px;"><strong>Total Amount:</strong> ${orderData.totalAmount.toLocaleString()} LE</p>
       </div>
 
