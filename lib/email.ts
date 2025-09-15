@@ -250,7 +250,6 @@ function generateOrderEmailTemplate(orderData: OrderEmailData): string {
           </div>
           <div>
             <p style="margin: 5px 0;"><strong>Order ID:</strong> #${orderData.orderId}</p>
-            <p style="margin: 5px 0;"><strong>Payment Method:</strong> ${orderData.paymentMethod === 'cashOnDelivery' ? 'Cash on Delivery' : 'InstaPay'}</p>
             ${orderData.promoCode ? `<p style="margin: 5px 0;"><strong>Promo Code:</strong> ${orderData.promoCode}</p>` : ''}
             ${orderData.customerNotes ? `<p style="margin: 5px 0;"><strong>Notes:</strong> ${orderData.customerNotes}</p>` : ''}
           </div>
@@ -269,35 +268,27 @@ function generateOrderEmailTemplate(orderData: OrderEmailData): string {
       <!-- Order Items -->
       <div style="margin-bottom: 20px;">
         <h3 style="color: #000; border-bottom: 2px solid #000; padding-bottom: 10px;">📦 Order Items</h3>
-        <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
-          <thead>
-            <tr style="background: #000; color: white;">
-              <th style="padding: 12px; text-align: left;">Product</th>
-              <th style="padding: 12px; text-align: center;">Qty</th>
-              <th style="padding: 12px; text-align: right;">Price</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${itemsHtml}
-          </tbody>
-        </table>
+        <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-top: 15px;">
+          ${orderData.orderItems.map(item => `
+            <div style="padding: 10px 0; border-bottom: 1px solid #eee;">
+              <strong>${item.name}</strong>
+              ${item.variant ? `<br><span style="color: #666; font-size: 14px;">Size: ${item.variant.size || 'N/A'}, Color: ${item.variant.color || 'N/A'}</span>` : ''}
+            </div>
+          `).join('')}
+        </div>
       </div>
 
       <!-- Order Summary -->
       <div style="background: #000; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
         <h3 style="margin-top: 0;">💰 Order Summary</h3>
         ${orderData.discountAmount && orderData.discountAmount > 0 ? `
-        <div style="display: flex; justify-content: space-between; margin: 10px 0; color: #4CAF50;">
-          <span>Discount Applied (${orderData.promoCode || 'Promo'}):</span>
-          <span>-${orderData.discountAmount.toLocaleString()} LE</span>
+        <div style="margin: 10px 0; color: #4CAF50; text-align: center;">
+          <span>✅ Discount Applied: ${orderData.promoCode || 'Promo Code'}</span>
         </div>
         <hr style="border: 1px solid #333; margin: 15px 0;">` : ''}
         <div style="display: flex; justify-content: space-between; font-size: 20px; font-weight: bold;">
           <span>Total Amount:</span>
           <span>${orderData.totalAmount.toLocaleString()} LE</span>
-        </div>
-        <div style="margin-top: 10px; font-size: 14px; color: #ccc;">
-          <span>Payment Method: ${orderData.paymentMethod === 'cashOnDelivery' ? 'Cash on Delivery' : 'InstaPay'}</span>
         </div>
       </div>
 
@@ -307,7 +298,7 @@ function generateOrderEmailTemplate(orderData: OrderEmailData): string {
         <ul style="margin: 0; padding-left: 20px;">
           <li>We'll contact you shortly to confirm your order</li>
           <li>Your order will be prepared and shipped</li>
-          <li>You'll pay ${orderData.paymentMethod === 'cashOnDelivery' ? 'cash on delivery' : 'as selected'}</li>
+          <li>You'll pay the total amount shown above</li>
           <li>Keep this email for your records</li>
         </ul>
       </div>
