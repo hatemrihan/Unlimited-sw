@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
 
     // Calculate final amounts
     const subtotalAfterDiscount = Math.max(0, orderData.subtotal - promoDiscount);
-    const finalTotal = subtotalAfterDiscount + orderData.shippingCost;
+    const finalTotal = subtotalAfterDiscount + orderData.shippingCost + (orderData.codFee || 0);
 
     // Create order object
     const newOrder: Partial<IOrder> = {
