@@ -35,3 +35,4 @@ PaymentSettingsSchema.index({}, { unique: true });
 const PaymentSettings = mongoose.models.PaymentSettings || mongoose.model('PaymentSettings', PaymentSettingsSchema);
 
 export default PaymentSettings;
+

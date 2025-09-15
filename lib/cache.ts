@@ -125,3 +125,4 @@ export const invalidateAllCaches = () => {
   apiCache.clear();
   console.log('🗑️ All caches cleared');
 };
+

@@ -74,6 +74,7 @@ export interface OrderEmailData {
   }>;
   totalAmount: number;
   shippingCost: number;
+  codFee?: number;
   paymentMethod: string;
   shippingAddress: {
     governorate: string;
@@ -287,7 +288,7 @@ function generateOrderEmailTemplate(orderData: OrderEmailData): string {
         <h3 style="margin-top: 0;">💰 Order Summary</h3>
         <div style="display: flex; justify-content: space-between; margin: 10px 0;">
           <span>Subtotal:</span>
-          <span>${(orderData.totalAmount - orderData.shippingCost + (orderData.discountAmount || 0)).toLocaleString()} LE</span>
+          <span>${(orderData.totalAmount - orderData.shippingCost - (orderData.codFee || 0) + (orderData.discountAmount || 0)).toLocaleString()} LE</span>
         </div>
         ${orderData.discountAmount && orderData.discountAmount > 0 ? `
         <div style="display: flex; justify-content: space-between; margin: 10px 0; color: #4CAF50;">
@@ -298,6 +299,11 @@ function generateOrderEmailTemplate(orderData: OrderEmailData): string {
           <span>Shipping:</span>
           <span>${orderData.shippingCost.toLocaleString()} LE</span>
         </div>
+        ${orderData.paymentMethod === 'cashOnDelivery' && orderData.codFee && orderData.codFee > 0 ? `
+        <div style="display: flex; justify-content: space-between; margin: 10px 0; color: #FFA500;">
+          <span>Cash on Delivery Fee:</span>
+          <span>${orderData.codFee.toLocaleString()} LE</span>
+        </div>` : ''}
         <hr style="border: 1px solid #333; margin: 15px 0;">
         <div style="display: flex; justify-content: space-between; font-size: 18px; font-weight: bold;">
           <span>Total:</span>

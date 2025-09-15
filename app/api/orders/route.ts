@@ -177,6 +177,7 @@ export async function POST(request: NextRequest) {
       totalAmount: Number(finalTotal) || 0,
       subtotal: Number(orderData.subtotal) || 0,
       shippingCost: Number(orderData.shippingCost) || 0,
+      codFee: Number(orderData.codFee) || 0,
       status: 'pending',
       notes: orderData.notes?.trim() || undefined,
       orderDate: new Date()
@@ -404,6 +405,7 @@ export async function POST(request: NextRequest) {
         })),
         totalAmount: savedOrder.totalAmount,
         shippingCost: savedOrder.shippingCost,
+        codFee: savedOrder.codFee || 0,
         paymentMethod: savedOrder.paymentMethod,
         shippingAddress: {
           governorate: orderData.customer.governorate || '',

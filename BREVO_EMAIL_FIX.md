@@ -49,3 +49,4 @@ After setup:
 ✅ **No more "Error" status** in Brevo logs  
 
 **Once you add the SMTP password to `.env.local`, all order emails will work perfectly!** 🎉
+

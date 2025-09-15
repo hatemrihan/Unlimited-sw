@@ -362,6 +362,7 @@ export default function CheckoutPage() {
         totalAmount: totalWithShipping,
         subtotal: state.total,
         shippingCost: shippingCost,
+        codFee: finalCodFee,
         promoCode: appliedPromo ? appliedPromo.code : '',
         discountAmount: discountAmount,
         notes: formData.notes.trim(),
