@@ -286,28 +286,18 @@ function generateOrderEmailTemplate(orderData: OrderEmailData): string {
       <!-- Order Summary -->
       <div style="background: #000; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
         <h3 style="margin-top: 0;">💰 Order Summary</h3>
-        <div style="display: flex; justify-content: space-between; margin: 10px 0;">
-          <span>Subtotal:</span>
-          <span>${(orderData.totalAmount - orderData.shippingCost - (orderData.codFee || 0) + (orderData.discountAmount || 0)).toLocaleString()} LE</span>
-        </div>
         ${orderData.discountAmount && orderData.discountAmount > 0 ? `
         <div style="display: flex; justify-content: space-between; margin: 10px 0; color: #4CAF50;">
-          <span>Discount (${orderData.promoCode || 'Applied'}):</span>
+          <span>Discount Applied (${orderData.promoCode || 'Promo'}):</span>
           <span>-${orderData.discountAmount.toLocaleString()} LE</span>
-        </div>` : ''}
-        <div style="display: flex; justify-content: space-between; margin: 10px 0;">
-          <span>Shipping:</span>
-          <span>${orderData.shippingCost.toLocaleString()} LE</span>
         </div>
-        ${orderData.paymentMethod === 'cashOnDelivery' && orderData.codFee && orderData.codFee > 0 ? `
-        <div style="display: flex; justify-content: space-between; margin: 10px 0; color: #FFA500;">
-          <span>Cash on Delivery Fee:</span>
-          <span>${orderData.codFee.toLocaleString()} LE</span>
-        </div>` : ''}
-        <hr style="border: 1px solid #333; margin: 15px 0;">
-        <div style="display: flex; justify-content: space-between; font-size: 18px; font-weight: bold;">
-          <span>Total:</span>
+        <hr style="border: 1px solid #333; margin: 15px 0;">` : ''}
+        <div style="display: flex; justify-content: space-between; font-size: 20px; font-weight: bold;">
+          <span>Total Amount:</span>
           <span>${orderData.totalAmount.toLocaleString()} LE</span>
+        </div>
+        <div style="margin-top: 10px; font-size: 14px; color: #ccc;">
+          <span>Payment Method: ${orderData.paymentMethod === 'cashOnDelivery' ? 'Cash on Delivery' : 'InstaPay'}</span>
         </div>
       </div>
 

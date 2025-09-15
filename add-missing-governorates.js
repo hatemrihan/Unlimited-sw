@@ -66,3 +66,4 @@ async function addGovernorates() {
 // Run the script
 addGovernorates();
 
+
