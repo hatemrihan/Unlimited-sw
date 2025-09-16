@@ -95,11 +95,12 @@ const Orders = () => {
     
     const csvData = [
       // CSV Headers - Shipping Company Format
-      ['Customer', 'Order ID', 'Email', 'Phone', 'Shipping Address', 'Products', 'Payment Method', 'Total'],
+      ['Customer', 'Order ID', 'Email', 'Phone', 'Shipping Address', 'Products', 'Colors', 'Payment Method', 'Total'],
       // CSV Rows
       ...rowsToExport.map(row => {
         const order = row.original;
-        const products = order.products.map(p => `${p.name}${p.size ? ` (${p.size})` : ''}${p.color ? ` - ${p.color}` : ''} x${p.quantity}`).join('; ');
+        const products = order.products.map(p => `${p.name}${p.size ? ` (${p.size})` : ''} x${p.quantity}`).join('; ');
+        const colors = order.products.map(p => p.color || 'N/A').join('; ');
         return [
           order.customer.name,
           order.orderId,
@@ -107,6 +108,7 @@ const Orders = () => {
           order.customer.phone,
           order.customer.address,
           products,
+          colors,
           order.paymentMethod === 'cashOnDelivery' ? 'COD' : 'InstaPay',
           `${order.totalAmount} L.E`
         ];
@@ -173,7 +175,8 @@ const Orders = () => {
     
     const excelData = rowsToExport.map(row => {
       const order = row.original;
-      const products = order.products.map(p => `${p.name}${p.size ? ` (${p.size})` : ''}${p.color ? ` - ${p.color}` : ''} x${p.quantity}`).join('; ');
+      const products = order.products.map(p => `${p.name}${p.size ? ` (${p.size})` : ''} x${p.quantity}`).join('; ');
+      const colors = order.products.map(p => p.color || 'N/A').join('; ');
       return {
         'Customer': order.customer.name,
         'Order ID': order.orderId,
@@ -181,6 +184,7 @@ const Orders = () => {
         'Phone': order.customer.phone,
         'Shipping Address': order.customer.address,
         'Products': products,
+        'Colors': colors,
         'Payment Method': order.paymentMethod === 'cashOnDelivery' ? 'COD' : 'InstaPay',
         'Total': `${order.totalAmount} L.E`
       };
@@ -418,12 +422,33 @@ const Orders = () => {
                 <div className="font-medium">{product.name}</div>
                 <div className="text-xs text-gray-400">
                   {product.size && <span className="mr-2">Size: {product.size}</span>}
-                  {product.color && <span className="px-2 py-1 bg-blue-600 text-white rounded text-xs font-bold mr-2">Color: {product.color}</span>}
                   <span className="font-semibold">Qty: {product.quantity}</span>
                 </div>
               </div>
             ))}
           </div>
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: "color",
+    header: "Color",
+    cell: ({ row }) => {
+      const products = row.original.products;
+      return (
+        <div className="text-white">
+          {products.map((product, index) => (
+            <div key={index} className="mb-1">
+              {product.color ? (
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm">
+                  🎨 {product.color.toUpperCase()}
+                </span>
+              ) : (
+                <span className="text-gray-500 text-xs">-</span>
+              )}
+            </div>
+          ))}
         </div>
       );
     },
