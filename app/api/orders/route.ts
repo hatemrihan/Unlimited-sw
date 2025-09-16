@@ -398,7 +398,7 @@ export async function POST(request: NextRequest) {
           quantity: product.quantity,
           price: product.price * product.quantity,
           variant: product.size || product.color ? {
-            name: product.size || '',
+            name: product.size || product.color || '',
             size: product.size || '',
             color: product.color || ''
           } : undefined

@@ -133,7 +133,8 @@ const ProductDetail = () => {
         image: product.mainImage,
         price: selectedVariant?.price || product.price,
         variant: selectedVariant ? {
-          name: selectedVariant.name
+          name: selectedVariant.name,
+          color: selectedVariant.name // The variant name IS the color (Black, Gray, etc.)
         } : undefined
       }, quantity);
 
@@ -153,18 +154,40 @@ const ProductDetail = () => {
     }
   };
 
-  // Handle buy now
+  // Handle buy now - ADD TO CART FIRST, THEN REDIRECT
   const handleBuyNow = () => {
-    if (!product || !selectedVariant) return;
+    if (!product) return;
     
-    console.log('💳 Buy now:', {
-      product: product.name,
-      variant: selectedVariant.name,
-      quantity: quantity
-    });
-    
-    // Redirect to checkout
-    window.location.href = '/checkout';
+    try {
+      // 🎯 FIRST: Add the selected item to cart with color information
+      addItem({
+        id: product._id!,
+        name: product.name,
+        image: product.mainImage,
+        price: selectedVariant?.price || product.price,
+        variant: selectedVariant ? {
+          name: selectedVariant.name,
+          color: selectedVariant.name // Include the color (Black, Gray, etc.)
+        } : undefined
+      }, quantity);
+
+      console.log('💳 Buy now - Added to cart:', {
+        product: product.name,
+        variant: selectedVariant?.name,
+        color: selectedVariant?.name,
+        quantity: quantity
+      });
+      
+      // 🚀 THEN: Redirect to checkout (item now in cart!)
+      setTimeout(() => {
+        window.location.href = '/checkout';
+      }, 100); // Small delay to ensure cart updates
+      
+    } catch (error) {
+      console.error('❌ Error in Buy Now:', error);
+      // Fallback: still redirect even if add to cart fails
+      window.location.href = '/checkout';
+    }
   };
 
   // Debug logging

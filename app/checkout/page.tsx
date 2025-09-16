@@ -352,9 +352,8 @@ export default function CheckoutPage() {
           name: item.name,
           price: item.price,
           quantity: item.quantity,
-          variant: item.variant ? {
-            name: item.variant.name
-          } : undefined,
+          size: item.variant?.name || undefined, // Variant name as size for compatibility
+          color: item.variant?.color || undefined, // Extract color from variant
           image: item.image
         })),
         paymentMethod: formData.paymentMethod,
