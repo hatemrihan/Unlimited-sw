@@ -51,3 +51,4 @@ After setup:
 **Once you add the SMTP password to `.env.local`, all order emails will work perfectly!** 🎉
 
 
+

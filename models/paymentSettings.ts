@@ -37,3 +37,4 @@ const PaymentSettings = mongoose.models.PaymentSettings || mongoose.model('Payme
 export default PaymentSettings;
 
 
+

@@ -415,7 +415,12 @@ const Orders = () => {
           <div className="text-xs text-gray-300 max-w-sm">
             {products.map((product, index) => (
               <div key={index} className="whitespace-normal break-words">
-                {product.name} {product.size && `(${product.size})`} x{product.quantity}
+                <div className="font-medium">{product.name}</div>
+                <div className="text-xs text-gray-400">
+                  {product.size && <span className="mr-2">Size: {product.size}</span>}
+                  {product.color && <span className="px-2 py-1 bg-blue-600 text-white rounded text-xs font-bold mr-2">Color: {product.color}</span>}
+                  <span className="font-semibold">Qty: {product.quantity}</span>
+                </div>
               </div>
             ))}
           </div>

@@ -207,7 +207,8 @@ function generateOrderEmailTemplate(orderData: OrderEmailData): string {
     <tr style="border-bottom: 1px solid #eee;">
       <td style="padding: 12px; border-right: 1px solid #eee;">
         <strong>${item.name}</strong>
-        ${item.variant ? `<br><small style="color: #666;">Size: ${item.variant.name || item.variant.size} | Color: ${item.variant.color}</small>` : ''}
+        ${item.variant ? `<br><small style="color: #666;">Size: ${item.variant.name || item.variant.size}</small>` : ''}
+        ${item.variant && item.variant.color ? `<br><span style="background: #007bff; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">🎨 COLOR: ${item.variant.color.toUpperCase()}</span>` : ''}
       </td>
       <td style="padding: 12px; text-align: center; border-right: 1px solid #eee;">${item.quantity}</td>
       <td style="padding: 12px; text-align: right; font-weight: bold;">${item.price.toLocaleString()} LE</td>
@@ -272,7 +273,8 @@ function generateOrderEmailTemplate(orderData: OrderEmailData): string {
           ${orderData.orderItems.map(item => `
             <div style="padding: 10px 0; border-bottom: 1px solid #eee;">
               <strong>${item.name}</strong>
-              ${item.variant ? `<br><span style="color: #666; font-size: 14px;">Size: ${item.variant.size || 'N/A'}, Color: ${item.variant.color || 'N/A'}</span>` : ''}
+              ${item.variant ? `<br><span style="color: #666; font-size: 14px;">Size: ${item.variant.size || 'N/A'}</span>` : ''}
+              ${item.variant && item.variant.color ? `<br><span style="background: #007bff; color: white; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; margin-top: 4px; display: inline-block;">🎨 COLOR: ${item.variant.color.toUpperCase()}</span>` : ''}
             </div>
           `).join('')}
         </div>
@@ -326,7 +328,8 @@ function generateAdminEmailTemplate(orderData: OrderEmailData): string {
     <tr style="border-bottom: 1px solid #eee;">
       <td style="padding: 8px; border-right: 1px solid #eee;">
         <strong>${item.name}</strong>
-        ${item.variant ? `<br><small>Size: ${item.variant.name || item.variant.size} | Color: ${item.variant.color}</small>` : ''}
+        ${item.variant ? `<br><small style="color: #666;">Size: ${item.variant.name || item.variant.size}</small>` : ''}
+        ${item.variant && item.variant.color ? `<br><span style="background: #007bff; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold;">🎨 COLOR: ${item.variant.color.toUpperCase()}</span>` : ''}
       </td>
       <td style="padding: 8px; text-align: center; border-right: 1px solid #eee;">${item.quantity}</td>
       <td style="padding: 8px; text-align: right; font-weight: bold;">${item.price.toLocaleString()} LE</td>
