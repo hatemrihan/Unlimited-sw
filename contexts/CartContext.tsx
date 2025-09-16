@@ -31,7 +31,7 @@ type CartAction =
 
 const CartContext = createContext<{
   state: CartState;
-  addItem: (item: Omit<CartItem, 'quantity'>, maxStock?: number) => void;
+  addItem: (item: Omit<CartItem, 'quantity'>, quantityToAdd?: number, maxStock?: number) => void;
   removeItem: (id: string, variant?: any) => void;
   updateQuantity: (id: string, variant: any, quantity: number, maxStock?: number) => void;
   clearCart: () => void;
@@ -50,11 +50,12 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
       if (existingItemIndex >= 0) {
         // Update existing item quantity with stock validation
         const existingItem = state.items[existingItemIndex];
-        const newQuantity = existingItem.quantity + (action.payload.quantity || 1);
+        const quantityToAdd = action.payload.quantity || 1;
+        const newQuantity = existingItem.quantity + quantityToAdd;
 
         // Check if adding would exceed stock
         if (action.payload.stock !== undefined && newQuantity > action.payload.stock) {
-          console.log(`Cannot add more items. Stock limit: ${action.payload.stock}, Current: ${existingItem.quantity}, Trying to add: ${action.payload.quantity || 1}`);
+          console.log(`Cannot add more items. Stock limit: ${action.payload.stock}, Current: ${existingItem.quantity}, Trying to add: ${quantityToAdd}`);
           return state; // Don't add if it would exceed stock
         }
 
@@ -65,12 +66,13 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
         );
       } else {
         // Add new item with stock validation
-        if (action.payload.stock !== undefined && (action.payload.quantity || 1) > action.payload.stock) {
-          console.log(`Cannot add item. Stock limit: ${action.payload.stock}, Trying to add: ${action.payload.quantity || 1}`);
+        const quantityToAdd = action.payload.quantity || 1;
+        if (action.payload.stock !== undefined && quantityToAdd > action.payload.stock) {
+          console.log(`Cannot add item. Stock limit: ${action.payload.stock}, Trying to add: ${quantityToAdd}`);
           return state; // Don't add if it would exceed stock
         }
 
-        newItems = [...state.items, { ...action.payload, quantity: action.payload.quantity || 1 }];
+        newItems = [...state.items, { ...action.payload, quantity: quantityToAdd }];
       }
 
       const total = newItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -161,8 +163,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [state.items]);
 
   // Cart actions
-  const addItem = (item: Omit<CartItem, 'quantity'>, maxStock?: number) => {
-    dispatch({ type: 'ADD_ITEM', payload: { ...item, quantity: 1, stock: item.stock || maxStock } });
+  const addItem = (item: Omit<CartItem, 'quantity'>, quantityToAdd: number = 1, maxStock?: number) => {
+    dispatch({ type: 'ADD_ITEM', payload: { ...item, quantity: quantityToAdd, stock: item.stock || maxStock } });
   };
 
   const removeItem = (id: string, variant?: any) => {

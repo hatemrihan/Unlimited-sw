@@ -126,7 +126,7 @@ const ProductDetail = () => {
     if (!product) return;
 
     try {
-      // Add to cart using context
+      // Add to cart using context with selected quantity
       addItem({
         id: product._id!,
         name: product.name,
@@ -136,7 +136,7 @@ const ProductDetail = () => {
           name: selectedVariant.name,
           color: selectedVariant.name // The variant name IS the color (Black, Gray, etc.)
         } : undefined
-      }, quantity);
+      }, quantity); // Pass the selected quantity
 
       // Show beautiful cart notification
       setCartNotificationKey(prev => prev + 1);
@@ -159,7 +159,7 @@ const ProductDetail = () => {
     if (!product) return;
     
     try {
-      // 🎯 FIRST: Add the selected item to cart with color information
+      // 🎯 FIRST: Add the selected item to cart with the selected quantity and color
       addItem({
         id: product._id!,
         name: product.name,
@@ -169,7 +169,7 @@ const ProductDetail = () => {
           name: selectedVariant.name,
           color: selectedVariant.name // Include the color (Black, Gray, etc.)
         } : undefined
-      }, quantity);
+      }, quantity); // Pass the selected quantity (important!)
 
       console.log('💳 Buy now - Added to cart:', {
         product: product.name,
