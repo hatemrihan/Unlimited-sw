@@ -59,12 +59,23 @@ const FeaturedProducts = () => {
   // Handle add to cart
   const handleAddToCart = (product: Product) => {
     try {
+      // Calculate total available stock from variants or use product stock
+      const availableStock = Array.isArray(product.variants) && product.variants.length > 0
+        ? product.variants.reduce((sum: number, v: any) => sum + (Number((v as any).stock) || 0), 0)
+        : Number((product as any).stock) || 0;
+      
+      // Don't add if no stock available
+      if (availableStock <= 0) {
+        console.log('❌ Cannot add to cart - no stock available for:', product.name);
+        return;
+      }
+
       addItem({
         id: product._id!,
         name: product.name,
         image: product.mainImage,
         price: product.price,
-        stock: product.stock
+        stock: availableStock // Use calculated total stock
       }, 1);
 
       // Show cart notification
@@ -76,7 +87,7 @@ const FeaturedProducts = () => {
         setShowCartNotification(false);
       }, 3000);
 
-      console.log('✅ Added to cart:', product.name);
+      console.log('✅ Added to cart:', product.name, `(Stock: ${availableStock})`);
     } catch (error) {
       console.error('❌ Error adding to cart:', error);
     }

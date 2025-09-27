@@ -285,46 +285,110 @@ export async function POST(request: NextRequest) {
         const updatedVariant = updateResult.variants.find((v: any) => v.name === variant.name);
         console.log(`📦 Atomically deducted ${orderProduct.quantity} from variant ${variant.name} of ${product.name}. Variant stock: ${updatedVariant?.stock}, Total stock: ${updateResult.stock}`);
       } else {
-        // Check main product stock
-        if (product.stock < orderProduct.quantity) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: `Insufficient stock for ${orderProduct.name}. Available: ${product.stock}, Requested: ${orderProduct.quantity}`
-            },
-            { status: 400 }
+        // No specific variant selected - check if product has variants
+        if (product.variants && product.variants.length > 0) {
+          // Product has variants but no specific variant was selected
+          // Find first available variant with enough stock
+          const availableVariant = product.variants.find((v: any) => 
+            Number(v.stock || 0) >= orderProduct.quantity
           );
-        }
+          
+          if (!availableVariant) {
+            // Calculate total available stock from all variants
+            const totalVariantStock = product.variants.reduce((sum: number, v: any) => 
+              sum + (Number(v.stock || 0)), 0
+            );
+            
+            return NextResponse.json(
+              {
+                success: false,
+                error: `Insufficient stock for ${orderProduct.name}. Available: ${totalVariantStock}, Requested: ${orderProduct.quantity}`
+              },
+              { status: 400 }
+            );
+          }
+          
+          // Use the available variant
+          console.log(`🎯 Auto-selecting variant ${availableVariant.name} for ${product.name}`);
+          
+          // Store original values for rollback
+          stockRollback.push({
+            productId: product._id.toString(),
+            variantName: availableVariant.name,
+            originalStock: product.stock,
+            originalVariantStock: availableVariant.stock
+          });
 
-        // Store original values for rollback
-        stockRollback.push({
-          productId: product._id.toString(),
-          originalStock: product.stock
-        });
-
-        // Use atomic update to prevent race conditions
-        const updateResult = await Product.findOneAndUpdate(
-          {
-            _id: product._id,
-            stock: { $gte: orderProduct.quantity }
-          },
-          {
-            $inc: { stock: -orderProduct.quantity }
-          },
-          { new: true }
-        );
-
-        if (!updateResult) {
-          return NextResponse.json(
+          // Use atomic update to prevent race conditions
+          const updateResult = await Product.findOneAndUpdate(
             {
-              success: false,
-              error: `Insufficient stock for ${orderProduct.name}. Stock may have been updated by another order.`
+              _id: product._id,
+              'variants.name': availableVariant.name,
+              'variants.stock': { $gte: orderProduct.quantity }
             },
-            { status: 400 }
+            {
+              $inc: { 
+                'variants.$.stock': -orderProduct.quantity
+              }
+            },
+            { new: true }
           );
-        }
 
-        console.log(`📦 Atomically deducted ${orderProduct.quantity} from ${product.name}. New stock: ${updateResult.stock}`);
+          if (!updateResult) {
+            return NextResponse.json(
+              {
+                success: false,
+                error: `Insufficient stock for ${orderProduct.name} (${availableVariant.name}). Stock may have been updated by another order.`
+              },
+              { status: 400 }
+            );
+          }
+
+          // Get updated variant stock for logging
+          const updatedVariant = updateResult.variants.find((v: any) => v.name === availableVariant.name);
+          console.log(`📦 Atomically deducted ${orderProduct.quantity} from auto-selected variant ${availableVariant.name} of ${product.name}. Variant stock: ${updatedVariant?.stock}`);
+        } else {
+          // Product doesn't have variants - use main product stock
+          if (product.stock < orderProduct.quantity) {
+            return NextResponse.json(
+              {
+                success: false,
+                error: `Insufficient stock for ${orderProduct.name}. Available: ${product.stock}, Requested: ${orderProduct.quantity}`
+              },
+              { status: 400 }
+            );
+          }
+
+          // Store original values for rollback
+          stockRollback.push({
+            productId: product._id.toString(),
+            originalStock: product.stock
+          });
+
+          // Use atomic update to prevent race conditions
+          const updateResult = await Product.findOneAndUpdate(
+            {
+              _id: product._id,
+              stock: { $gte: orderProduct.quantity }
+            },
+            {
+              $inc: { stock: -orderProduct.quantity }
+            },
+            { new: true }
+          );
+
+          if (!updateResult) {
+            return NextResponse.json(
+              {
+                success: false,
+                error: `Insufficient stock for ${orderProduct.name}. Stock may have been updated by another order.`
+              },
+              { status: 400 }
+            );
+          }
+
+          console.log(`📦 Atomically deducted ${orderProduct.quantity} from main stock of ${product.name}. New stock: ${updateResult.stock}`);
+        }
       }
     }
 

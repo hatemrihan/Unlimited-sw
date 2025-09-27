@@ -156,14 +156,26 @@ export default function Shop() {
   });
 
   const handleAddToCart = (product: Product) => {
+    // Calculate total available stock from variants or use product stock
+    const variantStock = Array.isArray(product.variants) && product.variants.length > 0
+      ? product.variants.reduce((sum: number, v: any) => sum + (Number((v as any).stock) || 0), 0)
+      : Number((product as any).stock) || 0;
+    
+    // Don't add if no stock available
+    if (variantStock <= 0) {
+      console.log('❌ Cannot add to cart - no stock available for:', product.name);
+      return;
+    }
+
     addItem({
       id: product._id,
       name: product.name,
       image: product.mainImage || product.images[0],
       price: product.price,
-      stock: product.stock
+      stock: variantStock // Use calculated total stock
     }, 1);
 
+    console.log('✅ Added to cart:', product.name, `(Stock: ${variantStock})`);
     setCartNotificationKey(prev => prev + 1);
     setShowCartNotification(true);
     setTimeout(() => setShowCartNotification(false), 3000);

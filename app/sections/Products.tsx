@@ -72,12 +72,21 @@ const Products = () => {
   // Handle add to cart with beautiful animation
   const handleAddToCart = (product: Product) => {
     try {
+      // Calculate total available stock from variants or use product stock
+      const availableStock = getAvailableStock(product);
+      
+      // Don't add if no stock available
+      if (availableStock <= 0) {
+        console.log('❌ Cannot add to cart - no stock available');
+        return;
+      }
+
       addItem({
         id: product._id!,
         name: product.name,
         image: product.mainImage,
         price: product.price,
-        stock: product.stock
+        stock: availableStock // Use calculated total stock
       }, 1);
 
       // Show beautiful cart notification
@@ -89,7 +98,7 @@ const Products = () => {
         setShowCartNotification(false);
       }, 3000);
 
-      console.log('✅ Added to cart:', product.name);
+      console.log('✅ Added to cart:', product.name, `(Stock: ${availableStock})`);
 
     } catch (error) {
       console.error('❌ Error adding to cart:', error);

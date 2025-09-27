@@ -113,15 +113,16 @@ const EditProductPage = () => {
         return;
       }
       
-      // Calculate discounted price if discount is set
-      if (product.discount && product.discount > 0) {
-        const originalPrice = product.price || 0;
-        const discountedPrice = originalPrice * (1 - product.discount / 100);
-        product.originalPrice = originalPrice;
-        product.price = Math.round(discountedPrice);
+      // ✅ CORRECT PRICING CALCULATION
+      // Calculate final price from originalPrice and discount
+      if (product.discount && product.discount > 0 && product.originalPrice) {
+        // Calculate discounted price from original price
+        const discountedPrice = Math.round((product.originalPrice) * (1 - product.discount / 100));
+        product.price = discountedPrice;
+        console.log(`📊 Calculated price: ${product.originalPrice} * (1 - ${product.discount}%) = ${discountedPrice}`);
       } else {
-        // If no discount, original price is the same as current price
-        product.originalPrice = product.price;
+        // No discount - final price equals original price
+        product.price = product.originalPrice || 0;
       }
       
       const response = await fetch(`/api/admin/products/${productId}`, {
@@ -360,8 +361,8 @@ const EditProductPage = () => {
                     <label className="block text-sm font-medium text-white mb-2">Original Price (L.E) *</label>
                     <input
                       type="number"
-                      value={product.price || ''}
-                      onChange={(e) => setProduct({...product, price: parseFloat(e.target.value) || 0})}
+                      value={product.originalPrice || ''}
+                      onChange={(e) => setProduct({...product, originalPrice: parseFloat(e.target.value) || 0})}
                       className="w-full p-3 bg-transparent border border-white/20 rounded-lg text-white focus:border-white focus:outline-none"
                       placeholder="1000"
                     />
@@ -399,19 +400,19 @@ const EditProductPage = () => {
                 </div>
 
                 {/* Price Preview */}
-                {(product.price || 0) > 0 && (
+                {(product.originalPrice || 0) > 0 && (
                   <div className="mt-4 p-3 bg-gray-900/50 border border-gray-700 rounded-lg">
                     <h4 className="text-sm font-medium text-white mb-2">Price Preview:</h4>
                     <div className="flex items-center gap-2">
                       <span className="text-white font-bold text-lg">
                         {product.discount && product.discount > 0 
-                          ? Math.round((product.price || 0) * (1 - product.discount / 100)).toLocaleString()
-                          : (product.price || 0).toLocaleString()
+                          ? Math.round((product.originalPrice || 0) * (1 - product.discount / 100)).toLocaleString()
+                          : (product.originalPrice || 0).toLocaleString()
                         } L.E
                       </span>
                       {product.discount && product.discount > 0 && (
                         <span className="text-gray-400 line-through text-sm">
-                          {(product.price || 0).toLocaleString()} L.E
+                          {(product.originalPrice || 0).toLocaleString()} L.E
                         </span>
                       )}
                     </div>
