@@ -250,7 +250,6 @@ const Products = () => {
                             </div>
                           );
                         })()}
-                        </div>
                         
                         {/* Variant Stock Details - Only show if variants exist */}
                         {product.variants && product.variants.length > 0 && (
