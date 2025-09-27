@@ -196,24 +196,24 @@ export default function CheckoutPage() {
   if (selectedGovernorate) {
     // Check if products have specific shipping rates
     let hasProductSpecificRates = false;
-    let maxProductShippingCost = 0;
-    let maxProductCodFee = 0;
+    let totalProductShippingCost = 0;
+    let totalProductCodFee = 0;
     
     for (const item of state.items) {
       const productSpecificPricing = (selectedGovernorate as any).productPricing?.[item.id];
       if (productSpecificPricing && productSpecificPricing.isActive !== false) {
         hasProductSpecificRates = true;
-        // Use product-specific shipping cost and COD fee
-        maxProductShippingCost = Math.max(maxProductShippingCost, productSpecificPricing.shippingCost || 0);
-        maxProductCodFee = Math.max(maxProductCodFee, productSpecificPricing.codFee || 0);
+        // SUM product-specific shipping cost and COD fee for each item in cart
+        totalProductShippingCost += (productSpecificPricing.shippingCost || 0) * item.quantity;
+        totalProductCodFee += (productSpecificPricing.codFee || 0) * item.quantity;
       }
     }
     
     if (hasProductSpecificRates) {
-      // Use the highest product-specific shipping cost and COD fee
-      shippingCost = maxProductShippingCost;
-      codFee = maxProductCodFee;
-      console.log(`✅ Using product-specific rates: shipping=${shippingCost}, cod=${codFee}`);
+      // Use the sum of all product-specific shipping costs and COD fees
+      shippingCost = totalProductShippingCost;
+      codFee = totalProductCodFee;
+      console.log(`✅ Using summed product-specific rates: shipping=${shippingCost}, cod=${codFee}`);
     } else {
       // NO GLOBAL DEFAULTS - Show error if no product-specific rates
       console.error('❌ No product-specific shipping rates found');
@@ -228,11 +228,13 @@ export default function CheckoutPage() {
     return sum + (currentPrice * item.quantity);
   }, 0);
   
-  // Apply COD fee only for cash on delivery payment method
-  const finalCodFee = formData.paymentMethod === 'cashOnDelivery' ? codFee : 0;
+  // Apply COD fee only for cash on delivery payment method, unless waived by promo
+  const shouldWaiveFees = appliedPromo && appliedPromo.waiveShippingAndCOD;
+  const finalCodFee = (formData.paymentMethod === 'cashOnDelivery' && !shouldWaiveFees) ? codFee : 0;
+  const finalShippingCost = shouldWaiveFees ? 0 : shippingCost;
   const discountAmount = appliedPromo ? appliedPromo.discount : 0;
   const subtotalAfterDiscount = Math.max(0, refreshedSubtotal - discountAmount);
-  const totalWithShipping = subtotalAfterDiscount + shippingCost + finalCodFee;
+  const totalWithShipping = subtotalAfterDiscount + finalShippingCost + finalCodFee;
 
   // Apply promo code
   const applyPromoCode = async () => {
@@ -360,7 +362,7 @@ export default function CheckoutPage() {
         transactionScreenshot: screenshotUrl,
         totalAmount: totalWithShipping,
         subtotal: state.total,
-        shippingCost: shippingCost,
+        shippingCost: finalShippingCost,
         codFee: finalCodFee,
         promoCode: appliedPromo ? appliedPromo.code : '',
         discountAmount: discountAmount,
@@ -811,14 +813,21 @@ export default function CheckoutPage() {
                 )}
                 <div className="flex justify-between">
                   <span className="text-white">Shipping</span>
-                  <span className="text-white">
-                    {selectedGovernorate ? `L.E ${shippingCost}` : 'Select a governorate'}
+                  <span className={shouldWaiveFees ? "text-green-400" : "text-white"}>
+                    {!selectedGovernorate 
+                      ? 'Select a governorate' 
+                      : shouldWaiveFees 
+                        ? 'Free' 
+                        : `L.E ${shippingCost}`
+                    }
                   </span>
                 </div>
-                {formData.paymentMethod === 'cashOnDelivery' && finalCodFee > 0 && (
+                {formData.paymentMethod === 'cashOnDelivery' && (finalCodFee > 0 || shouldWaiveFees) && (
                   <div className="flex justify-between">
                     <span className="text-white">Cash on Delivery Fee</span>
-                    <span className="text-white">L.E {finalCodFee}</span>
+                    <span className={shouldWaiveFees ? "text-green-400" : "text-white"}>
+                      {shouldWaiveFees ? 'Free' : `L.E ${finalCodFee}`}
+                    </span>
                   </div>
                 )}
                 <div className="flex justify-between font-medium text-lg pt-2 border-t border-gray-600">

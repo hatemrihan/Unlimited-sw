@@ -11,6 +11,7 @@ export interface IPromo extends Document {
   isActive: boolean;
   expiresAt?: Date;
   description?: string;
+  waiveShippingAndCOD?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -60,6 +61,10 @@ const PromoSchema = new Schema({
   description: {
     type: String,
     trim: true
+  },
+  waiveShippingAndCOD: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true

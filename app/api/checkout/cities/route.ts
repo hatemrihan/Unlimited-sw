@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
             isActive: cityPricing.isActive
           };
           
-          // Update governorate shipping cost to highest among products
+          // Update governorate shipping cost to sum of all products (for display purposes)
           govEntry.shippingCost = Math.max(govEntry.shippingCost, cityPricing.shippingCost || 0);
           govEntry.codFee = Math.max(govEntry.codFee, cityPricing.codFee || 0);
         }

@@ -86,18 +86,19 @@ export async function POST(request: NextRequest) {
           discountType: promoCode.discountType,
           discountValue: promoCode.discountValue,
           discount: discount,
-          description: promoCode.description
+          description: promoCode.description,
+          waiveShippingAndCOD: promoCode.waiveShippingAndCOD || false
         }
       });
     } else {
       // This is a creation request from admin
       console.log('📝 Creating new promo code...');
 
-      const { code, discount, type, minAmount, maxUses, isActive, validFrom, validUntil, description } = body;
+      const { code, discount, type, minAmount, maxUses, isActive, validFrom, validUntil, description, waiveShippingAndCOD } = body;
 
-      if (!code || !discount) {
+      if (!code || (!discount && !waiveShippingAndCOD)) {
         return NextResponse.json(
-          { success: false, error: 'Code and discount are required' },
+          { success: false, error: 'Code and discount (or fee waiver) are required' },
           { status: 400 }
         );
       }
@@ -116,13 +117,14 @@ export async function POST(request: NextRequest) {
       const newPromoCode = new Promo({
         code: code.toUpperCase().trim(),
         discountType: type,
-        discountValue: discount,
+        discountValue: discount || 0,
         minimumOrder: minAmount || 0,
         usageLimit: maxUses || null,
         usedCount: 0,
         isActive: isActive !== false,
         expiresAt: validUntil ? new Date(validUntil) : null,
-        description: description || ''
+        description: description || '',
+        waiveShippingAndCOD: waiveShippingAndCOD || false
       });
 
       await newPromoCode.save();
@@ -183,7 +185,8 @@ export async function GET(request: NextRequest) {
         isActive: promo.isActive,
         validFrom: promo.createdAt,
         validUntil: promo.expiresAt,
-        description: promo.description
+        description: promo.description,
+        waiveShippingAndCOD: promo.waiveShippingAndCOD || false
       }))
     });
 

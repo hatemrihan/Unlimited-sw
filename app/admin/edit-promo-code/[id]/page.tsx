@@ -15,6 +15,7 @@ interface PromoCode {
   validFrom: string;
   validUntil: string;
   description?: string;
+  waiveShippingAndCOD?: boolean;
 }
 
 const EditPromoCodePage = () => {
@@ -56,8 +57,8 @@ const EditPromoCodePage = () => {
     try {
       setSaving(true);
 
-      if (!promoCode.code || !promoCode.discount) {
-        alert('Please fill in all required fields');
+      if (!promoCode.code || (!promoCode.discount && !promoCode.waiveShippingAndCOD)) {
+        alert('Please fill in all required fields or enable fee waiver');
         return;
       }
 
@@ -244,6 +245,20 @@ const EditPromoCodePage = () => {
                   />
                   <label htmlFor="isActive" className="text-sm text-white">
                     Active
+                  </label>
+                </div>
+
+                {/* Waive Shipping and COD */}
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="waiveShippingAndCOD"
+                    checked={promoCode.waiveShippingAndCOD || false}
+                    onChange={(e) => setPromoCode({...promoCode, waiveShippingAndCOD: e.target.checked})}
+                    className="w-4 h-4 text-white focus:ring-white border-white rounded"
+                  />
+                  <label htmlFor="waiveShippingAndCOD" className="text-sm text-white">
+                    هتخلي انت لتوصيل والدفع عند الاستلام ببلاش (بحبك يا كبتني لما تشوفها قولي عشان امسح الرساله دي)
                   </label>
                 </div>
               </div>

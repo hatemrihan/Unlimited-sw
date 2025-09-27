@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { DatePicker } from '../../../components/ui/date-picker';
+import { ICityPricing as City } from '../../../models/cityPricing';
 
 interface PromoCode {
   code: string;
@@ -14,11 +15,14 @@ interface PromoCode {
   validFrom: string;
   validUntil: string;
   description?: string;
+  waiveShippingAndCOD?: boolean;
 }
 
 const AddPromoCodePage = () => {
   const router = useRouter();
   const [saving, setSaving] = useState<boolean>(false);
+  const [cities, setCities] = useState<City[]>([]);
+  const [loadingCities, setLoadingCities] = useState<boolean>(true);
   const [newPromoCode, setNewPromoCode] = useState<PromoCode>({
     code: '',
     discount: 0,
@@ -28,14 +32,68 @@ const AddPromoCodePage = () => {
     isActive: true,
     validFrom: new Date().toISOString().split('T')[0],
     validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    description: ''
+    description: '',
+    waiveShippingAndCOD: false
   });
+
+  // Fetch cities data when component mounts
+  useEffect(() => {
+    fetchCities();
+  }, []);
+
+  const fetchCities = async () => {
+    try {
+      setLoadingCities(true);
+      const response = await fetch('/api/checkout/cities');
+      if (response.ok) {
+        const data = await response.json();
+        setCities(data.cities || []);
+      } else {
+        console.error('Failed to fetch cities');
+      }
+    } catch (error) {
+      console.error('Error fetching cities:', error);
+    } finally {
+      setLoadingCities(false);
+    }
+  };
+
+  // Calculate total COD and delivery fees from cities data
+  const calculateTotalFees = () => {
+    if (!cities || cities.length === 0) return { codTotal: 0, deliveryTotal: 0, combined: 0 };
+    
+    const codTotal = cities.reduce((acc, city) => acc + (city.codFee || 0), 0);
+    const deliveryTotal = cities.reduce((acc, city) => acc + (city.shippingCost || 0), 0);
+    const combined = codTotal + deliveryTotal;
+    
+    return { codTotal, deliveryTotal, combined };
+  };
+
+  // Create a promo code that cancels COD and delivery fees
+  const createFreeShippingPromo = () => {
+    const fees = calculateTotalFees();
+    
+    // Get the average fees (since promo will apply to single orders)
+    const avgCodFee = cities.length > 0 ? fees.codTotal / cities.length : 0;
+    const avgDeliveryFee = cities.length > 0 ? fees.deliveryTotal / cities.length : 0;
+    const avgTotalFee = avgCodFee + avgDeliveryFee;
+    
+    setNewPromoCode({
+      ...newPromoCode,
+      code: 'FREESHIP',
+      discount: 0, // Set to 0 since we're waiving fees directly
+      type: 'fixed',
+      description: 'Free shipping and COD - Waives delivery and cash on delivery fees',
+      minAmount: 100, // Set a minimum order amount if needed
+      waiveShippingAndCOD: true,
+    });
+  };
 
   const handleAddPromoCode = async () => {
     try {
       setSaving(true);
 
-      if (!newPromoCode.code || !newPromoCode.discount) {
+      if (!newPromoCode.code || (!newPromoCode.discount && !newPromoCode.waiveShippingAndCOD)) {
         alert('Please fill in all required fields');
         return;
       }
@@ -63,14 +121,14 @@ const AddPromoCodePage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-white text-black">
       <div className="w-full p-2 md:p-4">
         <div className="w-full">
           {/* Header */}
           <div className="flex items-center gap-4 mb-6">
             <button
               onClick={() => router.back()}
-              className="flex items-center gap-2 text-white hover:text-gray-300 transition-colors duration-300"
+              className="flex items-center gap-2 text-black hover:text-gray-600 transition-colors duration-300"
             >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
@@ -79,10 +137,28 @@ const AddPromoCodePage = () => {
             </button>
           </div>
 
-          <div className="bg-black border border-white/10 rounded-lg p-3 md:p-4">
+          <div className="bg-white border border-gray-200 p-3 md:p-4">
             <div className="mb-6">
-              <h1 className="text-2xl font-bold text-white mb-2">Add New Promo Code</h1>
-              <p className="text-gray-300">Create a new promotional code for your customers</p>
+              <h1 className="text-2xl font-bold text-black mb-2">Add New Promo Code</h1>
+              <p className="text-gray-600">Create a new promotional code for your customers</p>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded">
+              <h3 className="text-sm font-semibold text-black mb-3">Quick Actions</h3>
+              <button 
+                className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800 transition-all duration-300 disabled:bg-gray-400"
+                onClick={createFreeShippingPromo}
+                disabled={loadingCities || cities.length === 0}
+              >
+                {loadingCities ? 'Loading cities...' : 'Create Free Shipping Promo'}
+              </button>
+              {!loadingCities && cities.length > 0 && (
+                <p className="text-xs text-gray-600 mt-2">
+                  Average fees: COD: L.E {Math.round(calculateTotalFees().codTotal / cities.length)}, 
+                  Delivery: L.E {Math.round(calculateTotalFees().deliveryTotal / cities.length)}
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -90,23 +166,23 @@ const AddPromoCodePage = () => {
               <div className="space-y-4">
                 {/* Promo Code */}
                 <div>
-                  <label className="block text-sm font-medium text-white mb-2">Promo Code *</label>
+                  <label className="block text-sm font-medium text-black mb-2">Promo Code *</label>
                   <input
                     type="text"
                     value={newPromoCode.code}
                     onChange={(e) => setNewPromoCode({...newPromoCode, code: e.target.value.toUpperCase()})}
-                    className="w-full p-3 bg-transparent border border-white/20 rounded-lg text-white focus:border-white focus:outline-none"
+                    className="w-full p-3 bg-white border border-gray-300 text-black focus:border-black focus:outline-none"
                     placeholder="SAVE20"
                   />
                 </div>
 
                 {/* Description */}
                 <div>
-                  <label className="block text-sm font-medium text-white mb-2">Description</label>
+                  <label className="block text-sm font-medium text-black mb-2">Description</label>
                   <textarea
                     value={newPromoCode.description || ''}
                     onChange={(e) => setNewPromoCode({...newPromoCode, description: e.target.value})}
-                    className="w-full p-3 bg-transparent border border-white/20 rounded-lg text-white focus:border-white focus:outline-none"
+                    className="w-full p-3 bg-white border border-gray-300 text-black focus:border-black focus:outline-none"
                     placeholder="20% off on all products"
                     rows={3}
                   />
@@ -115,23 +191,23 @@ const AddPromoCodePage = () => {
                 {/* Discount Type and Amount */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-white mb-2">Discount Type</label>
+                    <label className="block text-sm font-medium text-black mb-2">Discount Type</label>
                     <select
                       value={newPromoCode.type}
                       onChange={(e) => setNewPromoCode({...newPromoCode, type: e.target.value as 'percentage' | 'fixed'})}
-                      className="w-full p-3 bg-transparent border border-white/20 rounded-lg text-white focus:border-white focus:outline-none"
+                      className="w-full p-3 bg-white border border-gray-300 text-black focus:border-black focus:outline-none"
                     >
                       <option value="percentage" className="text-black">Percentage (%)</option>
-                      <option value="fixed"className='text-black'>Fixed Amount (L.E)</option>
+                      <option value="fixed" className='text-black'>Fixed Amount (L.E)</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-white mb-2">Discount Value *</label>
+                    <label className="block text-sm font-medium text-black mb-2">Discount Value *</label>
                     <input
                       type="number"
                       value={newPromoCode.discount}
                       onChange={(e) => setNewPromoCode({...newPromoCode, discount: parseFloat(e.target.value) || 0})}
-                      className="w-full p-3 bg-transparent border border-white/20 rounded-lg text-white focus:border-white focus:outline-none"
+                      className="w-full p-3 bg-white border border-gray-300 text-black focus:border-black focus:outline-none"
                       placeholder={newPromoCode.type === 'percentage' ? '20' : '50'}
                       min="0"
                       max={newPromoCode.type === 'percentage' ? '100' : undefined}
@@ -144,12 +220,12 @@ const AddPromoCodePage = () => {
               <div className="space-y-4">
                 {/* Minimum Amount */}
                 <div>
-                  <label className="block text-sm font-medium text-white mb-2">Minimum Order Amount (L.E)</label>
+                  <label className="block text-sm font-medium text-black mb-2">Minimum Order Amount (L.E)</label>
                   <input
                     type="number"
                     value={newPromoCode.minAmount || ''}
                     onChange={(e) => setNewPromoCode({...newPromoCode, minAmount: parseFloat(e.target.value) || 0})}
-                    className="w-full p-3 bg-transparent border border-white/20 rounded-lg text-white focus:border-white focus:outline-none"
+                    className="w-full p-3 bg-white border border-gray-300 text-black focus:border-black focus:outline-none"
                     placeholder="100"
                     min="0"
                   />
@@ -157,12 +233,12 @@ const AddPromoCodePage = () => {
 
                 {/* Maximum Uses */}
                 <div>
-                  <label className="block text-sm font-medium text-white mb-2">Maximum Uses</label>
+                  <label className="block text-sm font-medium text-black mb-2">Maximum Uses</label>
                   <input
                     type="number"
                     value={newPromoCode.maxUses || ''}
                     onChange={(e) => setNewPromoCode({...newPromoCode, maxUses: parseInt(e.target.value) || 0})}
-                    className="w-full p-3 bg-transparent border border-white/20 rounded-lg text-white focus:border-white focus:outline-none"
+                    className="w-full p-3 bg-white border border-gray-300 text-black focus:border-black focus:outline-none"
                     placeholder="100"
                     min="1"
                   />
@@ -171,7 +247,7 @@ const AddPromoCodePage = () => {
                 {/* Validity Period */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-white mb-2">Valid From</label>
+                    <label className="block text-sm font-medium text-black mb-2">Valid From</label>
                     <DatePicker
                       date={newPromoCode.validFrom ? new Date(newPromoCode.validFrom) : undefined}
                       onDateChange={(date) => setNewPromoCode({...newPromoCode, validFrom: date ? date.toISOString().split('T')[0] : ''})}
@@ -179,7 +255,7 @@ const AddPromoCodePage = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-white mb-2">Valid Until</label>
+                    <label className="block text-sm font-medium text-black mb-2">Valid Until</label>
                     <DatePicker
                       date={newPromoCode.validUntil ? new Date(newPromoCode.validUntil) : undefined}
                       onDateChange={(date) => setNewPromoCode({...newPromoCode, validUntil: date ? date.toISOString().split('T')[0] : ''})}
@@ -195,10 +271,24 @@ const AddPromoCodePage = () => {
                     id="isActive"
                     checked={newPromoCode.isActive}
                     onChange={(e) => setNewPromoCode({...newPromoCode, isActive: e.target.checked})}
-                    className="w-4 h-4 text-white focus:ring-white border-white rounded"
+                    className="w-4 h-4 text-black focus:ring-black border-gray-300 rounded"
                   />
-                  <label htmlFor="isActive" className="text-sm text-white">
+                  <label htmlFor="isActive" className="text-sm text-black">
                     Active
+                  </label>
+                </div>
+
+                {/* Waive Shipping and COD */}
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="waiveShippingAndCOD"
+                    checked={newPromoCode.waiveShippingAndCOD || false}
+                    onChange={(e) => setNewPromoCode({...newPromoCode, waiveShippingAndCOD: e.target.checked})}
+                    className="w-4 h-4 text-black focus:ring-black border-gray-300 rounded"
+                  />
+                  <label htmlFor="waiveShippingAndCOD" className="text-sm text-black">
+                    هتخلي التوصيل والدفع عند الاستلام ببلاش (بحبك يا كبتني لما تشوفها قولي عشان امسح الرساله دي)
                   </label>
                 </div>
               </div>
@@ -209,7 +299,7 @@ const AddPromoCodePage = () => {
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="px-4 py-2 bg-white text-black rounded-lg font-medium hover:bg-gray-200 transition-all duration-300"
+                className="px-4 py-2 bg-white text-black border border-gray-300 font-medium hover:bg-gray-100 transition-all duration-300"
               >
                 Cancel
               </button>
@@ -217,7 +307,7 @@ const AddPromoCodePage = () => {
                 type="button"
                 onClick={handleAddPromoCode}
                 disabled={saving}
-                className="px-4 py-2 bg-white text-black rounded-lg border border-white/50 font-medium hover:bg-gray-200 transition-all duration-300"
+                className="px-4 py-2 bg-black text-white font-medium hover:bg-gray-800 transition-all duration-300 disabled:bg-gray-400"
               >
                 {saving ? 'Adding...' : 'Add Promo Code'}
               </button>

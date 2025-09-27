@@ -37,7 +37,8 @@ export async function GET(
         isActive: promoCode.isActive,
         validFrom: promoCode.createdAt,
         validUntil: promoCode.expiresAt,
-        description: promoCode.description
+        description: promoCode.description,
+        waiveShippingAndCOD: promoCode.waiveShippingAndCOD || false
       }
     });
 
@@ -68,12 +69,13 @@ export async function PUT(
     const updateData = {
       code: body.code,
       discountType: body.type,
-      discountValue: body.discount,
+      discountValue: body.discount || 0,
       minimumOrder: body.minAmount,
       usageLimit: body.maxUses,
       isActive: body.isActive,
       expiresAt: body.validUntil,
-      description: body.description
+      description: body.description,
+      waiveShippingAndCOD: body.waiveShippingAndCOD || false
     };
 
     const promoCode = await Promo.findByIdAndUpdate(id, updateData, { new: true });
@@ -101,7 +103,8 @@ export async function PUT(
         isActive: promoCode.isActive,
         validFrom: promoCode.createdAt,
         validUntil: promoCode.expiresAt,
-        description: promoCode.description
+        description: promoCode.description,
+        waiveShippingAndCOD: promoCode.waiveShippingAndCOD || false
       }
     });
 
@@ -197,7 +200,8 @@ export async function PATCH(
         isActive: promoCode.isActive,
         validFrom: promoCode.createdAt,
         validUntil: promoCode.expiresAt,
-        description: promoCode.description
+        description: promoCode.description,
+        waiveShippingAndCOD: promoCode.waiveShippingAndCOD || false
       }
     });
 
