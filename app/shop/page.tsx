@@ -374,15 +374,27 @@ const ProductCard = ({ product, onAddToCart, isMobile = false }: {
                   </div>
                 )}
                 
-                {/* Stock Badges - Both when stock is 0 */}
-                {product.stock !== undefined && product.stock === 0 && (
+                {/* Stock Badges - Only show admin-enabled badges when stock is 0 */}
+                {(() => {
+                  // Calculate total available stock from variants or main stock
+                  const variantStock = Array.isArray(product.variants) && product.variants.length > 0
+                    ? product.variants.reduce((sum: number, v: any) => sum + (Number((v as any).stock) || 0), 0)
+                    : Number((product as any).stock) || 0;
+                  return variantStock;
+                })() === 0 && (
                   <>
-                    <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
-                      OUT OF STOCK
-                    </div>
-                    <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
-                      PREORDER
-                    </div>
+                    {/* Show OUT OF STOCK badge only if admin enabled it */}
+                    {(product as any).showOutOfStockBadge && (
+                      <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
+                        OUT OF STOCK
+                      </div>
+                    )}
+                    {/* Show PREORDER badge only if admin enabled it */}
+                    {(product as any).showPreorderBadge && (
+                      <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
+                        PREORDER
+                      </div>
+                    )}
                   </>
                 )}
               </div>

@@ -153,8 +153,14 @@ const FeaturedProducts = () => {
                       </div>
                     )}
                     
-                    {/* Admin-controlled badges (only when stock is 0) */}
-                    {product.stock !== undefined && product.stock === 0 && (
+                    {/* Admin-controlled badges (only when total available stock is 0) */}
+                    {(() => {
+                      // Calculate total available stock from variants or main stock
+                      const variantStock = Array.isArray(product.variants) && product.variants.length > 0
+                        ? product.variants.reduce((sum: number, v: any) => sum + (Number((v as any).stock) || 0), 0)
+                        : Number((product as any).stock) || 0;
+                      return variantStock === 0;
+                    })() && (
                       <>
                         {(product as any).showOutOfStockBadge && (
                           <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">

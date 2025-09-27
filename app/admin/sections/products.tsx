@@ -206,12 +206,50 @@ const Products = () => {
                       </span>
                       <div className="text-xs space-y-1">
                         {/* Stock Status Badge */}
-                        <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          product.stock > 0 
-                            ? 'bg-green-900 text-green-200' 
-                            : 'bg-red-900 text-red-200'
-                        }`}>
-                          {product.stock > 0 ? 'In Stock' : 'Out of Stock'}
+                        {(() => {
+                          // Calculate total available stock from variants or main stock
+                          const variantStock = Array.isArray(product.variants) && product.variants.length > 0
+                            ? product.variants.reduce((sum: number, v: any) => sum + (Number((v as any).stock) || 0), 0)
+                            : Number((product as any).stock) || 0;
+                          
+                          const hasStock = variantStock > 0;
+                          
+                          // If has stock, show In Stock
+                          if (hasStock) {
+                            return (
+                              <div className="bg-green-900 text-green-200 px-2 py-1 rounded-full text-xs font-medium">
+                                In Stock
+                              </div>
+                            );
+                          }
+                          
+                          // If no stock, check admin badge settings
+                          const showOutOfStock = (product as any).showOutOfStockBadge;
+                          const showPreorder = (product as any).showPreorderBadge;
+                          
+                          if (showPreorder) {
+                            return (
+                              <div className="bg-blue-900 text-blue-200 px-2 py-1 rounded-full text-xs font-medium">
+                                Preorder
+                              </div>
+                            );
+                          }
+                          
+                          if (showOutOfStock) {
+                            return (
+                              <div className="bg-red-900 text-red-200 px-2 py-1 rounded-full text-xs font-medium">
+                                Out of Stock
+                              </div>
+                            );
+                          }
+                          
+                          // Default fallback if no badges set
+                          return (
+                            <div className="bg-gray-900 text-gray-300 px-2 py-1 rounded-full text-xs font-medium">
+                              No Stock
+                            </div>
+                          );
+                        })()}
                         </div>
                         
                         {/* Variant Stock Details - Only show if variants exist */}
