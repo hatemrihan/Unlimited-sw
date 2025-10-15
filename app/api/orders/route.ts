@@ -161,6 +161,7 @@ export async function POST(request: NextRequest) {
         phone: orderData.customer.phone?.trim() || '',
         address: orderData.customer.address?.trim() || ''
       },
+      
       products: orderData.products.map((product: unknown) => {
         const prod = product as any; // Type assertion for now
         return {
@@ -177,11 +178,15 @@ export async function POST(request: NextRequest) {
       totalAmount: Number(finalTotal) || 0,
       subtotal: Number(orderData.subtotal) || 0,
       shippingCost: Number(orderData.shippingCost) || 0,
+      promoCode: orderData.promoCode?.trim() || undefined,
+      discountAmount: promoDiscount || 0,
       codFee: Number(orderData.codFee) || 0,
       status: 'pending',
       notes: orderData.notes?.trim() || undefined,
       orderDate: new Date()
-    };
+      
+  
+      };
 
 
 
@@ -600,6 +605,7 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     await dbConnect();
+    
 
     const orders = await Order.find({})
       .sort({ createdAt: -1 })
@@ -612,6 +618,8 @@ export async function GET(request: NextRequest) {
         customer: order.customer,
         products: order.products,
         paymentMethod: order.paymentMethod,
+        promoCode: order.promoCode,           
+        discountAmount: order.discountAmount, 
         transactionScreenshot: order.transactionScreenshot,
         totalAmount: order.totalAmount,
         status: order.status,

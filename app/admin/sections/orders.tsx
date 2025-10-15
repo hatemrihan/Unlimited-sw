@@ -52,6 +52,7 @@ interface OrderProduct {
   quantity: number;
   size?: string;
   color?: string;
+  promoCode?:string;
 }
 
 interface Customer {
@@ -77,6 +78,7 @@ interface Order {
   promoCode?: string;
   discountAmount?: number;
   notes?: string;
+
 }
 
 const Orders = () => {
@@ -87,6 +89,7 @@ const Orders = () => {
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
   const [globalFilter, setGlobalFilter] = useState("");
+  
 
   // Function to export orders as CSV
   const exportOrdersAsCSV = () => {
@@ -95,13 +98,13 @@ const Orders = () => {
     
     const csvData = [
       // CSV Headers - Shipping Company Format
-      ['Customer', 'Order ID', 'Email', 'Phone', 'Shipping Address', 'Products', 'Colors', 'Payment Method', 'Total'],
+      ['Customer', 'Order ID', 'Email', 'Phone', 'Shipping Address', 'Products', 'Colors', 'Discount','Promo Code', 'Payment Method', 'Total'],
       // CSV Rows
       ...rowsToExport.map(row => {
         const order = row.original;
         const products = order.products.map(p => `${p.name}${p.size ? ` (${p.size})` : ''} x${p.quantity}`).join('; ');
         const colors = order.products.map(p => p.color || 'N/A').join('; ');
-        return [
+        const promoCode = order.promoCode || 'N/A';        return [
           order.customer.name,
           order.orderId,
           order.customer.email,
@@ -109,6 +112,7 @@ const Orders = () => {
           order.customer.address,
           products,
           colors,
+          promoCode,
           order.paymentMethod === 'cashOnDelivery' ? 'COD' : 'InstaPay',
           `${order.totalAmount} L.E`
         ];
@@ -149,6 +153,7 @@ const Orders = () => {
         phone: order.customer.phone,
         shippingAddress: order.customer.address,
         products: products,
+        promoCode: order.promoCode || 'N/A',
         paymentMethod: order.paymentMethod === 'cashOnDelivery' ? 'COD' : 'InstaPay',
         total: `${order.totalAmount} L.E`
       };
@@ -177,6 +182,7 @@ const Orders = () => {
       const order = row.original;
       const products = order.products.map(p => `${p.name}${p.size ? ` (${p.size})` : ''} x${p.quantity}`).join('; ');
       const colors = order.products.map(p => p.color || 'N/A').join('; ');
+      const promoCode = order.products.map(p => p.promoCode || 'N/A').join('; ');
       return {
         'Customer': order.customer.name,
         'Order ID': order.orderId,
@@ -185,6 +191,7 @@ const Orders = () => {
         'Shipping Address': order.customer.address,
         'Products': products,
         'Colors': colors,
+        'Discount': promoCode,
         'Payment Method': order.paymentMethod === 'cashOnDelivery' ? 'COD' : 'InstaPay',
         'Total': `${order.totalAmount} L.E`
       };
@@ -202,6 +209,8 @@ const Orders = () => {
       { wch: 16 }, // Phone
       { wch: Math.min(120, Math.max(50, ...excelData.map(r => String(r['Shipping Address']).length))) },
       { wch: Math.max(40, ...excelData.map(r => String(r['Products']).length)) },
+      { wch: 12 }, // Discount
+      { wch: 12 }, // Promo Code
       { wch: 12 }, // Payment
       { wch: 12 }, // Total
     ];
@@ -238,12 +247,13 @@ const Orders = () => {
         order.customer.phone,
         order.customer.address, // full address
         order.paymentMethod === 'cashOnDelivery' ? 'COD' : 'InstaPay',
+        order.promoCode || 'N/A',
         `${order.totalAmount} L.E`
       ];
     });
     
     autoTable(doc, {
-      head: [['Customer', 'Order ID', 'Email', 'Phone', 'Address', 'Payment', 'Total']],
+      head: [['Customer', 'Order ID', 'Email', 'Phone', 'Address', 'Payment',  'Promo Code', 'Total']],
       body: tableData,
       startY: 40,
       styles: {
@@ -483,6 +493,7 @@ const Orders = () => {
                 {order.promoCode}
               </span>
               {order.discountAmount && (
+
                 <div className="text-xs text-green-400 mt-1">
                   -L.E {order.discountAmount}
                 </div>

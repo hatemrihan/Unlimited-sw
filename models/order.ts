@@ -25,6 +25,8 @@ export interface IOrder extends Document {
   subtotal: number;
   shippingCost: number;
   codFee?: number;
+  promoCode?:string;
+  discountAmount?: number;  
   status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
   notes?: string;
   orderDate: Date;
@@ -61,6 +63,8 @@ const OrderSchema = new Schema({
   subtotal: { type: Number, required: true },
   shippingCost: { type: Number, required: true },
   codFee: { type: Number, default: 0 },
+  promoCode: {type: String},
+  discountAmount: {type: Number, default: 0},  
   status: {
     type: String,
     required: true,

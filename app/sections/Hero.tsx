@@ -39,7 +39,7 @@ const Alkady: FC = () => {
       transition={{duration: 0.3, delay: 0.1}}
       className="text-4xl mt-34 md:text-5xl lg:text-5xl md:mt-0 text-center uppercase text-[#b3b3b3]"
       ref={scope as React.RefObject<HTMLHeadingElement>} >
-        where All in one place strength,equipment and Calisthenics.
+     where is All in one place strenght Equipment, and calisthenics. 
       </motion.h1>
     </div>
 
