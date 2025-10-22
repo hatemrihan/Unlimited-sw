@@ -97,7 +97,7 @@ const AddProductPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-2 sm:p-4 md:p-6 lg:p-8">
+    <div className="min-h-screen bg-black text-white p-2 sm:p-4 md:p-6 lg:p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header with Back Button */}
         <div className="mb-6 md:mb-8">

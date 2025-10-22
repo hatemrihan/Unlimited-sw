@@ -105,8 +105,7 @@ export async function POST(request: NextRequest) {
       Key: fileName,
       Body: buffer,
       ContentType: file.type,
-      // Make the file publicly readable
-      ACL: 'public-read' as const,
+      // Files are publicly readable via bucket policy (no ACL needed)
     };
 
     console.log('☁️ Uploading to S3...');
