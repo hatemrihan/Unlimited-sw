@@ -17,7 +17,7 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('📤 S3 Upload - Starting upload process...');
+    console.log('📤 S3 Upload ye - Starting upload process...');
 
     // Check if AWS credentials are configured
     const accessKeyId = process.env.ALKADY_AWS_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID;
