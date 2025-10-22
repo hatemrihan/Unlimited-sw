@@ -20,7 +20,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
-  // Handle file selection
+  // Handle file selection - Upload to AWS S3
   const handleFileSelect = async (file: File) => {
     if (!file) return;
 
@@ -34,11 +34,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
     setUploading(true);
 
     try {
-      // Prefer direct unsigned upload to Cloudinary (avoids serverless file size limits)
-      const cloudName = (process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME as string) || (process.env.CLOUDINARY_CLOUD_NAME as unknown as string);
-      const uploadPreset = (process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET as string) || (process.env.CLOUDINARY_UPLOAD_PRESET as unknown as string);
-      const folder = (process.env.NEXT_PUBLIC_CLOUDINARY_FOLDER as string) || 'alkadyy-intro';
-
+      // Detect if file is video or image
       const isVideo = file.type.startsWith('video/') || 
                    file.name.toLowerCase().includes('.mp4') ||
                    file.name.toLowerCase().includes('.mov') ||
@@ -55,70 +51,38 @@ const FileUpload: React.FC<FileUploadProps> = ({
         fileSize: `${(file.size / 1024 / 1024).toFixed(2)}MB`
       });
 
-      if (cloudName && uploadPreset) {
-        const form = new FormData();
-        form.append('file', file);
-        form.append('upload_preset', uploadPreset);
-        form.append('folder', folder);
-        
-        // For unsigned uploads, we can only use basic parameters
-        // The resource_type is determined by the upload preset, not manually set
-
-        console.log('🚀 Uploading directly to Cloudinary...', { cloudName, uploadPreset, resourceType });
-        const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`;
-        const cloudRes = await fetch(cloudinaryUrl, { method: 'POST', body: form });
-        const cloudData = await cloudRes.json();
-        if (cloudRes.ok && cloudData.secure_url) {
-          console.log('✅ Direct upload success:', cloudData.secure_url);
-          console.log('🎥 Direct upload - passing isVideo:', isVideo);
-          onUpload(cloudData.secure_url, isVideo);
-          alert('✅ Video/Image uploaded successfully!');
-          return;
-        } else {
-          console.warn('⚠️ Direct upload failed, falling back to server route', cloudData);
-          if (isVideo) {
-            throw new Error(`❌ Video upload failed: ${cloudData.error?.message || 'Cloudinary direct upload required for videos'}. Please check Cloudinary configuration.`);
-          }
-        }
-      } else {
-        const missingVars = [];
-        if (!cloudName) missingVars.push('NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME');
-        if (!uploadPreset) missingVars.push('NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET');
-        
-        console.warn('⚠️ Cloudinary unsigned preset not configured:', missingVars);
-        
-        if (isVideo) {
-          throw new Error(`❌ Video uploads require Cloudinary configuration. Missing: ${missingVars.join(', ')}. Please check CLOUDINARY_SETUP.md for setup instructions.`);
-        }
-        
-        console.log('📝 Using server upload route for images...');
-      }
-
-      // Fallback: server-side upload (works for small files)
+      // Upload to AWS S3 via our API endpoint
       const formData = new FormData();
       formData.append('file', file);
-      const response = await fetch('/api/upload', { method: 'POST', body: formData });
-      console.log('📡 Fallback upload status:', response.status);
-      const data = await response.json().catch(() => ({} as any));
+      
+      console.log('☁️ Uploading to AWS S3...');
+      const response = await fetch('/api/s3-upload', { 
+        method: 'POST', 
+        body: formData 
+      });
+      
+      console.log('📡 S3 upload status:', response.status);
+      const data = await response.json();
+      
       if (response.ok && data.url) {
         // Determine if it's a video based on resource_type or file type
-        const isVideo = data.resource_type === 'video' || 
-                       file.type.startsWith('video/') ||
-                       data.url.includes('.mp4') || 
-                       data.url.includes('.mov') || 
-                       data.url.includes('.webm');
+        const isVideoFile = data.resource_type === 'video' || 
+                           file.type.startsWith('video/') ||
+                           data.url.includes('.mp4') || 
+                           data.url.includes('.mov') || 
+                           data.url.includes('.webm');
         
-        console.log('🎥 Upload complete:', { 
+        console.log('✅ S3 upload complete:', { 
           url: data.url, 
           resource_type: data.resource_type, 
           file_type: file.type, 
-          isVideo 
+          isVideo: isVideoFile 
         });
         
-        onUpload(data.url, isVideo);
-        alert('File uploaded successfully!');
+        onUpload(data.url, isVideoFile);
+        alert('✅ File uploaded successfully to AWS S3!');
       } else {
-        throw new Error(data?.details || data?.error || `Upload failed with status ${response.status}`);
+        throw new Error(data?.error || `Upload failed with status ${response.status}`);
       }
     } catch (error) {
       console.error('💥 Error uploading file:', error);
