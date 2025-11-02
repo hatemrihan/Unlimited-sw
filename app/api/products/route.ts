@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
 
       // 🚀 OPTIMIZED: Fetch ALL product fields for complete frontend functionality + use lean queries
       const activeProducts = await Product.find(query)
-        .select('name price originalPrice discount mainImage images video description promoCode variants stock isActive isFeatured order showOutOfStockBadge showPreorderBadge category tags specifications shippingInfo faqs detailedDescription cityPricing')
+        .select('name price originalPrice discount mainImage images videos description promoCode variants stock isActive isFeatured order showOutOfStockBadge showPreorderBadge category tags specifications shippingInfo faqs detailedDescription cityPricing')
         .sort({ order: 1 })
         .lean(); // 🚀 3x faster queries with lean()
       console.log('⚡ Found', activeProducts.length, featuredOnly ? 'featured' : 'active', 'products LIGHTNING FAST!');

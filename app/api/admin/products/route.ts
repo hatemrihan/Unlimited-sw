@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
       
       // 🚀 OPTIMIZED: Fetch ALL fields for complete admin functionality + pagination + lean queries
       const products = await Product.find(searchQuery)
-        .select('name price originalPrice discount mainImage images video description stock variants cityPricing isActive isFeatured order category tags specifications shippingInfo faqs detailedDescription promoCode showOutOfStockBadge showPreorderBadge createdAt updatedAt')
+        .select('name price originalPrice discount mainImage images videos description stock variants cityPricing isActive isFeatured order category tags specifications shippingInfo faqs detailedDescription promoCode showOutOfStockBadge showPreorderBadge createdAt updatedAt')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
