@@ -47,18 +47,13 @@ async function dbConnect() {
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
-      maxPoolSize: 100, // 🚀 INCREASED: Even more concurrent connections
-      minPoolSize: 10, // 🚀 Keep minimum connections ready
-      serverSelectionTimeoutMS: 1000, // 🚀 ULTRA-FAST: Very quick timeout
-      socketTimeoutMS: 10000, // 🚀 FASTER: Reduced socket timeout
-      connectTimeoutMS: 1000, // 🚀 ULTRA-FAST: Very quick connection
+      maxPoolSize: 50, // Increased for more concurrent connections
+      serverSelectionTimeoutMS: 5000, // A more reasonable timeout
+      socketTimeoutMS: 45000, 
+      connectTimeoutMS: 10000,
       family: 4, // Use IPv4, skip trying IPv6
-      maxIdleTimeMS: 60000, // Keep connections alive longer
-      waitQueueTimeoutMS: 1000, // 🚀 ULTRA-FAST: Don't wait long
-      retryWrites: true, // 🚀 RELIABILITY: Retry failed writes
-      w: 1, // 🚀 ULTRA-FAST: Don't wait for write acknowledgment
-      journal: false, // 🚀 ULTRA-FAST: Skip journal for speed
-      readPreference: 'nearest' as const, // 🚀 Read from nearest server
+      retryWrites: true,
+      w: 'majority' as const,
     };
 
     cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoose) => {
