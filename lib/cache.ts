@@ -1,13 +1,35 @@
-// High-performance in-memory cache system
+// High-performance in-memory cache system with global persistence
 interface CacheEntry<T> {
   data: T;
   timestamp: number;
   ttl: number;
 }
 
+// Global cache storage to persist across hot reloads in development
+declare global {
+  var _cacheStorage: Map<string, CacheEntry<any>> | undefined;
+  var _productCacheStorage: Map<string, CacheEntry<any>> | undefined;
+}
+
 class PerformanceCache {
-  private cache = new Map<string, CacheEntry<any>>();
+  private cache: Map<string, CacheEntry<any>>;
   private readonly maxSize = 1000; // Prevent memory leaks
+  private cacheId: string;
+
+  constructor(cacheId: string = 'default') {
+    this.cacheId = cacheId;
+    // Use global cache in development to persist across hot reloads
+    if (process.env.NODE_ENV === 'development') {
+      if (cacheId === 'product' && !global._productCacheStorage) {
+        global._productCacheStorage = new Map();
+      } else if (cacheId === 'api' && !global._cacheStorage) {
+        global._cacheStorage = new Map();
+      }
+      this.cache = cacheId === 'product' ? (global._productCacheStorage || new Map()) : (global._cacheStorage || new Map());
+    } else {
+      this.cache = new Map();
+    }
+  }
 
   set<T>(key: string, data: T, ttlMs: number = 300000): void { // 5min default
     // Clean old entries if cache is getting large
@@ -101,9 +123,9 @@ class PerformanceCache {
   }
 }
 
-// Global cache instances
-export const productCache = new PerformanceCache();
-export const apiCache = new PerformanceCache();
+// Global cache instances with persistence in development
+export const productCache = new PerformanceCache('product');
+export const apiCache = new PerformanceCache('api');
 
 // Cache invalidation helpers
 export const invalidateProductCache = (productId?: string) => {

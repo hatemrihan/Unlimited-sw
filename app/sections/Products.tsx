@@ -149,25 +149,17 @@ const Products = () => {
                       </div>
                     )}
                     
-                    {/* Admin-controlled badges (only when overall available stock is 0) */}
-                    {getAvailableStock(product) === 0 && (
-                      <>
-                        { // show only if admin enabled
-                          (product as any).showOutOfStockBadge && (
-                            <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
-                              OUT OF STOCK
-                            </div>
-                          )
-                        }
-                        { // show only if admin enabled
-                          (product as any).showPreorderBadge && (
-                            <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
-                              PREORDER
-                            </div>
-                          )
-                        }
-                      </>
-                    )}
+                    {/* Stock-based Badges */}
+                    {getAvailableStock(product) === 0 &&
+                      ((product as any).showPreorderBadge ? (
+                        <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
+                          PREORDER
+                        </div>
+                      ) : (
+                        <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
+                          OUT OF STOCK
+                        </div>
+                      ))}
                   </div>
                 </div>
                 
@@ -190,15 +182,24 @@ const Products = () => {
                   </div>
                   
                   {/* Add to Cart Button */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleAddToCart(product);
-                    }}
-                    className="bg-transparent border border-white text-white px-3 py-1.5 text-xs font-medium uppercase tracking-wider hover:bg-white hover:text-black transition-all duration-300 whitespace-nowrap"
-                  >
-                    ADD TO CART
-                  </button>
+                  {getAvailableStock(product) > 0 ? (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddToCart(product);
+                      }}
+                      className="bg-transparent border border-white text-white px-3 py-1.5 text-xs font-medium uppercase tracking-wider hover:bg-white hover:text-black transition-all duration-300 whitespace-nowrap"
+                    >
+                      ADD TO CART
+                    </button>
+                  ) : (
+                    <button
+                      disabled
+                      className="bg-gray-600 text-gray-400 px-3 py-1.5 text-xs font-medium uppercase tracking-wider cursor-not-allowed whitespace-nowrap"
+                    >
+                      OUT OF STOCK
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

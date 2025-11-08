@@ -44,6 +44,14 @@ interface Product {
   order?: number;
 }
 
+// Compute available stock: prefer variants if provided, otherwise use product.stock
+const getAvailableStock = (p: Product): number => {
+  if (Array.isArray(p.variants) && p.variants.length > 0) {
+    return p.variants.reduce((sum: number, v: any) => sum + (Number((v as any).stock) || 0), 0);
+  }
+  return Number((p as any).stock) || 0;
+};
+
 export default function Shop() {
   const [products, setProducts] = useState<Product[]>([]);
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
@@ -166,6 +174,14 @@ export default function Shop() {
       console.log('❌ Cannot add to cart - no stock available for:', product.name);
       return;
     }
+     // Calculate total available stock from variants or use product stock
+     const availableStock = getAvailableStock(product);
+      
+     // Don't add if no stock available
+     if (availableStock <= 0) {
+       console.log('❌ Cannot add to cart - no stock available');
+       return;
+     }
 
     addItem({
       id: product._id,
@@ -363,6 +379,8 @@ const ProductCard = ({ product, onAddToCart, isMobile = false }: {
 }) => {
   const hasDiscount = product.discount && Number(product.discount) > 0 && product.originalPrice;
   const finalPrice = product.price; // Price is already the final discounted price
+  
+  const isOutOfStock = getAvailableStock(product) === 0;
 
   return (
     <div className="group block relative">
@@ -386,29 +404,17 @@ const ProductCard = ({ product, onAddToCart, isMobile = false }: {
                   </div>
                 )}
                 
-                {/* Stock Badges - Only show admin-enabled badges when stock is 0 */}
-                {(() => {
-                  // Calculate total available stock from variants or main stock
-                  const variantStock = Array.isArray(product.variants) && product.variants.length > 0
-                    ? product.variants.reduce((sum: number, v: any) => sum + (Number((v as any).stock) || 0), 0)
-                    : Number((product as any).stock) || 0;
-                  return variantStock;
-                })() === 0 && (
-                  <>
-                    {/* Show OUT OF STOCK badge only if admin enabled it */}
-                    {(product as any).showOutOfStockBadge && (
-                      <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
-                        OUT OF STOCK
-                      </div>
-                    )}
-                    {/* Show PREORDER badge only if admin enabled it */}
-                    {(product as any).showPreorderBadge && (
-                      <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
-                        PREORDER
-                      </div>
-                    )}
-                  </>
-                )}
+                {/* Stock-based Badges */}
+                {isOutOfStock &&
+                  ((product as any).showPreorderBadge ? (
+                    <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
+                      PREORDER
+                    </div>
+                  ) : (
+                    <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
+                      OUT OF STOCK
+                    </div>
+                  ))}
               </div>
             </>
           ) : (
@@ -433,12 +439,7 @@ const ProductCard = ({ product, onAddToCart, isMobile = false }: {
           )}
         </div>
 
-        {(() => {
-          const variantStock = Array.isArray(product.variants) && product.variants.length > 0
-            ? product.variants.reduce((sum: number, v: any) => sum + (Number((v as any).stock) || 0), 0)
-            : Number((product as any).stock) || 0;
-          return variantStock === 0;
-        })() ? (
+        {isOutOfStock ? (
           <button
             disabled
             className="bg-gray-600 text-gray-300 px-4 py-2 text-xs font-medium uppercase tracking-wider cursor-not-allowed"

@@ -33,23 +33,32 @@ if (status.fallbackActive) {
 
 const cached: MongooseCache = global.mongoose || { conn: null, promise: null };
 
+// Store the cache globally to persist across hot reloads
+if (!global.mongoose) {
+  global.mongoose = cached;
+}
+
 async function dbConnect() {
-  if (cached.conn) {
+  // Return immediately if already connected
+  if (cached.conn && mongoose.connection.readyState === 1) {
     return cached.conn;
   }
 
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
-      maxPoolSize: 50, // 🚀 INCREASED: More concurrent connections for speed
-      serverSelectionTimeoutMS: 2000, // 🚀 FASTER: Reduced timeout for quicker fails
-      socketTimeoutMS: 20000, // 🚀 FASTER: Reduced socket timeout
-      connectTimeoutMS: 2000, // 🚀 FASTER: Quick connection timeout
+      maxPoolSize: 100, // 🚀 INCREASED: Even more concurrent connections
+      minPoolSize: 10, // 🚀 Keep minimum connections ready
+      serverSelectionTimeoutMS: 1000, // 🚀 ULTRA-FAST: Very quick timeout
+      socketTimeoutMS: 10000, // 🚀 FASTER: Reduced socket timeout
+      connectTimeoutMS: 1000, // 🚀 ULTRA-FAST: Very quick connection
       family: 4, // Use IPv4, skip trying IPv6
-      maxIdleTimeMS: 30000, // 🚀 OPTIMIZED: Close idle connections faster
-      waitQueueTimeoutMS: 2000, // 🚀 FASTER: Don't wait long for connections
+      maxIdleTimeMS: 60000, // Keep connections alive longer
+      waitQueueTimeoutMS: 1000, // 🚀 ULTRA-FAST: Don't wait long
       retryWrites: true, // 🚀 RELIABILITY: Retry failed writes
-      w: 'majority' as const, // 🚀 PERFORMANCE: Write concern for speed
+      w: 1, // 🚀 ULTRA-FAST: Don't wait for write acknowledgment
+      journal: false, // 🚀 ULTRA-FAST: Skip journal for speed
+      readPreference: 'nearest' as const, // 🚀 Read from nearest server
     };
 
     cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoose) => {

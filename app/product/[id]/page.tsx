@@ -217,6 +217,11 @@ const ProductDetail = () => {
     );
   }
 
+  // Determine stock status
+  const isOutOfStock = selectedVariant
+    ? selectedVariant.stock <= 0
+    : product.stock <= 0;
+
   // Helper function to detect if a URL is a video
   const isVideoUrl = (url: string) => {
     return url.includes('.mp4') || 
@@ -415,6 +420,11 @@ const ProductDetail = () => {
                       {product.price.toLocaleString()} LE
                     </span>
                   )}
+                  {product.showOutOfStockBadge && isOutOfStock && (
+                    <span className="bg-gray-700 text-white px-2 py-1 text-sm font-medium rounded ml-4">
+                      OUT OF STOCK
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -471,19 +481,30 @@ const ProductDetail = () => {
 
               {/* Action Buttons */}
               <div className="space-y-4">
-                <button
-                  onClick={handleAddToCart}
-                  className="w-full bg-transparent border border-white text-white px-6 py-4 font-bold uppercase tracking-wider hover:bg-white hover:text-black transition-all duration-300"
-                >
-                  Add to cart
-                </button>
-                
-                <button
-                  onClick={handleBuyNow}
-                  className="w-full bg-white text-black px-6 py-4 font-bold uppercase tracking-wider hover:bg-gray-100 transition-colors duration-300"
-                >
-                  Buy it now
-                </button>
+                {isOutOfStock ? (
+                  <button
+                    disabled
+                    className="w-full bg-gray-600 text-gray-400 px-6 py-4 font-bold uppercase tracking-wider cursor-not-allowed"
+                  >
+                    Out of Stock
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      onClick={handleAddToCart}
+                      className="w-full bg-transparent border border-white text-white px-6 py-4 font-bold uppercase tracking-wider hover:bg-white hover:text-black transition-all duration-300"
+                    >
+                      Add to cart
+                    </button>
+                    
+                    <button
+                      onClick={handleBuyNow}
+                      className="w-full bg-white text-black px-6 py-4 font-bold uppercase tracking-wider hover:bg-gray-100 transition-colors duration-300"
+                    >
+                      Buy it now
+                    </button>
+                  </>
+                )}
               </div>
 
               {/* Product Details Sections - Animated */}

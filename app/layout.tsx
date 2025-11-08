@@ -4,6 +4,13 @@ import { cn } from "../lib/utils";
 import { CartProvider } from "../contexts/CartContext";
 import SessionWrapper from "../components/SessionWrapper";
 
+// Import cache warmer to pre-load data on server start
+if (typeof window === 'undefined') {
+  import('../lib/cache-warmer').then(({ warmCache }) => {
+    warmCache().catch(console.error);
+  });
+}
+
 
 export const metadata: Metadata = {
   title: {

@@ -10,6 +10,8 @@ const dataFilePath = path.join(process.cwd(), 'data', 'products.json');
 
 // GET - Fetch all active products for frontend
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  
   try {
     // Check for featured parameter
     const { searchParams } = new URL(request.url);
@@ -19,12 +21,14 @@ export async function GET(request: NextRequest) {
     // ⚡ ULTRA-FAST: Check cache first (sub-millisecond response)
     const cachedProducts = apiCache.get<any[]>(cacheKey);
     if (cachedProducts && Array.isArray(cachedProducts)) {
-      console.log('⚡ LIGHTNING FAST: Products served from cache!');
+      const cacheTime = Date.now() - startTime;
+      console.log(`⚡ CACHE HIT: Products served in ${cacheTime}ms`);
       return NextResponse.json({
         success: true,
         products: cachedProducts,
         count: cachedProducts.length,
-        cached: true
+        cached: true,
+        responseTime: cacheTime
       });
     }
 
@@ -32,32 +36,41 @@ export async function GET(request: NextRequest) {
 
     try {
       // PRIMARY: Try MongoDB first for e-commerce data
+      const dbStartTime = Date.now();
       await dbConnect();
-      console.log('✅ MongoDB connected for frontend products');
+      const dbConnectTime = Date.now() - dbStartTime;
+      console.log(`✅ MongoDB connected in ${dbConnectTime}ms`);
 
       // Build query based on featured parameter
       const query = featuredOnly
-        ? { isFeatured: true }  // Only need to be featured, not necessarily active
+        ? { isFeatured: true, isActive: true }  // Only need to be featured, not necessarily active
         : { isActive: true };
 
       console.log('🔍 Query:', query);
       console.log('🎯 Featured only:', featuredOnly);
 
-      // 🚀 OPTIMIZED: Fetch ALL product fields for complete frontend functionality + use lean queries
+      // 🚀 ULTRA-OPTIMIZED: Use indexes and lean queries for maximum speed
+      const queryStartTime = Date.now();
       const activeProducts = await Product.find(query)
         .select('name price originalPrice discount mainImage images videos description promoCode variants stock isActive isFeatured order showOutOfStockBadge showPreorderBadge category tags specifications shippingInfo faqs detailedDescription cityPricing')
         .sort({ order: 1 })
-        .lean(); // 🚀 3x faster queries with lean()
-      console.log('⚡ Found', activeProducts.length, featuredOnly ? 'featured' : 'active', 'products LIGHTNING FAST!');
+        .lean()
+        .exec(); // 🚀 Force execution for better performance
+      const queryTime = Date.now() - queryStartTime;
+      console.log(`⚡ Found ${activeProducts.length} ${featuredOnly ? 'featured' : 'active'} products in ${queryTime}ms`);
 
-      // ⚡ CACHE IT: Store for 5 minutes for ultra-fast future requests
-      apiCache.set(cacheKey, activeProducts, 300000); // 5min cache
+      // ⚡ CACHE IT: Store for 30 minutes for ultra-fast future requests
+      apiCache.set(cacheKey, activeProducts, 1800000); // 30min cache for better performance
 
+      const totalTime = Date.now() - startTime;
+      console.log(`🎯 Total response time: ${totalTime}ms`);
+      
       return NextResponse.json({
         success: true,
         products: activeProducts,
         count: activeProducts.length,
-        cached: false
+        cached: false,
+        responseTime: totalTime
       });
 
     } catch (mongoError) {
@@ -85,7 +98,7 @@ export async function GET(request: NextRequest) {
         console.log('✅ Found', activeProducts.length, featuredOnly ? 'featured' : 'active', 'products from JSON fallback');
 
         // ⚡ CACHE IT: Store fallback results for ultra-fast future requests
-        apiCache.set(cacheKey, activeProducts, 300000); // 5min cache
+        apiCache.set(cacheKey, activeProducts, 1800000); // 30min cache
 
         return NextResponse.json({
           success: true,

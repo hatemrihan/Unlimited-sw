@@ -5,6 +5,7 @@ import { invalidateAdminProductsCache } from '../route';
 import { invalidateProductsCache } from '../../../products/route';
 import { productCache } from '../../../../../lib/cache';
 
+
 // GET - Fetch a single product by ID
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -18,6 +19,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         { status: 400 }
       );
     }
+
 
     // Connect to MongoDB
     await dbConnect();
@@ -162,6 +164,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     );
   }
 }
+
 
 // PUT - Update an existing product
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {

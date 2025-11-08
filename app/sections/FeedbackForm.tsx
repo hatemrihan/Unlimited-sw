@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { motion, useInView } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 const FeedbackForm = () => {
   const [formData, setFormData] = useState({
@@ -17,7 +17,6 @@ const FeedbackForm = () => {
 
   // Animation ref
   const formRef = React.useRef(null);
-  const isInView = useInView(formRef, { once: true, margin: "-100px" });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -113,16 +112,12 @@ const FeedbackForm = () => {
       id="feedbackform"
       className="w-full max-w-2xl mx-auto mt-6 lg:mt-8 px-4 sm:px-6"
       ref={formRef}
-      initial={{ opacity: 0, y: 50 }}
-      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
-      transition={{ duration: 0.8, delay: 0.2 }}
+     
     >
       {/* Feedback Form Header */}
       <motion.div
         className="text-center mb-4 sm:mb-6"
-        initial={{opacity: 0, y: 30}}
-        animate={isInView ? {opacity: 1, y: 0} : {opacity: 0, y: 30}}
-        transition={{duration: 0.6, delay: 0.4}}
+        
       >
         <h2 className="text-base sm:text-lg md:text-xl lg:text-3xl font-black uppercase text-[#b3b3b3] mb-2">
         — SHARE YOUR FEEDBACK
@@ -130,9 +125,7 @@ const FeedbackForm = () => {
 
         <motion.p
           className="text-xs sm:text-sm lg:text-base text-[#b3b3b3]/70 mt-2"
-          initial={{opacity: 0}}
-          animate={isInView ? {opacity: 1} : {opacity: 0}}
-          transition={{duration: 0.6, delay: 0.6}}
+          
         >
           Help us improve and share your experience with others.
         </motion.p>
@@ -143,9 +136,7 @@ const FeedbackForm = () => {
         onSubmit={handleSubmit}
         className="space-y-4 sm:space-y-6 mb-10"
         suppressHydrationWarning
-        initial={{opacity: 0, y: 30}}
-        animate={isInView ? {opacity: 1, y: 0} : {opacity: 0, y: 30}}
-        transition={{duration: 0.6, delay: 0.8}}
+       
       >
         {/* Name and Email Row - Centered on mobile/tablet */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 max-w-md mx-auto lg:max-w-none">
@@ -249,9 +240,7 @@ const FeedbackForm = () => {
         {/* Submit Button */}
         <motion.div
           className="flex flex-col items-center space-y-4 pt-6"
-          initial={{opacity: 0, y: 30}}
-          animate={isInView ? {opacity: 1, y: 0} : {opacity: 0, y: 30}}
-          transition={{duration: 0.6, delay: 1.0}}
+         
         >
           <motion.button
             type="submit"
@@ -265,7 +254,6 @@ const FeedbackForm = () => {
               focus:outline-none focus:ring-2 focus:ring-white/20"
             suppressHydrationWarning
             initial={{scale: 0.9}}
-            animate={isInView ? {scale: 1} : {scale: 0.9}}
             transition={{duration: 0.6, delay: 1.2}}
           >
             {isSubmitting ? (

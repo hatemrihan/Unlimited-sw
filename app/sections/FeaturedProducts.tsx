@@ -49,6 +49,14 @@ const FeaturedProducts = () => {
     fetchOnlyFeaturedProducts();
   }, []);
 
+  // Compute available stock: prefer variants if provided, otherwise use product.stock
+  const getAvailableStock = (p: Product): number => {
+    if (Array.isArray(p.variants) && p.variants.length > 0) {
+      return p.variants.reduce((sum: number, v: any) => sum + (Number((v as any).stock) || 0), 0);
+    }
+    return Number((p as any).stock) || 0;
+  };
+
   // Handle product card click
   const handleProductClick = (productId: string) => {
     if (typeof window !== 'undefined') {
@@ -164,27 +172,17 @@ const FeaturedProducts = () => {
                       </div>
                     )}
                     
-                    {/* Admin-controlled badges (only when total available stock is 0) */}
-                    {(() => {
-                      // Calculate total available stock from variants or main stock
-                      const variantStock = Array.isArray(product.variants) && product.variants.length > 0
-                        ? product.variants.reduce((sum: number, v: any) => sum + (Number((v as any).stock) || 0), 0)
-                        : Number((product as any).stock) || 0;
-                      return variantStock === 0;
-                    })() && (
-                      <>
-                        {(product as any).showOutOfStockBadge && (
-                          <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
-                            OUT OF STOCK
-                          </div>
-                        )}
-                        {(product as any).showPreorderBadge && (
-                          <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
-                            PREORDER
-                          </div>
-                        )}
-                      </>
-                    )}
+                    {/* Stock-based Badges */}
+                    {getAvailableStock(product) === 0 &&
+                      ((product as any).showPreorderBadge ? (
+                        <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
+                          PREORDER
+                        </div>
+                      ) : (
+                        <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
+                          OUT OF STOCK
+                        </div>
+                      ))}
                   </div>
                 </div>
 
@@ -207,15 +205,24 @@ const FeaturedProducts = () => {
                   </div>
 
                   {/* Add to Cart Button */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleAddToCart(product);
-                    }}
-                    className="bg-transparent border border-[#b3b3b3] text-[#b3b3b3] px-3 py-1.5 text-xs font-medium uppercase tracking-wider hover:bg-[#b3b3b3] hover:text-black transition-all duration-300 whitespace-nowrap"
-                  >
-                    ADD TO CART
-                  </button>
+                  {getAvailableStock(product) > 0 ? (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddToCart(product);
+                      }}
+                      className="bg-transparent border border-[#b3b3b3] text-[#b3b3b3] px-3 py-1.5 text-xs font-medium uppercase tracking-wider hover:bg-[#b3b3b3] hover:text-black transition-all duration-300 whitespace-nowrap"
+                    >
+                      ADD TO CART
+                    </button>
+                  ) : (
+                    <button
+                      disabled
+                      className="bg-gray-600 text-gray-400 px-3 py-1.5 text-xs font-medium uppercase tracking-wider cursor-not-allowed whitespace-nowrap"
+                    >
+                      OUT OF STOCK
+                    </button>
+                  )}
                 </div>
               </motion.div>
             ))}

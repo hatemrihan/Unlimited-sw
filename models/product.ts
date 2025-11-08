@@ -184,8 +184,11 @@ const ProductSchema = new mongoose.Schema({
   timestamps: true,
 });
 
-// Create index for efficient querying
-ProductSchema.index({ order: 1, isActive: 1, isFeatured: 1 });
+// Create OPTIMIZED indexes for ultra-fast querying
+ProductSchema.index({ isActive: 1, order: 1 }); // For regular products
+ProductSchema.index({ isFeatured: 1, isActive: 1, order: 1 }); // For featured products
+ProductSchema.index({ _id: 1 }); // For single product lookups
+ProductSchema.index({ stock: 1 }); // For stock queries
 
 // Export the model
 export default mongoose.models.Product || mongoose.model('Product', ProductSchema);
