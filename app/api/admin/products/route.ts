@@ -227,12 +227,17 @@ export async function POST(request: NextRequest) {
       console.error('❌ Error name:', (mongoError as any).name);
       console.error('❌ Full error:', JSON.stringify(mongoError, Object.getOwnPropertyNames(mongoError)));
 
+      // Check if it's a validation error and provide helpful message
+      const errorMessage = (mongoError as any).name === 'ValidationError'
+        ? 'Product validation failed. Please check all required fields.'
+        : 'Database error occurred. Please try again.';
+
       // CRITICAL: For e-commerce, we should NOT fallback to file storage
       // This ensures data integrity - if MongoDB fails, we fail gracefully
       return NextResponse.json(
         {
           success: false,
-          error: 'Database connection failed. Please try again.',
+          error: errorMessage,
           details: (mongoError as any).message || 'MongoDB is required for e-commerce data integrity',
           errorName: (mongoError as any).name,
           timestamp: new Date().toISOString()

@@ -166,8 +166,8 @@ const ProductSchema = new mongoose.Schema({
   },
 
   faqs: [{
-    question: { type: String, required: true },
-    answer: { type: String, required: true },
+    question: { type: String, required: false },
+    answer: { type: String, required: false },
   }],
 
   // City-specific pricing
