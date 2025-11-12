@@ -23,7 +23,7 @@ const MohamedaboutProfile = () => {
   return ( 
   <>
     <Nav />
-    <section className="min-h-screen bg-black  text-white  pt-16 lg:pt-20 w-full overflow-x-hidden transition-colors duration-300">
+    <section className="min-h-screen bg-stone-900  text-[#b3b3b3]  pt-16 lg:pt-20 w-full overflow-x-hidden transition-colors duration-300">
         <div className="w-full px-4 sm:px-6 py-8 lg:py-24">
           {/* Hero Text */}
           <div className="text-center mb-8 lg:mb-16 w-full">
@@ -56,13 +56,13 @@ const MohamedaboutProfile = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.6 }}
             >
-              <p className="text-xs sm:text-sm lowercase md:text-base lg:text-lg leading-relaxed mb-6 lg:mb-8 text-white/80  px-2 sm:px-0">
+              <p className="text-xs sm:text-sm lowercase md:text-base lg:text-lg leading-relaxed mb-6 lg:mb-8 text-[#b3b3b3]/  px-2 sm:px-0">
               UNLIMITED is a community brand for athletes, we started our journey and we are here, we train, we coach, we compete, we teach, we sell and we grow.
               </p>
               
               <a href="/shop">
               <motion.button 
-                className="inline-flex items-center px-6 py-3 lg:px-8 lg:py-4 bg-black border border-white text-white font-semibold  hover:bg-white hover:text-black transition-all duration-300 text-sm lg:text-base group"
+                className="inline-flex items-center px-6 py-3 lg:px-8 lg:py-4 bg-stone-900 border border-[#b3b3b3] text-[#b3b3b3] font-semibold  hover:bg-[#b3b3b3] hover:text-black transition-all duration-300 text-sm lg:text-base group"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 initial={{ opacity: 0, y: 20 }}
@@ -93,10 +93,10 @@ const MohamedaboutProfile = () => {
             transition={{ duration: 0.8, delay: 0.4 }}
           >
             {/* Enhanced Image Container */}
-            <div className="relative max-w-4xl mx-auto rounded-3xl overflow-hidden 
+            <div className="relative max-w-4xl mx-auto  overflow-hidden 
                            
-                           p-6 lg:p-8 shadow-2xl shadow-blue-500/10 dark:shadow-blue-500/20">
-              <div className="aspect-video rounded-2xl overflow-hidden shadow-2xl shadow-black/20 dark:shadow-black/40">
+                           p-6 lg:p-8  ">
+              <div className="aspect-video  overflow-hidden ">
                 <Image
                   width={1000}
                   height={1000}

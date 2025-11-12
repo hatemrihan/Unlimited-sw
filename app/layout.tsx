@@ -107,7 +107,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#000000" />
       </head>
       <body
-  className={cn(`antialiased bg-black text-[#b3b3b3] transition-colors duration-300 font-sans`)}
+  className={cn(`antialiased bg-stone-900 text-[#b3b3b3] transition-colors duration-300 font-sans`)}
 >
   <SessionWrapper>
     <CartProvider>

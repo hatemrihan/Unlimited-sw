@@ -29,17 +29,19 @@ const Alkady: FC = () => {
     
    
 
-  return <section className="bg-black" ref={heroRef}>
-    <div className="grid md:grid-cols-12 md:h-screen items-stretch sticky top-0">
+  return <section className="bg-stone-900" ref={heroRef}>
+    <div className="grid md:grid-cols-12 md:h-screen  -mt-8 top-0">
       <div className="md:col-span-7 flex flex-col justify-center">
         <div className="container !max-w-full">
       <motion.h1
       initial={{opacity: 0, y: 50 }}
       animate={isInView ? {opacity: 1, y: 0} : {opacity: 0, y: 50}}
       transition={{duration: 0.3, delay: 0.1}}
-      className="text-4xl mt-34 md:text-5xl lg:text-5xl md:mt-0 text-center uppercase text-[#b3b3b3]"
+      className="text-2xl md:text-3xl lg:text-4xl mt-34 md:mt-0 text-center uppercase text-[#b3b3b3]  tracking-wide leading-relaxed px-4"
       ref={scope as React.RefObject<HTMLHeadingElement>} >
-     where is All in one place strenght Equipment, and calisthenics. 
+     WHERE IS ALL IN ONE PLACE
+     STRENGTH EQUIPMENT
+     AND CALISTHENICS.
       </motion.h1>
     </div>
 
@@ -51,7 +53,7 @@ const Alkady: FC = () => {
  transition={{duration: 0.2, delay: 0.2}}
         >
  <a href="#products" onClick={handleClickMobileNavItem}>
-          <button className="inline-flex items-center px-6 py-3 bg-black border border-white text-white font-semibold hover:bg-white hover:text-black transition-all duration-300 group">
+          <button className="inline-flex items-center px-6 py-3 bg-stone-900 border border-white text-white font-semibold hover:bg-white hover:text-black transition-all duration-300 group">
             <span className="text-gray-300 group-hover:text-black transition-colors duration-300">View Products</span>
             <div className="overflow-hidden w-5 h-5 ml-2">
               <div className="h-5 w-10 flex group-hover:-translate-x-1/2 transition-transform duration-500">

@@ -255,7 +255,7 @@ const ProductDetail = () => {
 
   return (
     <>
-    <div className="min-h-screen bg-black text-[#b3b3b3]">
+    <div className="min-h-screen bg-stone-900 text-[#b3b3b3]">
       <Nav />
       
       <div className="pt-20 lg:pt-24">
@@ -392,7 +392,7 @@ const ProductDetail = () => {
             {/* Right Side - Product Info */}
             <motion.div
               ref={infoRef}
-              className="space-y-6"
+              className="space-y-3"
               initial={{opacity: 0, x: 50}}
               animate={{opacity: 1, x: 0}}
               transition={{duration: 0.8, delay: 0.2}}
@@ -400,28 +400,28 @@ const ProductDetail = () => {
               
               {/* Product Title and Price */}
               <div>
-                <h1 className="text-2xl lg:text-4xl font-bold mb-4">{product.name}</h1>
+                <h1 className="text-lg lg:text-xl font-bold mb-2 text-center">{product.name}</h1>
                 
-                <div className="flex items-center space-x-4 mb-2">
+                <div className="flex items-center justify-center space-x-2 mb-2">
                   {product.discount && product.discount > 0 && product.originalPrice ? (
                     <>
-                      <span className="text-2xl lg:text-3xl font-bold">
+                      <span className="text-base lg:text-lg font-bold">
                         {product.price.toLocaleString()} LE
                       </span>
-                      <span className="text-lg text-gray-400 line-through">
+                      <span className="text-sm text-gray-400 line-through">
                         {product.originalPrice.toLocaleString()} LE
                       </span>
-                      <span className="bg-red-600 text-white px-2 py-1 text-sm font-medium rounded">
+                      <span className="bg-red-600 text-white px-1.5 py-0.5 text-xs font-medium rounded">
                         {product.discount}% OFF
                       </span>
                     </>
                   ) : (
-                    <span className="text-2xl lg:text-3xl font-bold">
+                    <span className="text-base lg:text-lg font-bold">
                       {product.price.toLocaleString()} LE
                     </span>
                   )}
                   {product.showOutOfStockBadge && isOutOfStock && (
-                    <span className="bg-gray-700 text-white px-2 py-1 text-sm font-medium rounded ml-4">
+                    <span className="bg-gray-700 text-white px-1.5 py-0.5 text-xs font-medium rounded ml-2">
                       OUT OF STOCK
                     </span>
                   )}
@@ -431,8 +431,8 @@ const ProductDetail = () => {
               {/* Variants Selection */}
               {product.variants && product.variants.length > 0 && (
                 <div>
-                  <label className="block text-sm font-medium mb-3">Color</label>
-                  <div className="flex flex-wrap gap-2">
+                  <label className=" text-xs font-medium mb-2 flex items-center justify-center">Color</label>
+                  <div className="flex flex-wrap gap-2 items-center justify-center">
                     {product.variants.map((variant, index) => (
                       <button
                         key={index}
@@ -442,7 +442,7 @@ const ProductDetail = () => {
                           setSelectedImageIndex(0); // Reset image index when variant changes
                           setCurrentImageIndex(0);
                         }}
-                        className={`px-4 py-2 border  font-medium transition-colors duration-300 ${
+                        className={`px-3 py-1.5 border text-xs font-medium transition-colors duration-300 ${
                           selectedVariant === variant
                             ? 'bg-white text-black border-white'
                             : 'bg-transparent text-white border-white hover:bg-white hover:text-black'
@@ -459,20 +459,20 @@ const ProductDetail = () => {
 
               {/* Quantity */}
               <div>
-                <label className="block text-sm font-medium mb-3">
+                <label className="flex items-center justify-center text-xs font-medium mb-2 ">
                   Quantity
                 </label>
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-3 justify-center">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="w-10 h-10 border border-white text-white hover:bg-white hover:text-black transition-colors duration-300 flex items-center justify-center font-bold"
+                    className="  text-white hover:bg-white hover:text-black transition-colors duration-300 flex items-center justify-center text-sm font-bold"
                   >
                     -
                   </button>
-                  <span className="text-lg font-medium w-8 text-center">{quantity}</span>
+                  <span className="text-sm font-medium w-6 text-center">{quantity}</span>
                   <button
                     onClick={() => setQuantity(quantity + 1)}
-                    className="w-10 h-10 border border-white text-white hover:bg-white hover:text-black transition-colors duration-300 flex items-center justify-center font-bold"
+                    className=" text-white hover:bg-white hover:text-black transition-colors duration-300 flex items-center justify-center text-sm font-bold"
                   >
                     +
                   </button>
@@ -480,11 +480,11 @@ const ProductDetail = () => {
               </div>
 
               {/* Action Buttons */}
-              <div className="space-y-4">
+              <div className="space-y-2">
                 {isOutOfStock ? (
                   <button
                     disabled
-                    className="w-full bg-gray-600 text-gray-400 px-6 py-4 font-bold uppercase tracking-wider cursor-not-allowed"
+                    className="w-full bg-gray-700 border border-gray-600 text-gray-400 px-4 py-2 text-xs font-bold uppercase tracking-wider cursor-not-allowed opacity-60"
                   >
                     Out of Stock
                   </button>
@@ -492,14 +492,14 @@ const ProductDetail = () => {
                   <>
                     <button
                       onClick={handleAddToCart}
-                      className="w-full bg-transparent border border-white text-white px-6 py-4 font-bold uppercase tracking-wider hover:bg-white hover:text-black transition-all duration-300"
+                      className="w-full bg-transparent border border-white text-white px-4 py-2 text-xs font-bold uppercase tracking-wider hover:bg-white hover:text-black transition-all duration-300"
                     >
                       Add to cart
                     </button>
                     
                     <button
                       onClick={handleBuyNow}
-                      className="w-full bg-white text-black px-6 py-4 font-bold uppercase tracking-wider hover:bg-gray-100 transition-colors duration-300"
+                      className="w-full bg-white text-black px-4 py-2 text-xs font-bold uppercase tracking-wider hover:bg-gray-100 transition-colors duration-300"
                     >
                       Buy it now
                     </button>

@@ -9,7 +9,7 @@ const MovingWords = () => {
 
   return (
     <motion.div
-      className="w-full overflow-hidden bg-stone-100 text-black py-3 relative"
+      className="w-full overflow-hidden  text-[#b3b3b3] py-3 relative"
       ref={wordsRef}
       initial={{opacity: 0}}
       animate={isInView ? {opacity: 1} : {opacity: 0}}
@@ -18,10 +18,10 @@ const MovingWords = () => {
       {/* Single seamless marquee */}
       <div className="flex whitespace-nowrap animate-marquee-infinite">
         {/* Create enough instances for seamless infinite loop */}
-        {[...Array(15)].map((_, index) => (
+        {[...Array(20)].map((_, index) => (
           <div
             key={index}
-            className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl min-w-max text-black font-light flex-shrink-0 mx-8 sm:mx-12 flex items-center"
+            className="text-sm sm:text-base md:text-lg min-w-max text-[#b3b3b3] font-light flex-shrink-0 mx-8 sm:mx-12 flex items-center "
           >
             <span className="mr-3 ">™</span>
             <span className="tracking-wider font-bold">UNLIMITED</span>

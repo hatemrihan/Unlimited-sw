@@ -107,7 +107,7 @@ const CartPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-stone-900 text-white">
       <Nav />
       
       <div className="pt-20 lg:pt-24">
@@ -117,19 +117,19 @@ const CartPage = () => {
           <div className="mb-8">
             <button
               onClick={() => router.push('/')}
-              className="text-white hover:text-gray-300 transition-colors duration-300 mb-6 flex items-center"
+              className="text-[#b3b3b3] px-4 hover:text-gray-300 transition-colors duration-300 mb-12 flex items-center text-xs"
             >
               ← Continue Shopping
             </button>
             
             <div className="flex items-center justify-between">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-bold uppercase tracking-wider">
+              <h1 className="text-xl px-4 sm:text-xl md:text-2xl lg:text-3xl font-bold uppercase tracking-wider text-[#b3b3b3]">
                 CART
               </h1>
               
               {/* Debug Info */}
               <div className="flex items-center gap-4">
-                <div className="text-sm text-gray-400">
+                <div className="text-sm text-[#b3b3b3]">
                   Items: {cartState.itemCount} | Total: L.E {cartState.total.toLocaleString()}
                 </div>
                 
@@ -140,11 +140,11 @@ const CartPage = () => {
           {cartState.items.length === 0 ? (
             /* Empty Cart */
             <div className="text-center py-16 lg:py-24">
-              <h2 className="text-2xl lg:text-3xl font-medium text-gray-300 mb-4">Your cart is empty</h2>
-              <p className="text-gray-400 mb-8">Add some calisthenics equipment to get started!</p>
+              <h2 className="text-2xl lg:text-3xl font-medium text-[#b3b3b3] mb-4">Your cart is empty</h2>
+              <p className="text-[#b3b3b3] mb-8">Add some calisthenics equipment to get started!</p>
               <button
                 onClick={() => router.push('/shop')}
-                className="bg-white text-black px-8 py-3 font-bold uppercase tracking-wider hover:bg-gray-100 transition-colors duration-300"
+                className="bg-transparent border border-white text-white px-8 py-3 font-bold uppercase tracking-wider hover:bg-white hover:text-black transition-colors duration-300"
               >
                 Continue Shopping
               </button>
@@ -156,7 +156,7 @@ const CartPage = () => {
                 {cartState.items.map((item) => {
                   console.log('Cart item:', item.name, 'Stock:', item.stock, 'Quantity:', item.quantity);
                   return (
-                  <div key={`${item.id}-${JSON.stringify(item.variant)}`} className="bg-gray-900/50 rounded-lg p-4 mb-4">
+                  <div key={`${item.id}-${JSON.stringify(item.variant)}`} className="bg-stone-900/50  p-4 mb-4">
                     {/* Mobile Layout - Stack vertically */}
                     <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                       
@@ -164,7 +164,7 @@ const CartPage = () => {
                       <div className="flex items-start gap-4 flex-1">
                         {/* Product Image */}
                         <div
-                          className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-800 overflow-hidden flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity duration-300 rounded-lg"
+                          className="w-16 h-16 sm:w-20 sm:h-20 overflow-hidden flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity duration-300 "
                           onClick={() => router.push(`/product/${item.id}`)}
                         >
                           <img
@@ -176,18 +176,18 @@ const CartPage = () => {
                         
                         {/* Product Info */}
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-white font-medium text-sm sm:text-base mb-2 leading-tight">
+                          <h3 className="text-[#b3b3b3] font-medium text-sm sm:text-base mb-2 leading-tight">
                             {item.nameArabic || item.name}
                           </h3>
                           
                           {item.variant && (
-                            <p className="text-gray-400 text-xs sm:text-sm mb-2">
+                            <p className="text-[#b3b3b3] text-xs sm:text-sm mb-2">
                               {item.variant.name}
                             </p>
                           )}
                           
                           {/* Price - Show on mobile */}
-                          <p className="text-white font-bold text-sm sm:hidden">
+                          <p className="text-[#b3b3b3] font-bold text-sm sm:hidden">
                             {((refreshedPrices[item.id] || item.price) * item.quantity).toLocaleString()} L.E
                           </p>
                         </div>
@@ -205,15 +205,15 @@ const CartPage = () => {
                               handleUpdateQuantity(item.id, item.variant, item.quantity - 1);
                             }}
                             disabled={item.quantity <= 1}
-                            className={`w-8 h-8 border flex items-center justify-center font-bold text-sm transition-all duration-300 rounded ${
+                            className={`w-8 h-8 border border-white flex items-center justify-center font-bold text-sm transition-all duration-300  ${
                               item.quantity <= 1
-                                ? 'border-gray-600 text-gray-600 cursor-not-allowed bg-gray-800'
+                                ? 'border-white text-white cursor-not-allowed bg-transparent'
                                 : 'border-white text-white hover:bg-white hover:text-black bg-transparent'
                             }`}
                           >
                             -
                           </button>
-                          <span className="text-white font-bold w-8 text-center text-sm bg-gray-800 px-2 py-1 rounded">
+                          <span className="text-[#b3b3b3] font-bold w-8 text-center text-sm  px-2 py-1 ">
                           {item.quantity}
                         </span>
                           <button
@@ -224,9 +224,9 @@ const CartPage = () => {
                               handleUpdateQuantity(item.id, item.variant, item.quantity + 1);
                             }}
                             disabled={item.stock !== undefined && item.quantity >= item.stock}
-                            className={`w-8 h-8 border flex items-center justify-center font-bold text-sm transition-all duration-300 rounded ${
+                            className={`w-8 h-8 border border-white flex items-center justify-center font-bold text-sm transition-all duration-300  ${
                               item.stock !== undefined && item.quantity >= item.stock
-                                ? 'border-gray-600 text-gray-600 cursor-not-allowed bg-gray-800'
+                                ? 'border-white text-white cursor-not-allowed bg-transparent'
                                 : 'border-white text-white hover:bg-white hover:text-black bg-transparent'
                             }`}
                           >
@@ -236,7 +236,7 @@ const CartPage = () => {
                         
                         {/* Price - Desktop only */}
                         <div className="hidden sm:block text-right">
-                          <div className="text-white font-bold text-base">
+                          <div className="text-[#b3b3b3] font-bold text-base">
                             {((refreshedPrices[item.id] || item.price) * item.quantity).toLocaleString()} L.E
                           </div>
                         </div>
@@ -266,7 +266,7 @@ const CartPage = () => {
               
               {/* Right Side - Order Summary */}
               <div className="lg:col-span-1">
-                <div className="bg-gray-100 text-black p-6 lg:p-8  sticky top-24">
+                <div className="bg-stone-900/50 text-white p-6 lg:p-8  sticky top-24">
                   <h2 className="text-lg lg:text-xl font-bold mb-6 uppercase tracking-wider">
                     ORDER SUMMARY
                   </h2>
@@ -282,7 +282,7 @@ const CartPage = () => {
                       <span className="font-medium">Calculated at checkout</span>
                     </div>
                     
-                    <div className="border-t border-gray-300 pt-4">
+                    <div className="border-t border-white pt-4">
                       <div className="flex justify-between text-lg font-bold">
                         <span>Total</span>
                         <span>L.E {total.toLocaleString()}</span>
@@ -292,7 +292,7 @@ const CartPage = () => {
                   
                   <button
                     onClick={handleCheckout}
-                    className="w-full bg-black text-white py-4 font-bold uppercase tracking-wider hover:bg-gray-800 transition-colors duration-300"
+                    className="w-full bg-transparent border border-white text-white py-4 font-bold uppercase tracking-wider hover:bg-white hover:text-black transition-colors duration-300"
                   >
                     PROCEED TO CHECKOUT
                   </button>

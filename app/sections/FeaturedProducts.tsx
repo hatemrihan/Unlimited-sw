@@ -121,7 +121,7 @@ const FeaturedProducts = () => {
   }
 
   return (
-    <section className="relative bg-black text-[#b3b3b3] pt-22 pb-8 sm:pt-12 sm:pb-12 lg:pt-16 lg:pb-12 xl:pb-16 border-t border-gray-800" id="featured" ref={sectionRef}>
+    <section className="relative bg-stone-900 text-[#b3b3b3] pt-22 pb-8 sm:pt-12 sm:pb-12 lg:pt-16 lg:pb-12 xl:pb-16 border-t border-gray-800" id="featured" ref={sectionRef}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
       <div className="text-lg sm:text-xl font-bold tracking-[0.2em] uppercase mb-12 lg:mb-16 text-center text-[#b3b3b3]">
@@ -218,7 +218,7 @@ const FeaturedProducts = () => {
                   ) : (
                     <button
                       disabled
-                      className="bg-gray-600 text-gray-400 px-3 py-1.5 text-xs font-medium uppercase tracking-wider cursor-not-allowed whitespace-nowrap"
+                      className="bg-gray-700 border border-gray-600 text-gray-400 px-3 py-1.5 text-xs font-medium uppercase tracking-wider cursor-not-allowed whitespace-nowrap opacity-60"
                     >
                       OUT OF STOCK
                     </button>

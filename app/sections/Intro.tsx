@@ -156,11 +156,11 @@ const Intro = () => {
           controls={false}
           preload="auto"
           onError={(e) => {
-            console.error('❌ Video load error:', e);
+            console.error('❌ Video load error for:', item.mainImage);
             e.currentTarget.style.display = 'none';
           }}
-          onLoad={() => console.log('✅ Video loaded successfully')}
-          onLoadStart={() => console.log('🎬 Video loading started')}
+          onLoadedData={() => console.log('✅ Video loaded successfully:', item.mainImage)}
+          onLoadStart={() => console.log('🎬 Video loading started:', item.mainImage)}
         />
       );
     } else {
@@ -200,7 +200,7 @@ const Intro = () => {
   // Loading state
   if (loading) {
     return (
-      <section className="relative min-h-screen bg-black text-[#b3b3b3] flex items-center justify-center">
+      <section className="relative min-h-screen bg-stone-900 text-[#b3b3b3] flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-300"></div>
       </section>
     );
@@ -209,7 +209,7 @@ const Intro = () => {
   // No items state
   if (!loading && introItems.length === 0) {
     return (
-      <section className="relative min-h-screen bg-black text-[#b3b3b3] flex items-center justify-center">
+      <section className="relative min-h-screen bg-stone-900 text-[#b3b3b3] flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-medium text-gray-300 mb-4">No intro items available</h2>
           <p className="text-gray-400">Admin can add intro items from the dashboard.</p>
@@ -227,7 +227,7 @@ const Intro = () => {
   console.log('🎨 Rendering intro with items:', introItems);
   
   return (
-    <section className="relative min-h-screen bg-black text-[#b3b3b3] p-4 sm:p-6 lg:p-8 pt-24 sm:pt-28 lg:pt-32 transition-colors duration-300" id="intro">
+    <section className="relative min-h-screen bg-stone-900 text-[#b3b3b3] p-4 sm:p-6 lg:p-8 pt-24 sm:pt-28 lg:pt-32 transition-colors duration-300" id="intro">
       
       {/* Section Title - Always Visible */}
       <div className="text-lg sm:text-xl font-bold tracking-[0.2em] uppercase mb-12 lg:mb-16 text-center text-[#b3b3b3]">
@@ -277,7 +277,7 @@ const Intro = () => {
                   style={{ opacity: index === 0 ? 1 : 0 }}
                 >
                   <div className="relative w-full h-full">
-                    {renderMedia(item, "w-full h-full object-cover rounded-lg shadow-lg", true)}
+                    {renderMedia(item, "w-full h-full object-cover  shadow-lg", true)}
                     {/* Additional fallback for main images */}
                     <div className="absolute inset-0 hidden items-center justify-center bg-gray-800 rounded-lg shadow-lg">
                       <div className="text-center text-gray-400">
@@ -327,7 +327,7 @@ const Intro = () => {
         {introItems.map((item, index) => (
           <div 
             key={`overlay-${index}`}
-            className="overlay-item hidden pb-16 pointer-events-auto bg-[#111111] text-[#b3b3b3] h-full overflow-y-auto transition-all duration-300 ease-out"
+            className="overlay-item hidden pb-16 pointer-events-auto bg-stone-900 text-[#b3b3b3] h-full overflow-y-auto transition-all duration-300 ease-out"
             ref={(el) => { 
               overlayItemsRef.current[index] = el;
               if (el) {
@@ -350,10 +350,10 @@ const Intro = () => {
                 </div>
                 <div className="w-full max-w-3xl h-[40vh] sm:h-[45vh] lg:h-[50vh]">
                   <div className="relative w-full h-full">
-                    {renderMedia(item, "w-full h-full object-cover rounded-lg", true)}
+                    {renderMedia(item, "w-full h-full object-cover ", true)}
                     {/* Additional fallback for overlay main image */}
-                    <div className="absolute inset-0 hidden items-center justify-center bg-gray-800 rounded-lg">
-                      <div className="text-center text-gray-400">
+                    <div className="absolute inset-0 hidden items-center justify-center bg-[#111111] ">
+                      <div className="text-center text-[#b3b3b3]">
                         <svg className="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>

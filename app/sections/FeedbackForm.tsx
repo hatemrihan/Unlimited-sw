@@ -110,7 +110,7 @@ const FeedbackForm = () => {
   return (
         <motion.div
       id="feedbackform"
-      className="w-full max-w-2xl mx-auto mt-6 lg:mt-8 px-4 sm:px-6"
+      className="w-full max-w-2xl mx-auto mt-0 lg:mt-8 px-4 sm:px-6 bg-stone-900"
       ref={formRef}
      
     >

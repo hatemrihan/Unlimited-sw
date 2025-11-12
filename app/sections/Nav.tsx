@@ -70,14 +70,14 @@ const Nav: FC = () => {
     if (header) {
       if (isOpen) {
         header.classList.remove('bg-black', 'border-gray-800/50');
-        header.classList.add('bg-stone-100', 'border-gray-300/50');
+        header.classList.add('bg-white', 'border-gray-300/50');
       } else {
-        header.classList.remove('bg-stone-100', 'border-gray-300/50');
+        header.classList.remove('bg-white', 'border-gray-300/50');
         header.classList.add('bg-black', 'border-gray-800/50');
       }
     }
 
-    // Handle dynamic text colors
+    // Handle dynamic text colors - Turn black when nav opens
     const dynamicElements = document.querySelectorAll('[data-dynamic-color="true"]');
     dynamicElements.forEach((element) => {
       if (isOpen) {
@@ -89,7 +89,7 @@ const Nav: FC = () => {
       }
     });
 
-    // Handle logo filter
+    // Handle logo filter - Turn black when nav opens
     const logo = document.querySelector('[data-logo="true"]');
     if (logo) {
       if (isOpen) {
@@ -238,18 +238,18 @@ const Nav: FC = () => {
       {/* Navigation Header */}
       <header className="relative w-full">
         {/* Mobile Sliding Navigation */}
-        <div className="fixed top-0 left-0 w-full h-0 overflow-hidden z-40 bg-stone-100 transition-colors duration-300 text-center" ref={navScope}>
+        <div className="fixed top-0 left-0 w-full h-0 overflow-hidden z-40 bg-white transition-colors duration-300 text-center" ref={navScope}>
           <nav className="mt-16 sm:mt-20 flex flex-col w-full text-center">
           {navItems.map(({label, href}, index) => (
             <a
               href={href}
               key={label}
-              className="text-black border-t last:border-b border-gray-700/30 py-6 sm:py-8 group/nav-items relative isolate bg-stone-100 w-full transition-all duration-300 hover:text-stone-500 hover:bg-white/5 text-center opacity-0 -translate-x-8"
+              className="text-black border-t last:border-b border-gray-700/30 py-6 sm:py-8 group/nav-items relative isolate bg-white w-full transition-all duration-300 hover:text-gray-500 hover:bg-gray-50 text-center opacity-0 -translate-x-8"
               data-nav-item="true"
               onClick={handleClickMobileNavItem}
             >
               <div className="container mx-auto px-4 sm:px-6 flex items-center justify-center">
-                <div className="absolute w-full h-0 bg-stone-100/5 group-hover/nav-items:h-full transition-all duration-500 bottom-0 -z-10"></div>
+                <div className="absolute w-full h-0 bg-gray-100 group-hover/nav-items:h-full transition-all duration-500 bottom-0 -z-10"></div>
                 <span className="text-2xl sm:text-3xl group-hover/nav-items:pl-4 transition-all duration-500 font-medium">
                   {label}
                 </span>
@@ -263,7 +263,7 @@ const Nav: FC = () => {
       </div>
 
         {/* Fixed Header - Always on top */}
-        <div className="fixed top-0 left-0 right-0 w-full z-50 backdrop-blur-sm border-b transition-colors duration-300 bg-black border-gray-800/50" data-header="true" suppressHydrationWarning>
+        <div className="fixed top-0 left-0 right-0 w-full z-50 backdrop-blur-sm border-b transition-colors duration-300 bg-stone-900 border-gray-800/50" data-header="true" suppressHydrationWarning>
           <div className="w-full px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16 lg:h-20 relative">
               {/* Mobile: Menu Button - Left */}
@@ -361,11 +361,7 @@ const Nav: FC = () => {
                        className="text-[#b3b3b3] hover:text-white transition-all duration-300 px-3 py-2 cursor-pointer relative flex items-center gap-2"
                        suppressHydrationWarning
                      >
-                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" className="w-5 h-5 fill-current">
-                         <path fillRule="evenodd" d="M2.5 3.75a.75.75 0 0 1 .75-.75h1.612a1.75 1.75 0 0 1 1.732 1.5h9.656a.75.75 0 0 1 .748.808l-.358 4.653a2.75 2.75 0 0 1-2.742 2.539h-6.351l.093.78a.25.25 0 0 0 .248.22h6.362a.75.75 0 0 1 0 1.5h-6.362a1.75 1.75 0 0 1-1.738-1.543l-1.04-8.737a.25.25 0 0 0-.248-.22h-1.612a.75.75 0 0 1-.75-.75Zm4.868 7.25h6.53a1.25 1.25 0 0 0 1.246-1.154l.296-3.846h-8.667l.595 5Z"/>
-                         <path d="M10 17a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"/>
-                         <path d="M15 17a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"/>
-                       </svg>
+                     
                        <span className="text-sm font-medium">Cart</span>
                        {/* Cart Count Badge */}
                        {cartState.itemCount > 0 && (
@@ -425,11 +421,7 @@ const Nav: FC = () => {
                        data-dynamic-color="true"
                        suppressHydrationWarning
                      >
-                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" className="w-4 h-4 fill-current">
-                         <path fillRule="evenodd" d="M2.5 3.75a.75.75 0 0 1 .75-.75h1.612a1.75 1.75 0 0 1 1.732 1.5h9.656a.75.75 0 0 1 .748.808l-.358 4.653a2.75 2.75 0 0 1-2.742 2.539h-6.351l.093.78a.25.25 0 0 0 .248.22h6.362a.75.75 0 0 1 0 1.5h-6.362a1.75 1.75 0 0 1-1.738-1.543l-1.04-8.737a.25.25 0 0 0-.248-.22h-1.612a.75.75 0 0 1-.75-.75Zm4.868 7.25h6.53a1.25 1.25 0 0 0 1.246-1.154l.296-3.846h-8.667l.595 5Z"/>
-                         <path d="M10 17a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"/>
-                         <path d="M15 17a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"/>
-                       </svg>
+                      
                        <span className="text-xs font-medium">Cart</span>
                        {/* Cart Count Badge */}
                        {cartState.itemCount > 0 && (
@@ -444,45 +436,41 @@ const Nav: FC = () => {
                   
                                       {/* Mobile Account Icon */}
                    {session ? (
-                     <div className="flex items-center space-x-1">
-                       <span className={`text-xs font-medium max-w-[60px] truncate ${
-                         isOpen ? 'text-black' : 'text-[#b3b3b3]'
-                       }`}>
-                         {session.user?.name?.split(' ')[0] || session.user?.email?.split('@')[0]}
-                       </span>
-                       <button
-                         className={`hover:text-gray-400 transition-colors duration-300 p-1 hover:bg-gray-700/30 rounded cursor-pointer ${
-                           isOpen ? 'text-black' : 'text-[#b3b3b3]'
-                         }`}
-                         onClick={() => signOut()}
-                         aria-label="Sign out"
-                         suppressHydrationWarning
-                       >
-                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" className="w-4 h-4 fill-current">
-                           <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
-                         </svg>
-                       </button>
-                     </div>
-                   ) : (
-                     <button
-                       className={`hover:text-gray-400 transition-colors duration-300 p-2 hover:bg-gray-700/30 rounded-lg cursor-pointer ${
-                         isOpen ? 'text-black' : 'text-[#b3b3b3]'
-                       }`}
-                       onClick={() => {
-                         // Redirect to NextAuth signin with Google provider
-                         if (typeof window !== 'undefined') {
-                           window.location.href = '/api/auth/signin?callbackUrl=/';
-                         }
-                       }}
-                       aria-label="Sign in with Google"
-                       suppressHydrationWarning
-                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" className="w-5 h-5 fill-current">
-                          <path fillRule="evenodd" d="M10 3a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm-2 3.5a2 2 0 1 1 4 0 2 2 0 0 1-4 0Z"/>
-                          <path fillRule="evenodd" d="M15.484 14.227a6.274 6.274 0 0 0-10.968 0l-.437.786a1.338 1.338 0 0 0 1.17 1.987h9.502a1.338 1.338 0 0 0 1.17-1.987l-.437-.786Zm-9.657.728a4.773 4.773 0 0 1 8.346 0l.302.545h-8.95l.302-.545Z"/>
+                    <div className="flex items-center space-x-1">
+                      <span className="text-xs font-medium max-w-[60px] truncate text-[#b3b3b3]" data-dynamic-color="true">
+                        {session.user?.name?.split(' ')[0] || session.user?.email?.split('@')[0]}
+                      </span>
+                      <button
+                        className="text-[#b3b3b3] hover:text-gray-400 transition-colors duration-300 p-1 hover:bg-gray-700/30 rounded cursor-pointer"
+                        data-dynamic-color="true"
+                        onClick={() => signOut()}
+                        aria-label="Sign out"
+                        suppressHydrationWarning
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" className="w-4 h-4 fill-current">
+                          <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
                         </svg>
                       </button>
-                   )}
+                    </div>
+                  ) : (
+                    <button
+                      className="text-[#b3b3b3] hover:text-gray-400 transition-colors duration-300 p-2 hover:bg-gray-700/30 rounded-lg cursor-pointer"
+                      data-dynamic-color="true"
+                      onClick={() => {
+                        // Redirect to NextAuth signin with Google provider
+                        if (typeof window !== 'undefined') {
+                          window.location.href = '/api/auth/signin?callbackUrl=/';
+                        }
+                      }}
+                      aria-label="Sign in with Google"
+                      suppressHydrationWarning
+                    >
+                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" className="w-5 h-5 fill-current">
+                         <path fillRule="evenodd" d="M10 3a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm-2 3.5a2 2 0 1 1 4 0 2 2 0 0 1-4 0Z"/>
+                         <path fillRule="evenodd" d="M15.484 14.227a6.274 6.274 0 0 0-10.968 0l-.437.786a1.338 1.338 0 0 0 1.17 1.987h9.502a1.338 1.338 0 0 0 1.17-1.987l-.437-.786Zm-9.657.728a4.773 4.773 0 0 1 8.346 0l.302.545h-8.95l.302-.545Z"/>
+                       </svg>
+                     </button>
+                  )}
                 </div>
               </div>
             </div>

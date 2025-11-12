@@ -108,7 +108,7 @@ const Products = () => {
   // Remove loading screen - show content immediately
 
   return (
-    <section className="relative bg-black text-[#b3b3b3] pt-22 pb-8 sm:pt-12 sm:pb-12 lg:pt-16 lg:pb-12 xl:pb-16" id="products">
+    <section className="relative bg-stone-900 text-[#b3b3b3] pt-22 pb-8 sm:pt-12 sm:pb-12 lg:pt-16 lg:pb-12 xl:pb-16" id="products">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
       <div className="text-lg sm:text-xl font-bold tracking-[0.2em] uppercase mb-12 lg:mb-16 text-center text-[#b3b3b3]">
@@ -144,7 +144,7 @@ const Products = () => {
                   <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
                     {/* Discount Badge */}
                     {product.discount && Number(product.discount) > 0 && product.originalPrice && (
-                      <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
+                      <div className="bg-stone-900 text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
                         {product.discount}% OFF
                       </div>
                     )}
@@ -195,7 +195,7 @@ const Products = () => {
                   ) : (
                     <button
                       disabled
-                      className="bg-gray-600 text-gray-400 px-3 py-1.5 text-xs font-medium uppercase tracking-wider cursor-not-allowed whitespace-nowrap"
+                      className="bg-gray-700 border border-gray-600 text-gray-400 px-3 py-1.5 text-xs font-medium uppercase tracking-wider cursor-not-allowed whitespace-nowrap opacity-60"
                     >
                       OUT OF STOCK
                     </button>
@@ -227,7 +227,7 @@ const Products = () => {
               initial={{ y: -50, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: -50, opacity: 0 }}
-              className="fixed top-4 right-4 bg-black text-white px-6 py-3 rounded-lg z-50"
+              className="fixed top-4 right-4 bg-stone-900 text-white px-6 py-3 rounded-lg z-50"
             >
               Added to cart!
             </motion.div>

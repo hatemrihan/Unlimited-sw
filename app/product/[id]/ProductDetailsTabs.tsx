@@ -34,11 +34,11 @@ const ProductDetailsTabs: React.FC<ProductDetailsTabsProps> = ({ product }) => {
       id: 'faqs',
       label: 'FAQS',
       content: product.faqs && product.faqs.length > 0 ? (
-        <div className="space-y-4">
+        <div className="space-y-2">
           {product.faqs.map((faq, index) => (
-            <div key={index} className="border-b border-gray-600 pb-4 last:border-b-0">
-              <h4 className="font-medium text-[#b3b3b3] mb-2">{faq.question}</h4>
-              <p className="text-[#b3b3b3]/70 text-sm leading-relaxed">{faq.answer}</p>
+            <div key={index} className="border-b border-gray-600 pb-2 last:border-b-0">
+              <h4 className="font-medium text-[#b3b3b3] mb-1 text-xs">{faq.question}</h4>
+              <p className="text-[#b3b3b3]/70 text-xs leading-relaxed">{faq.answer}</p>
             </div>
           ))}
         </div>
@@ -52,23 +52,24 @@ const ProductDetailsTabs: React.FC<ProductDetailsTabsProps> = ({ product }) => {
   };
 
   return (
-    <div className="space-y-4 pt-8 border-t border-gray-700">
+    <div className="space-y-2 pt-4 border-t border-gray-700 text-center">
       {tabs.map((tab) => (
         <div key={tab.id}>
           <button
             onClick={() => toggleTab(tab.id)}
-            className="flex justify-between items-center w-full text-left py-4 border-b border-gray-700 hover:border-gray-500 transition-colors duration-300 group"
+            className="flex justify-center items-center w-full text-center py-2 border-b border-gray-700 hover:border-gray-500 transition-colors duration-300 group"
           >
-            <span className="font-medium uppercase tracking-wider text-[#b3b3b3] group-hover:text-[#b3b3b3]/70 transition-colors duration-300">
-              {tab.label}
-            </span>
-            <motion.span
+             <motion.span
               animate={{ rotate: activeTab === tab.id ? 180 : 0 }}
               transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="text-xl text-[#b3b3b3]/50 group-hover:text-[#b3b3b3] transition-colors duration-300"
+              className="text-sm text-center text-[#b3b3b3]/50 group-hover:text-[#b3b3b3] transition-colors duration-300 flex items-center justify-center px-2"
             >
-              {activeTab === tab.id ? '−' : '+'}
+              {activeTab === tab.id ? '-' : '+'}
             </motion.span>
+            <span className="text-xs font-medium uppercase tracking-wider text-[#b3b3b3] group-hover:text-[#b3b3b3]/70 transition-colors duration-300">
+              {tab.label}
+            </span>
+           
           </button>
 
           <AnimatePresence>
@@ -82,17 +83,17 @@ const ProductDetailsTabs: React.FC<ProductDetailsTabsProps> = ({ product }) => {
                   ease: "easeInOut",
                   opacity: { duration: 0.1 }
                 }}
-                className="overflow-hidden"
+                className="overflow-hidden text-center flex items-center"
               >
-                <div className="py-6 text-[#b3b3b3] text-sm leading-relaxed">
+                <div className="py-3 text-center text-[#b3b3b3] text-xs leading-relaxed">
                   {typeof tab.content === 'string' ? (
-                    <div className="whitespace-pre-line">{tab.content}</div>
+                    <div className="whitespace-pre-line text-center">{tab.content}</div>
                   ) : (
                     tab.content
                   )}
 
                   {!tab.hasContent && (
-                    <div className="text-[#b3b3b3]/50 italic mt-2">
+                    <div className="text-center text-[#b3b3b3]/50 italic mt-1 text-xs">
                       This information will be available once the admin adds content for this section.
                     </div>
                   )}

@@ -200,7 +200,7 @@ export default function Shop() {
   return (
     <>
       <Nav />
-      <main className="min-h-screen bg-black text-[#b3b3b3] pt-20">
+      <main className="min-h-screen bg-stone-900 text-[#b3b3b3] pt-20">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-12">
 
           {/* Breadcrumb */}
@@ -260,7 +260,7 @@ export default function Shop() {
                   placeholder="Search products..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full px-4 py-3 pl-12 text-sm bg-black border border-white/20 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 placeholder-gray-400"
+                  className="w-full px-4 py-3 pl-12 text-sm bg-transparent border border-white/20 text-white rounded-none focus:outline-none focus:ring-2 focus:ring-white/20 placeholder-[#b3b3b3]"
                 />
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -442,9 +442,9 @@ const ProductCard = ({ product, onAddToCart, isMobile = false }: {
         {isOutOfStock ? (
           <button
             disabled
-            className="bg-gray-600 text-gray-300 px-4 py-2 text-xs font-medium uppercase tracking-wider cursor-not-allowed"
+            className="bg-gray-700 border border-gray-600 text-gray-400 px-4 py-2 text-xs font-medium uppercase tracking-wider cursor-not-allowed opacity-60"
           >
-            SOLD OUT
+            OUT OF STOCK
           </button>
         ) : (
           <button

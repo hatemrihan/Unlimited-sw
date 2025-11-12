@@ -26,17 +26,17 @@ if (inView) {
 }
   },[inView]);
   return (
-    <section className="bg-black py-16 md:py-20 lg:py-24" id="intro" ref={sectionRef}>
-      <div className="container mx-auto px-8 md:px-16 lg:px-24 bg-black">
-        <div className="max-w-5xl mx-auto bg-black" >
+    <section className="bg-stone-900 -mt-8 " id="intro" ref={sectionRef}>
+      <div className="container mx-auto px-8 md:px-16 lg:px-24">
+        <div className="max-w-5xl mx-auto" >
           {/* Main Title - Matching the image exactly */}
-          <h1 className="text-4xl md:text-7xl lg:text-8xl xl:text-9xl font-normal text-white mb-12 md:mb-16 lg:mb-20 leading-[0.9] tracking-tight text-left">
+          <h1 className="text-xl md:text-2xl lg:text-2xl xl:text-2xl font-normal text-[#b3b3b3] mb-8 md:mb-16 lg:mb-20 leading-[0.9] tracking-tight text-left">
             Who is Mohamed Alkady?
           </h1>
           
           {/* Description - Single paragraph like in the image */}
-          <div className="text-center bg-black">
-            <p className="text-sm md:text-xl lg:text-2xl text-[#b3b3b3] leading-relaxed max-w-4xl mx-auto font-light bg-black">
+          <div className="text-left">
+            <p className="text-sm md:text-lg lg:text-xl text-[#b3b3b3] leading-relaxed max-w-4xl font-light -mt-4 mb-24">
               Mohamed is a dedicated and dynamic sports science professional with a Ph.D. in Biomechanics in 
               Sports Training and more than 14 years of coaching experience. Lecturer at the Faculty 
               of Sports Sciences, Benha University, Department of Gymnastics and Exercises – Sports 
@@ -59,7 +59,7 @@ if (inView) {
             <Image 
               src={oneImage} 
               alt="Calisthenics Equipment" 
-              width={400}
+              width={300}
               height={220}
               className="gallery-image"
               priority
@@ -106,28 +106,28 @@ if (inView) {
         
 
         {/* Gmail Contact Button */}
-        <div className="flex justify-center mt-8 mb-4">
+        <div className="flex justify-center mt-12 md:mt-16 mb-24">
           <motion.a
             href="mailto:Muhamed.alkady@gmail.com"
-            className="group relative px-6 py-3 
-              font-bold uppercase tracking-wider text-xs sm:text-sm text-white
+            className="group relative px-8 py-4 
+              font-medium uppercase tracking-wider text-sm text-[#b3b3b3]
               hover:bg-white hover:text-black
               transition-all duration-300
-              border-2 border-white
-              shadow-lg hover:shadow-xl
-              transform hover:-translate-y-1"
+              border border-white
+              overflow-hidden"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.8 }}
+            transition={{ duration: 0.6, delay: 1.2 }}
           >
-            <span className="flex items-center space-x-2">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <span className="relative z-10 flex items-center space-x-3">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-.904.732-1.636 1.636-1.636h.98L12 10.09l9.384-6.269h.98c.904 0 1.636.732 1.636 1.636z"/>
               </svg>
-              <span>Gmail</span>
+              <span>Get in Touch</span>
             </span>
+            <div className="absolute inset-0 bg-white transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
           </motion.a>
         </div>
       </div>
@@ -137,7 +137,7 @@ if (inView) {
           width: 100%;
           margin: 1rem 0;
           padding: 0 1rem;
-          background: black;
+          background: rgb(28, 25, 23);
         }
 
         .gallery-scroll {
@@ -148,7 +148,7 @@ if (inView) {
           padding: 1rem 0;
           scroll-snap-type: x mandatory;
           -webkit-overflow-scrolling: touch;
-          background: black;
+          background: rgb(28, 25, 23);
         }
 
         .gallery-scroll::-webkit-scrollbar {
@@ -160,10 +160,11 @@ if (inView) {
           scrollbar-width: none;
         }
         
+        /* Desktop/Laptop - Default size (you can adjust these) */
         .gallery-item {
           flex-shrink: 0;
-          width: 400px;
-          height: 450px;
+          width: 300px;
+          height: 350px;
           overflow: hidden;
           box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
           transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -192,10 +193,11 @@ if (inView) {
           transform: scale(1.05) !important;
         }
 
+        /* Tablet - Medium screens (you can adjust these) */
         @media (max-width: 768px) {
           .gallery-item {
-            width: 320px;
-            height: 320px;
+            width: 280px;
+            height: 300px;
           }
           
           .gallery-container {
@@ -207,10 +209,11 @@ if (inView) {
           }
         }
 
+        /* Mobile - Small screens (you can adjust these) */
         @media (max-width: 480px) {
           .gallery-item {
-            width: 280px;
-            height: 320px;
+            width: 240px;
+            height: 280px;
           }
         }
       `}</style>
