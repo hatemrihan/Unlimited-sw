@@ -107,9 +107,7 @@ function ThankYouContent() {
             )}
 
             <div className="space-y-4">
-              <p className="text-[#b3b3b3]/70">
-                You will pay on delivery. Please have the exact amount ready.
-              </p>
+              
               <p className="text-sm text-[#b3b3b3]/50">
                 If you have any questions, feel free to contact us.
               </p>
