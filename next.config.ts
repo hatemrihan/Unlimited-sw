@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  env: {
+    NEXT_PUBLIC_BUILD_TIME: Date.now().toString(),
+  }
 };
 
 export default nextConfig;

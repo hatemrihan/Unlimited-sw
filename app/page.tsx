@@ -8,6 +8,7 @@ import FeedbackForm from "./sections/FeedbackForm";
 import Footer from "./sections/Footer";
 import WhatsAppButton from "../components/WhatsAppButton";
 import MovingWordsTwo from "./sections/MovingWordsTwo";
+import CounterDown from "./sections/CounterDown";
 
 export default function Home() {
   const structuredData = {
@@ -91,7 +92,8 @@ export default function Home() {
       
       <Nav/>
       <Hero /> 
-      <MovingWordsTwo />
+      {/* <MovingWordsTwo /> */}
+      <CounterDown />
       <Products />
       <FeaturedProducts />
       <MovingWords />
