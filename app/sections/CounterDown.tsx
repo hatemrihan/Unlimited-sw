@@ -7,8 +7,13 @@ import { useEffect,useState } from "react";
 const CounterDown =() =>{
     const wordsRef = React.useRef(null);
     const isInView = useInView(wordsRef, { once: true, margin: "-50px" });
-    const buildTime = Number(process.env.NEXT_PUBLIC_BUILD_TIME);
-    const endTime = buildTime + 2 * 24 *60 * 60 *1000; // 2 days
+    
+    // Use build time if available, otherwise use current time as fallback
+    const buildTime = process.env.NEXT_PUBLIC_BUILD_TIME 
+      ? Number(process.env.NEXT_PUBLIC_BUILD_TIME) 
+      : Date.now();
+    
+    const endTime = buildTime + 2 * 24 * 60 * 60 * 1000; // 2 days from build time
     const [timeLeft, setTimeLeft] = useState(endTime - Date.now());
 
 useEffect(() => {
@@ -17,7 +22,7 @@ useEffect(() => {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [endTime]);
 
   if (timeLeft <= 0) {
     return <div>Offer Finished ⏳</div>;
@@ -32,7 +37,7 @@ useEffect(() => {
     <>
   
     <motion.div
-    className="w-full  overflow-hidden bg-white text-black py-6 relative"
+    className="w-full  overflow-hidden bg-gray-400 text-black py-6 relative"
     ref={wordsRef}
     initial={{opacity: 0}}
     animate={isInView ? {opacity: 1} : {opacity: 0}}
@@ -47,10 +52,10 @@ useEffect(() => {
           className="text-xl sm:text-base md:text-lg min-w-max text-black font-light flex-shrink-0 mx-8 sm:mx-12 flex flex-col items-center justify-center"
         >
             <h2 className="text-base text-center whitespace-nowrap font-normal">
-              Black Friday Offer Ends In: <span className="ml-2">{days}d : {hours}h : {minutes}m : {seconds}s</span>
+              White Friday Offer Ends In: <span className="ml-2">{days}d : {hours}h : {minutes}m : {seconds}s</span>
             </h2>
             <h1 className="text-xl text-center whitespace-nowrap mt-2 font-normal">
-              Use code: <span className="text-blue-800">BLACKFRIDAY</span>  to get Shipping Free on your order!
+              Use code: <span className="text-white">WFRI</span>  to get Shipping Free on your order!
             </h1>
         </div>
         
