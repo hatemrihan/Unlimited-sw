@@ -12,13 +12,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // Set build time as an environment variable during build
-  // This will be available to the client-side code
-  ...(process.env.NEXT_PUBLIC_BUILD_TIME ? {} : {
-    env: {
-      NEXT_PUBLIC_BUILD_TIME: Date.now().toString(),
-    }
-  }),
 };
 
 export default nextConfig;

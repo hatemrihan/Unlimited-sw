@@ -3,26 +3,24 @@ import { motion, useInView } from "framer-motion";
 import React from "react";
 import { useEffect,useState } from "react";
 
+// 🎯 FIXED END DATE - CHANGE THIS TO YOUR DESIRED END DATE
+// Offer ends: November 21, 2025 at 5:00 PM Egypt time (GMT+2)
+// Started: November 19, 2025 at 5:00 PM Egypt time
+const OFFER_END_TIME = new Date('2025-11-21T17:00:00+02:00').getTime();
 
 const CounterDown =() =>{
     const wordsRef = React.useRef(null);
     const isInView = useInView(wordsRef, { once: true, margin: "-50px" });
     
-    // Use build time if available, otherwise use current time as fallback
-    const buildTime = process.env.NEXT_PUBLIC_BUILD_TIME 
-      ? Number(process.env.NEXT_PUBLIC_BUILD_TIME) 
-      : Date.now();
-    
-    const endTime = buildTime + 2 * 24 * 60 * 60 * 1000; // 2 days from build time
-    const [timeLeft, setTimeLeft] = useState(endTime - Date.now());
+    const [timeLeft, setTimeLeft] = useState(OFFER_END_TIME - Date.now());
 
 useEffect(() => {
     const interval = setInterval(() => {
-      setTimeLeft(endTime - Date.now());
+      setTimeLeft(OFFER_END_TIME - Date.now());
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [endTime]);
+  }, []);
 
   if (timeLeft <= 0) {
     return <div>Offer Finished ⏳</div>;
