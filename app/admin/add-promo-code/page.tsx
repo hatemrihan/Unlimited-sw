@@ -15,7 +15,7 @@ interface PromoCode {
   validFrom: string;
   validUntil: string;
   description?: string;
-  waiveShippingAndCOD?: boolean;
+  waiveShipping?: boolean;
 }
 
 const AddPromoCodePage = () => {
@@ -33,7 +33,7 @@ const AddPromoCodePage = () => {
     validFrom: new Date().toISOString().split('T')[0],
     validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     description: '',
-    waiveShippingAndCOD: false
+    waiveShipping: false
   });
 
   // Fetch cities data when component mounts
@@ -83,9 +83,9 @@ const AddPromoCodePage = () => {
       code: 'FREESHIP',
       discount: 0, // Set to 0 since we're waiving fees directly
       type: 'fixed',
-      description: 'Free shipping and COD - Waives delivery and cash on delivery fees',
+      description: 'Free shipping - Waives delivery fee only (COD fee still applies)',
       minAmount: 100, // Set a minimum order amount if needed
-      waiveShippingAndCOD: true,
+      waiveShipping: true,
     });
   };
 
@@ -93,7 +93,7 @@ const AddPromoCodePage = () => {
     try {
       setSaving(true);
 
-      if (!newPromoCode.code || (!newPromoCode.discount && !newPromoCode.waiveShippingAndCOD)) {
+      if (!newPromoCode.code || (!newPromoCode.discount && !newPromoCode.waiveShipping)) {
         alert('Please fill in all required fields');
         return;
       }
@@ -278,17 +278,17 @@ const AddPromoCodePage = () => {
                   </label>
                 </div>
 
-                {/* Waive Shipping and COD */}
+                {/* Waive Shipping Only */}
                 <div className="flex items-center gap-3">
                   <input
                     type="checkbox"
-                    id="waiveShippingAndCOD"
-                    checked={newPromoCode.waiveShippingAndCOD || false}
-                    onChange={(e) => setNewPromoCode({...newPromoCode, waiveShippingAndCOD: e.target.checked})}
+                    id="waiveShipping"
+                    checked={newPromoCode.waiveShipping || false}
+                    onChange={(e) => setNewPromoCode({...newPromoCode, waiveShipping: e.target.checked})}
                     className="w-4 h-4 text-black focus:ring-black border-gray-300 rounded"
                   />
-                  <label htmlFor="waiveShippingAndCOD" className="text-sm text-black">
-                    هتخلي التوصيل والدفع عند الاستلام ببلاش (بحبك يا كبتني لما تشوفها قولي عشان امسح الرساله دي)
+                  <label htmlFor="waiveShipping" className="text-sm text-black">
+                    هتخلي التوصيل ببلاش بس (الدفع عند الاستلام لازم يتدفع)
                   </label>
                 </div>
               </div>

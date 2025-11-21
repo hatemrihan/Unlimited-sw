@@ -87,18 +87,18 @@ export async function POST(request: NextRequest) {
           discountValue: promoCode.discountValue,
           discount: discount,
           description: promoCode.description,
-          waiveShippingAndCOD: promoCode.waiveShippingAndCOD || false
+          waiveShipping: promoCode.waiveShipping || false
         }
       });
     } else {
       // This is a creation request from admin
       console.log('📝 Creating new promo code...');
 
-      const { code, discount, type, minAmount, maxUses, isActive, validFrom, validUntil, description, waiveShippingAndCOD } = body;
+      const { code, discount, type, minAmount, maxUses, isActive, validFrom, validUntil, description, waiveShipping } = body;
 
-      if (!code || (!discount && !waiveShippingAndCOD)) {
+      if (!code || (!discount && !waiveShipping)) {
         return NextResponse.json(
-          { success: false, error: 'Code and discount (or fee waiver) are required' },
+          { success: false, error: 'Code and discount (or shipping waiver) are required' },
           { status: 400 }
         );
       }
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
         isActive: isActive !== false,
         expiresAt: validUntil ? new Date(validUntil) : null,
         description: description || '',
-        waiveShippingAndCOD: waiveShippingAndCOD || false
+        waiveShipping: waiveShipping || false
       });
 
       await newPromoCode.save();
@@ -186,7 +186,7 @@ export async function GET(request: NextRequest) {
         validFrom: promo.createdAt,
         validUntil: promo.expiresAt,
         description: promo.description,
-        waiveShippingAndCOD: promo.waiveShippingAndCOD || false
+        waiveShipping: promo.waiveShipping || false
       }))
     });
 

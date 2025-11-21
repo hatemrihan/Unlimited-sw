@@ -228,10 +228,10 @@ export default function CheckoutPage() {
     return sum + (currentPrice * item.quantity);
   }, 0);
   
-  // Apply COD fee only for cash on delivery payment method, unless waived by promo
-  const shouldWaiveFees = appliedPromo && appliedPromo.waiveShippingAndCOD;
-  const finalCodFee = (formData.paymentMethod === 'cashOnDelivery' && !shouldWaiveFees) ? codFee : 0;
-  const finalShippingCost = shouldWaiveFees ? 0 : shippingCost;
+  // Apply shipping waiver if promo allows, but COD fee is ALWAYS charged for COD orders
+  const shouldWaiveShipping = appliedPromo && appliedPromo.waiveShipping;
+  const finalCodFee = (formData.paymentMethod === 'cashOnDelivery') ? codFee : 0; // COD fee ALWAYS applies
+  const finalShippingCost = shouldWaiveShipping ? 0 : shippingCost;
   const discountAmount = appliedPromo ? appliedPromo.discount : 0;
   const subtotalAfterDiscount = Math.max(0, refreshedSubtotal - discountAmount);
   const totalWithShipping = subtotalAfterDiscount + finalShippingCost + finalCodFee;
@@ -813,21 +813,19 @@ export default function CheckoutPage() {
                 )}
                 <div className="flex justify-between">
                   <span className="text-white">Shipping</span>
-                  <span className={shouldWaiveFees ? "text-green-400" : "text-white"}>
+                  <span className={shouldWaiveShipping ? "text-green-400" : "text-white"}>
                     {!selectedGovernorate 
                       ? 'Select a governorate' 
-                      : shouldWaiveFees 
+                      : shouldWaiveShipping 
                         ? 'Free' 
                         : `L.E ${shippingCost}`
                     }
                   </span>
                 </div>
-                {formData.paymentMethod === 'cashOnDelivery' && (finalCodFee > 0 || shouldWaiveFees) && (
+                {formData.paymentMethod === 'cashOnDelivery' && finalCodFee > 0 && (
                   <div className="flex justify-between">
                     <span className="text-white">Cash on Delivery Fee</span>
-                    <span className={shouldWaiveFees ? "text-green-400" : "text-white"}>
-                      {shouldWaiveFees ? 'Free' : `L.E ${finalCodFee}`}
-                    </span>
+                    <span className="text-white">L.E {finalCodFee}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-medium text-lg pt-2 border-t border-gray-600">

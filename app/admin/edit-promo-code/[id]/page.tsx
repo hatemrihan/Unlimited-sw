@@ -15,7 +15,7 @@ interface PromoCode {
   validFrom: string;
   validUntil: string;
   description?: string;
-  waiveShippingAndCOD?: boolean;
+  waiveShipping?: boolean;
 }
 
 const EditPromoCodePage = () => {
@@ -57,8 +57,8 @@ const EditPromoCodePage = () => {
     try {
       setSaving(true);
 
-      if (!promoCode.code || (!promoCode.discount && !promoCode.waiveShippingAndCOD)) {
-        alert('Please fill in all required fields or enable fee waiver');
+      if (!promoCode.code || (!promoCode.discount && !promoCode.waiveShipping)) {
+        alert('Please fill in all required fields or enable shipping waiver');
         return;
       }
 
@@ -248,17 +248,17 @@ const EditPromoCodePage = () => {
                   </label>
                 </div>
 
-                {/* Waive Shipping and COD */}
+                {/* Waive Shipping Only */}
                 <div className="flex items-center gap-3">
                   <input
                     type="checkbox"
-                    id="waiveShippingAndCOD"
-                    checked={promoCode.waiveShippingAndCOD || false}
-                    onChange={(e) => setPromoCode({...promoCode, waiveShippingAndCOD: e.target.checked})}
+                    id="waiveShipping"
+                    checked={promoCode.waiveShipping || false}
+                    onChange={(e) => setPromoCode({...promoCode, waiveShipping: e.target.checked})}
                     className="w-4 h-4 text-white focus:ring-white border-white rounded"
                   />
-                  <label htmlFor="waiveShippingAndCOD" className="text-sm text-white">
-                    هتخلي انت لتوصيل والدفع عند الاستلام ببلاش (بحبك يا كبتني لما تشوفها قولي عشان امسح الرساله دي)
+                  <label htmlFor="waiveShipping" className="text-sm text-white">
+                    هتخلي التوصيل ببلاش بس (الدفع عند الاستلام لازم يتدفع)
                   </label>
                 </div>
               </div>
