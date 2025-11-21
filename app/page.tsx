@@ -92,8 +92,8 @@ export default function Home() {
       
       <Nav/>
       <Hero /> 
-      {/* <MovingWordsTwo /> */}
-      <CounterDown />
+      <MovingWordsTwo />
+      {/* <CounterDown /> */}
       <Products />
       <FeaturedProducts />
       <MovingWords />
