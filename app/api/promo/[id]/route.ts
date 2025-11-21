@@ -66,6 +66,14 @@ export async function PUT(
 
     await dbConnect();
 
+    // Set expiry date to END of the selected day (23:59:59)
+    // This means if you select Nov 21, it expires at Nov 21 at 11:59:59 PM
+    let expiryDate = body.validUntil;
+    if (expiryDate) {
+      expiryDate = new Date(expiryDate);
+      expiryDate.setHours(23, 59, 59, 999); // End of day
+    }
+
     const updateData = {
       code: body.code,
       discountType: body.type,
@@ -73,7 +81,7 @@ export async function PUT(
       minimumOrder: body.minAmount,
       usageLimit: body.maxUses,
       isActive: body.isActive,
-      expiresAt: body.validUntil,
+      expiresAt: expiryDate,
       description: body.description,
       waiveShipping: body.waiveShipping || false
     };

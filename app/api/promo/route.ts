@@ -35,12 +35,23 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Check if expired
-      if (promoCode.expiresAt && promoCode.expiresAt < new Date()) {
-        return NextResponse.json(
-          { success: false, error: 'Promo code has expired' },
-          { status: 400 }
-        );
+      // Check if expired - Compare only dates, ignore time
+      // This means if expiry is Nov 21, it's valid for the ENTIRE day of Nov 21
+      if (promoCode.expiresAt) {
+        const today = new Date();
+        const expiryDate = new Date(promoCode.expiresAt);
+        
+        // Set both dates to midnight for fair comparison
+        today.setHours(0, 0, 0, 0);
+        expiryDate.setHours(0, 0, 0, 0);
+        
+        // If today's date is AFTER the expiry date, it's expired
+        if (today > expiryDate) {
+          return NextResponse.json(
+            { success: false, error: 'Promo code has expired' },
+            { status: 400 }
+          );
+        }
       }
 
       // Check usage limit
@@ -114,6 +125,14 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // Set expiry date to END of the selected day (23:59:59)
+      // This means if you select Nov 21, it expires at Nov 21 at 11:59:59 PM
+      let expiryDate = null;
+      if (validUntil) {
+        expiryDate = new Date(validUntil);
+        expiryDate.setHours(23, 59, 59, 999); // End of day
+      }
+
       const newPromoCode = new Promo({
         code: code.toUpperCase().trim(),
         discountType: type,
@@ -122,7 +141,7 @@ export async function POST(request: NextRequest) {
         usageLimit: maxUses || null,
         usedCount: 0,
         isActive: isActive !== false,
-        expiresAt: validUntil ? new Date(validUntil) : null,
+        expiresAt: expiryDate,
         description: description || '',
         waiveShipping: waiveShipping || false
       });
