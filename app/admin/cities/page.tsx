@@ -22,7 +22,7 @@ const CitiesManagement = () => {
     try {
       const response = await fetch('/api/admin/cities');
       const data = await response.json();
-      
+
       if (data.success) {
         // Convert aggregated data to governorate format
         const govData: GovernorateData[] = data.cities.map((item: any) => ({
@@ -31,7 +31,7 @@ const CitiesManagement = () => {
           codFee: item.codFee || 0,
           isActive: item.isActive !== false
         }));
-        
+
         setGovernorates(govData);
       }
     } catch (error) {
@@ -47,21 +47,21 @@ const CitiesManagement = () => {
 
   // Update governorate shipping cost
   const updateShippingCost = (govName: string, newCost: number) => {
-    setGovernorates(prev => prev.map(gov => 
+    setGovernorates(prev => prev.map(gov =>
       gov.name === govName ? { ...gov, shippingCost: newCost } : gov
     ));
   };
 
   // Update governorate COD fee
   const updateCodFee = (govName: string, newFee: number) => {
-    setGovernorates(prev => prev.map(gov => 
+    setGovernorates(prev => prev.map(gov =>
       gov.name === govName ? { ...gov, codFee: newFee } : gov
     ));
   };
 
   // Toggle governorate active status
   const toggleActive = (govName: string) => {
-    setGovernorates(prev => prev.map(gov => 
+    setGovernorates(prev => prev.map(gov =>
       gov.name === govName ? { ...gov, isActive: !gov.isActive } : gov
     ));
   };
@@ -69,17 +69,17 @@ const CitiesManagement = () => {
   // Add new governorates (Fayoum, Damietta + 5 Additional)
   const handleAddNewGovernorates = async () => {
     setSaving(true);
-    
+
     try {
       const response = await fetch('/api/admin/cities/bulk-add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
-        alert(`✅ Successfully added governorates!\n\n🏛️ New Governorates Added:\n• Fayoum, Damietta, Sohag, South Sinai (Sharm El Sheikh)\n• Qena, New Valley (Wadi El Gedid), Matrouh\n\n📊 Results:\n• Added: ${data.results.added.length} cities\n• Skipped: ${data.results.skipped.length} (already existed)\n• Errors: ${data.results.errors.length}\n\n🔄 Refreshing the page...`);
+        alert(`✅ Successfully added governorates!\n\n🏛️ New Governorates Added:\n• Fayoum, Damietta, Sohag, South Sinai (Sharm El Sheikh)\n• Qena, New Valley (Wadi El Gedid), Matrouh\n• Asyut, Minya\n\n📊 Results:\n• Added: ${data.results.added.length} cities\n• Skipped: ${data.results.skipped.length} (already existed)\n• Errors: ${data.results.errors.length}\n\n🔄 Refreshing the page...`);
         // Refresh the governorates list
         await fetchGovernorates();
       } else {
@@ -96,7 +96,7 @@ const CitiesManagement = () => {
   // Save all changes - FIXED: Only update global default rates, not product-specific rates
   const handleSaveAll = async () => {
     setSaving(true);
-    
+
     try {
       // Save each governorate's DEFAULT pricing (this will be the fallback for new products)
       for (const gov of governorates) {
@@ -111,12 +111,12 @@ const CitiesManagement = () => {
             isActive: gov.isActive
           })
         });
-        
+
         if (!response.ok) {
           throw new Error(`Failed to update ${gov.name}`);
         }
       }
-      
+
       alert('✅ Global default shipping rates updated successfully!\n\n📝 Note: This only affects NEW products. Existing products with custom shipping rates remain unchanged.');
     } catch (error) {
       console.error('Error saving governorates:', error);
@@ -135,12 +135,12 @@ const CitiesManagement = () => {
       gov.codFee.toString(),
       gov.isActive ? 'Active' : 'Inactive'
     ]);
-    
+
     const csvContent = [
       headers.join(','),
       ...rows.map(row => row.join(','))
     ].join('\n');
-    
+
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -173,7 +173,7 @@ const CitiesManagement = () => {
         </tbody>
       </table>
     `;
-    
+
     const blob = new Blob([table], { type: 'application/vnd.ms-excel' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -183,10 +183,10 @@ const CitiesManagement = () => {
   };
 
   const exportAsTXT = () => {
-    const content = governorates.map(gov => 
+    const content = governorates.map(gov =>
       `${gov.name}: Shipping ${gov.shippingCost} LE, COD ${gov.codFee} LE (${gov.isActive ? 'Active' : 'Inactive'})`
     ).join('\n');
-    
+
     const blob = new Blob([content], { type: 'text/plain' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -210,7 +210,7 @@ const CitiesManagement = () => {
               <div className="h-10 bg-gray-700 rounded w-28 animate-pulse"></div>
             </div>
           </div>
-          
+
           {/* Action buttons skeleton */}
           <div className="mb-6 flex gap-4 flex-wrap">
             <div className="h-10 bg-gray-700 rounded w-40 animate-pulse"></div>
@@ -261,9 +261,9 @@ const CitiesManagement = () => {
             disabled={saving}
             className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 font-medium"
           >
-            {saving ? 'Adding...' : '➕ Add New Governorates (7 Total)'}
+            {saving ? 'Adding...' : '➕ Add New Governorates (9 Total)'}
           </button>
-          
+
           {/* Export Buttons */}
           <button
             onClick={exportAsCSV}
@@ -326,11 +326,10 @@ const CitiesManagement = () => {
                     <td className="px-4 py-3">
                       <button
                         onClick={() => toggleActive(gov.name)}
-                        className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                          gov.isActive
-                            ? 'bg-green-600 text-white hover:bg-green-700'
-                            : 'bg-gray-600 text-gray-300 hover:bg-gray-700'
-                        }`}
+                        className={`px-3 py-1 rounded text-xs font-medium transition-colors ${gov.isActive
+                          ? 'bg-green-600 text-white hover:bg-green-700'
+                          : 'bg-gray-600 text-gray-300 hover:bg-gray-700'
+                          }`}
                       >
                         {gov.isActive ? 'Active' : 'Inactive'}
                       </button>
