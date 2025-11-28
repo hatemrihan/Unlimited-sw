@@ -79,7 +79,7 @@ const CitiesManagement = () => {
       const data = await response.json();
 
       if (data.success) {
-        alert(`✅ Successfully added governorates!\n\n🏛️ New Governorates Added:\n• Fayoum, Damietta, Sohag, South Sinai (Sharm El Sheikh)\n• Qena, New Valley (Wadi El Gedid), Matrouh\n• Asyut, Minya\n\n📊 Results:\n• Added: ${data.results.added.length} cities\n• Skipped: ${data.results.skipped.length} (already existed)\n• Errors: ${data.results.errors.length}\n\n🔄 Refreshing the page...`);
+        alert(`✅ Successfully added governorates!\n\n🏛️ New Governorates Added:\n• Fayoum, Damietta, Sohag, South Sinai (Sharm El Sheikh)\n• Qena, New Valley (Wadi El Gedid), Matrouh\n• Asyut, Minya, 6 October\n\n📊 Results:\n• Added: ${data.results.added.length} cities\n• Skipped: ${data.results.skipped.length} (already existed)\n• Errors: ${data.results.errors.length}\n\n🔄 Refreshing the page...`);
         // Refresh the governorates list
         await fetchGovernorates();
       } else {
@@ -261,7 +261,7 @@ const CitiesManagement = () => {
             disabled={saving}
             className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50 font-medium"
           >
-            {saving ? 'Adding...' : '➕ Add New Governorates (9 Total)'}
+            {saving ? 'Adding...' : '➕ Add New Governorates (10 Total)'}
           </button>
 
           {/* Export Buttons */}
