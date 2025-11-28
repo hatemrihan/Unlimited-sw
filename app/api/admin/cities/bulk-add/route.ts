@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
       { cityName: 'Tamiya', governorate: 'Fayoum', shippingCost: 35, codFee: 10 },
       { cityName: 'Yusuf al-Siddiq', governorate: 'Fayoum', shippingCost: 35, codFee: 10 },
       { cityName: 'Abshaway', governorate: 'Fayoum', shippingCost: 35, codFee: 10 },
+      { cityName: '6 October', governorate: 'Giza', shippingCost: 35, codFee: 10 },
     ];
 
     // Damietta Governorate cities  
