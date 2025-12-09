@@ -162,7 +162,7 @@ const FeedbackForm = () => {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-light text-white leading-tight text-center mb-10 lg:mb-0">
+            <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-light text-[#b3b3b3] leading-tight text-center mb-10 lg:mb-0">
               Share
               <br />
               <span className="font-normal">Your</span>

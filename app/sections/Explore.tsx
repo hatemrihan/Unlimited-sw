@@ -19,8 +19,8 @@ const Explore = () => {
     // Handle Add to Cart button click
     const handleAddToCart = () => {
         setIsAddingToCart(true);
-        // Navigate to shop page to see all products
-        router.push('/shop');
+        // Navigate to specific product page
+        router.push('/product/68c10e561fd7ae728a98bde3');
     };
 
     // Handle slider drag
@@ -68,7 +68,7 @@ const Explore = () => {
                                 Worth the Buy.
                             </h1>
 
-                            <h2 className="text-2xl font-light text-white/80 text-center">
+                            <h2 className="text-2xl font-light text-[#b3b3b3] text-center">
                                 Wall-mounted pull-up bar +Wall-parallel bar
                             </h2>
                             <p className="text-2xl font-light text-white text-center">
@@ -92,7 +92,7 @@ const Explore = () => {
                     <div className="order-2 lg:order-2">
                         <div
                             ref={containerRef}
-                            className="relative w-full h-[60vh] sm:h-[65vh] lg:h-[60vh] overflow-hidden select-none rounded-lg"
+                            className="relative w-full h-[45vh] sm:h-[50vh] lg:h-[60vh] overflow-hidden select-none rounded-lg"
                             style={{ touchAction: 'none' }}
                         >
                             {/* Right Image (Background - Full Quality, Full Image Visible) */}
@@ -142,7 +142,7 @@ const Explore = () => {
 
                         {/* PRODUCT DESCRIPTION - Shows on MOBILE (below image) */}
                         <div className="lg:hidden flex flex-col items-center justify-center space-y-3 mt-6 max-w-sm mx-auto px-4">
-                            <h2 className="text-xl font-light text-white text-center">
+                            <h2 className="text-xl font-light text-[#b3b3b3] text-center">
                                 Wall-mounted pull-up bar +Wall-parallel bar
                             </h2>
                             <p className="text-xl font-light text-white text-center">
