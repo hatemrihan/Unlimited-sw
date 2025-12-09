@@ -132,7 +132,7 @@ const FeedbackForm = () => {
   // Clean message to remove email/phone/from info from old data
   const cleanMessage = (message: string): string => {
     // Split by common patterns and take only the actual review
-    let clean = message
+    const clean = message
       .split(/From:/i)[0]
       .split(/Email:/i)[0]
       .split(/Phone:/i)[0]
