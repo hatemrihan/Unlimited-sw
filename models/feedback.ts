@@ -6,6 +6,10 @@ export interface IFeedback extends Document {
   rating: number;
   createdAt: Date;
   isApproved: boolean;
+  isShownPublic: boolean;
+  name?: string;
+  email?: string;
+  phone?: string;
 }
 
 const FeedbackSchema: Schema = new Schema({
@@ -28,6 +32,22 @@ const FeedbackSchema: Schema = new Schema({
   isApproved: {
     type: Boolean,
     default: false
+  },
+  isShownPublic: {
+    type: Boolean,
+    default: false
+  },
+  name: {
+    type: String,
+    trim: true
+  },
+  email: {
+    type: String,
+    trim: true
+  },
+  phone: {
+    type: String,
+    trim: true
   }
 });
 

@@ -1,7 +1,15 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+
+interface FeedbackItem {
+  _id: string;
+  message: string;
+  rating: number;
+  name?: string;
+  createdAt: string;
+}
 
 const FeedbackForm = () => {
   const [formData, setFormData] = useState({
@@ -14,23 +22,33 @@ const FeedbackForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [hoveredRating, setHoveredRating] = useState(0);
+  const [reviews, setReviews] = useState<FeedbackItem[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(true);
 
-  // Animation ref
-  const formRef = React.useRef(null);
+  useEffect(() => {
+    const fetchReviews = async () => {
+      try {
+        const response = await fetch('/api/feedback');
+        if (response.ok) {
+          const data = await response.json();
+          setReviews(data.feedback || []);
+        }
+      } catch (error) {
+        console.error('Error fetching reviews:', error);
+      } finally {
+        setLoadingReviews(false);
+      }
+    };
+    fetchReviews();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleRatingChange = (rating: number) => {
-    setFormData(prev => ({
-      ...prev,
-      rating
-    }));
+    setFormData(prev => ({ ...prev, rating }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,9 +61,7 @@ const FeedbackForm = () => {
     try {
       const response = await fetch('/api/feedback', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: formData.message.trim(),
           rating: formData.rating,
@@ -57,18 +73,8 @@ const FeedbackForm = () => {
 
       if (response.ok) {
         setSubmitStatus('success');
-        setFormData({
-          name: '',
-          email: '',
-          phone: '',
-          message: '',
-          rating: 0
-        });
-
-        // Refresh the page to show new feedback immediately
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
+        setFormData({ name: '', email: '', phone: '', message: '', rating: 0 });
+        setTimeout(() => window.location.reload(), 2000);
       } else {
         setSubmitStatus('error');
       }
@@ -93,8 +99,8 @@ const FeedbackForm = () => {
         suppressHydrationWarning
       >
         <svg
-          width="24"
-          height="24"
+          width="22"
+          height="22"
           viewBox="0 0 24 24"
           fill={star <= (hoveredRating || formData.rating) ? "white" : "none"}
           stroke="white"
@@ -107,191 +113,231 @@ const FeedbackForm = () => {
     ));
   };
 
+  const renderReviewStars = (rating: number) => {
+    return [1, 2, 3, 4, 5].map((star) => (
+      <svg
+        key={star}
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill={star <= rating ? "#FFD700" : "none"}
+        stroke={star <= rating ? "#FFD700" : "#666"}
+        strokeWidth="1"
+      >
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+      </svg>
+    ));
+  };
+
+  // Clean message to remove email/phone/from info from old data
+  const cleanMessage = (message: string): string => {
+    // Split by common patterns and take only the actual review
+    let clean = message
+      .split(/From:/i)[0]
+      .split(/Email:/i)[0]
+      .split(/Phone:/i)[0]
+      .trim();
+    return clean || message;
+  };
+
+  // Extract name from old message format if not in separate field
+  const extractName = (review: FeedbackItem): string => {
+    if (review.name && review.name.trim()) return review.name;
+    const fromMatch = review.message.match(/From:\s*([^\n]+)/i);
+    if (fromMatch) return fromMatch[1].split(/Email:/i)[0].trim();
+    return '';
+  };
+
   return (
-        <motion.div
-      id="feedbackform"
-      className="w-full max-w-2xl mx-auto mt-0 lg:mt-8 px-4 sm:px-6 bg-stone-900"
-      ref={formRef}
-     
-    >
-      {/* Feedback Form Header */}
-      <motion.div
-        className="text-center mb-4 sm:mb-6"
-        
-      >
-        <h2 className="text-base sm:text-lg md:text-xl lg:text-3xl font-black uppercase text-[#b3b3b3] mb-2">
-        — SHARE YOUR FEEDBACK
-        </h2>
+    <div id="feedbackform" className="w-full bg-stone-900 py-16 lg:py-24">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        <motion.p
-          className="text-xs sm:text-sm lg:text-base text-[#b3b3b3]/70 mt-2"
-          
-        >
-          Help us improve and share your experience with others.
-        </motion.p>
-      </motion.div>
-
-      {/* Feedback Form */}
-      <motion.form
-        onSubmit={handleSubmit}
-        className="space-y-4 sm:space-y-6 mb-10"
-        suppressHydrationWarning
-       
-      >
-        {/* Name and Email Row - Centered on mobile/tablet */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 max-w-md mx-auto lg:max-w-none">
-          <div className="space-y-2">
-            <label htmlFor="name" className="block text-xs sm:text-sm font-medium text-white uppercase tracking-wider">
-              Name *
-            </label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              required
-              value={formData.name}
-              onChange={handleChange}
-              className="w-full px-0 py-2 bg-transparent border-0 border-b-2 border-white/20
-                text-white placeholder-white/50
-                focus:border-white focus:outline-none transition-colors duration-300
-                text-xs sm:text-sm"
-              placeholder="Your full name"
-              suppressHydrationWarning
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label htmlFor="email" className="block text-xs sm:text-sm font-medium text-white uppercase tracking-wider">
-              Email *
-            </label>
-                        <input
-              type="email"
-              id="email"
-              name="email"
-              required
-              value={formData.email}
-              onChange={handleChange}
-              className="w-full px-0 py-2 bg-transparent border-0 border-b-2 border-white/20
-                text-white placeholder-white/50
-                focus:border-white focus:outline-none transition-colors duration-300
-                text-xs sm:text-sm"
-              placeholder="your.email@example.com"
-              suppressHydrationWarning
-            />
-          </div>
-        </div>
-
-        {/* Phone Number - Centered on mobile/tablet */}
-        <div className="space-y-2 max-w-md mx-auto lg:max-w-none">
-          <label htmlFor="phone" className="block text-sm font-medium text-white uppercase tracking-wider">
-            Phone Number
-          </label>
-          <input
-            type="tel"
-            id="phone"
-            name="phone"
-            value={formData.phone}
-            onChange={handleChange}
-            className="w-full px-0 py-2 bg-transparent border-0 border-b-2 border-white/20
-              text-white placeholder-white/50
-              focus:border-white focus:outline-none transition-colors duration-300
-              text-xs sm:text-sm"
-            placeholder="+20 123456789"
-            suppressHydrationWarning
-          />
-        </div>
-
-        {/* Rating - Centered on mobile/tablet */}
-        <div className="space-y-2 max-w-md mx-auto lg:max-w-none">
-          <label className="block text-sm font-medium text-white uppercase tracking-wider">
-            Rate Your Experience
-          </label>
-          <div className="flex justify-center space-x-2 py-2">
-            {renderStars()}
-            {formData.rating > 0 && (
-              <span className="ml-4 text-white text-sm font-light self-center">
-                {formData.rating} star{formData.rating > 1 ? 's' : ''}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Message - Centered on mobile/tablet */}
-        <div className="space-y-2 max-w-md mx-auto lg:max-w-none">
-          <label htmlFor="message" className="block text-sm font-medium text-white uppercase tracking-wider">
-            Your Feedback *
-          </label>
-          <textarea
-            id="message"
-            name="message"
-            required
-            rows={4}
-            value={formData.message}
-            onChange={handleChange}
-            className="w-full px-0 py-2 bg-transparent border-0 border-b-2 border-white/20
-              text-white placeholder-white/50
-              focus:border-white focus:outline-none transition-colors duration-300
-              resize-none text-xs sm:text-sm"
-            placeholder="Share your experience, suggestions, or any feedback you'd like to provide..."
-            suppressHydrationWarning
-          />
-        </div>
-
-        {/* Submit Button */}
-        <motion.div
-          className="flex flex-col items-center space-y-4 pt-6"
-         
-        >
-          <motion.button
-            type="submit"
-            disabled={isSubmitting}
-            className="group relative px-6 py-3 bg-white text-black
-              font-bold uppercase tracking-wider text-xs sm:text-sm
-              hover:bg-white/90
-              disabled:opacity-50 disabled:cursor-not-allowed
-              transition-all duration-300 transform hover:scale-105
-              border-2 border-white
-              focus:outline-none focus:ring-2 focus:ring-white/20"
-            suppressHydrationWarning
-            initial={{scale: 0.9}}
-            transition={{duration: 0.6, delay: 1.2}}
+        {/* Header + Form Row */}
+        <div className="flex flex-col lg:flex-row lg:items-start lg:gap-16 mb-20">
+          {/* Left - Large Title */}
+          <motion.div
+            className="lg:flex-1 mb-10 lg:mb-0"
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
           >
-            {isSubmitting ? (
-              <span className="flex items-center space-x-2">
-                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span>Sending...</span>
-              </span>
-            ) : (
-              'Submit Feedback'
+            <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-light text-white leading-tight text-center mb-10 lg:mb-0">
+              Share
+              <br />
+              <span className="font-normal">Your</span>
+              <br />
+              <span className="ml-4 lg:ml-8">Feedback</span>
+            </h2>
+          </motion.div>
+
+          {/* Right - Compact Form */}
+          <motion.form
+            onSubmit={handleSubmit}
+            className="lg:flex-1 lg:max-w-md  sm:mx-0 lg:mx-26 "
+            initial={{ opacity: 0, x: 30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            suppressHydrationWarning
+          >
+            {/* Name and Email */}
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="text-center lg:text-left">
+                <label htmlFor="name" className="block text-xs text-white/60 uppercase tracking-wider mb-1">
+                  Name *
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  required
+                  value={formData.name}
+                  onChange={handleChange}
+                  className="w-[50%] lg:w-full mx-auto lg:mx-0 px-0 py-2 bg-transparent border-0 border-b border-white/30
+                    text-white text-sm placeholder-white/30 text-center lg:text-left
+                    focus:border-white focus:outline-none transition-colors"
+                  placeholder="Your name"
+                  suppressHydrationWarning
+                />
+              </div>
+              <div className="text-center lg:text-left">
+                <label htmlFor="email" className="block text-xs text-white/60 uppercase tracking-wider mb-1">
+                  Email *
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  required
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="w-[50%] lg:w-full mx-auto lg:mx-0 px-0 py-2 bg-transparent border-0 border-b border-white/30
+                    text-white text-sm placeholder-white/30 text-center lg:text-left
+                    focus:border-white focus:outline-none transition-colors"
+                  placeholder="your@email.com"
+                  suppressHydrationWarning
+                />
+              </div>
+            </div>
+
+            {/* Phone */}
+            <div className="mb-6 text-center lg:text-left">
+              <label htmlFor="phone" className="block text-xs text-white/60 uppercase tracking-wider mb-1">
+                Phone
+              </label>
+              <input
+                type="tel"
+                id="phone"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                className="w-[50%] lg:w-full mx-auto lg:mx-0 px-0 py-2 bg-transparent border-0 border-b border-white/30
+                  text-white text-sm placeholder-white/30 text-center lg:text-left
+                  focus:border-white focus:outline-none transition-colors"
+                placeholder="+20 123456789"
+                suppressHydrationWarning
+              />
+            </div>
+
+            {/* Rating */}
+            <div className="mb-6 text-center lg:text-left">
+              <label className="block text-xs text-white/60 uppercase tracking-wider mb-2">
+                Rate Your Experience
+              </label>
+              <div className="flex items-center justify-center lg:justify-start space-x-1">
+                {renderStars()}
+              </div>
+            </div>
+
+            {/* Message */}
+            <div className="mb-6 text-center lg:text-left">
+              <label htmlFor="message" className="block text-xs text-white/60 uppercase tracking-wider mb-1">
+                Your Feedback *
+              </label>
+              <textarea
+                id="message"
+                name="message"
+                required
+                rows={3}
+                value={formData.message}
+                onChange={handleChange}
+                className="w-[50%] lg:w-full mx-auto lg:mx-0 px-0 py-2 bg-transparent border-0 border-b border-white/30
+                  text-white text-sm placeholder-white/30 text-center lg:text-left
+                  focus:border-white focus:outline-none transition-colors resize-none"
+                placeholder="Share your experience..."
+                suppressHydrationWarning
+              />
+            </div>
+
+            {/* Submit */}
+            <div className="flex justify-center lg:justify-start">
+              <motion.button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-[50%] lg:w-full py-3 bg-white text-black font-bold uppercase tracking-wider text-xs
+                  hover:bg-white/90 disabled:opacity-50 transition-all"
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+              >
+                {isSubmitting ? 'Sending...' : 'Submit'}
+              </motion.button>
+            </div>
+
+            {submitStatus === 'success' && (
+              <p className="text-green-400 text-xs mt-2">✓ Submitted successfully!</p>
             )}
-          </motion.button>
+            {submitStatus === 'error' && (
+              <p className="text-red-400 text-xs mt-2">✗ Error. Please try again.</p>
+            )}
+          </motion.form>
+        </div>
 
-          {/* Status Messages */}
-          {submitStatus === 'success' && (
-            <motion.p
-              className="text-green-400 text-sm font-medium"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              ✓ Feedback submitted successfully! Thank you for your input.
-            </motion.p>
-          )}
+        {/* Reviews Section */}
+        {reviews.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="mt-20"
+          >
+            {/* Reviews Grid - 3 columns on desktop, stacked on mobile */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
+              {reviews.slice(0, 6).map((review, index) => {
+                const name = extractName(review);
+                const message = cleanMessage(review.message);
+                if (!name) return null; // Skip reviews without a name
+                return (
+                  <motion.div
+                    key={review._id}
+                    className="space-y-2"
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4, delay: index * 0.1 }}
+                  >
+                    {/* Name Only */}
+                    <h4 className="text-sm font-medium text-white">
+                      {name}
+                    </h4>
 
-          {submitStatus === 'error' && (
-            <motion.p
-              className="text-red-400 text-sm font-medium"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              ✗ Error submitting feedback. Please try again.
-            </motion.p>
-          )}
-        </motion.div>
-      </motion.form>
-    </motion.div>
+                    {/* Clean Review Message */}
+                    <p className="text-white/50 text-xs leading-relaxed">
+                      {message}
+                    </p>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+
+        {loadingReviews && (
+          <div className="text-white/30 text-sm">Loading reviews...</div>
+        )}
+      </div>
+    </div>
   );
 };
 

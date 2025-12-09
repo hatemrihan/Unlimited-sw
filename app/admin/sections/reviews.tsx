@@ -103,6 +103,39 @@ const Reviews = () => {
     }
   };
 
+  // Toggle public visibility status of a review
+  const toggleShowStatus = async (review: IFeedback) => {
+    try {
+      const currentShowStatus = (review as IFeedback & { isShownPublic?: boolean }).isShownPublic;
+      const newShowStatus = !currentShowStatus;
+      const response = await fetch('/api/admin/feedback', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: review._id,
+          isShownPublic: newShowStatus
+        }),
+      });
+
+      if (response.ok) {
+        // Update local state
+        setReviews(reviews.map(r =>
+          r._id === review._id
+            ? { ...r, isShownPublic: newShowStatus } as IFeedback
+            : r
+        ));
+        alert(`Review is now ${newShowStatus ? 'visible' : 'hidden'} publicly!`);
+      } else {
+        alert('Failed to update visibility. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error updating review visibility:', error);
+      alert('Error updating visibility. Please try again.');
+    }
+  };
+
   // Delete a review
   const deleteReview = async (reviewId: string) => {
     try {
@@ -126,7 +159,7 @@ const Reviews = () => {
   const extractCustomerInfo = (message: string) => {
     const lines = message.split('\n');
     const customerInfo: { name?: string; email?: string; phone?: string } = {};
-    
+
     lines.forEach(line => {
       if (line.startsWith('From:')) {
         customerInfo.name = line.replace('From:', '').trim();
@@ -143,9 +176,9 @@ const Reviews = () => {
   // Get clean message without customer info
   const getCleanMessage = (message: string) => {
     const lines = message.split('\n');
-    return lines.filter(line => 
-      !line.startsWith('From:') && 
-      !line.startsWith('Email:') && 
+    return lines.filter(line =>
+      !line.startsWith('From:') &&
+      !line.startsWith('Email:') &&
       !line.startsWith('Phone:')
     ).join('\n').trim();
   };
@@ -157,9 +190,8 @@ const Reviews = () => {
         {[1, 2, 3, 4, 5].map((star) => (
           <svg
             key={star}
-            className={`w-3 h-3 ${
-              star <= rating ? 'text-yellow-400 fill-current' : 'text-gray-400'
-            }`}
+            className={`w-3 h-3 ${star <= rating ? 'text-yellow-400 fill-current' : 'text-gray-400'
+              }`}
             viewBox="0 0 20 20"
           >
             <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
@@ -196,42 +228,48 @@ const Reviews = () => {
     {
       accessorKey: "_id",
       header: "Review ID",
-             cell: ({ row }) => (
-         <div className="font-mono text-white text-sm">{(row.getValue("_id") as string).slice(-8)}</div>
-       ),
+      cell: ({ row }) => (
+        <div className="font-mono text-white text-sm">{(row.getValue("_id") as string).slice(-8)}</div>
+      ),
     },
-         {
-       accessorKey: "customerInfo",
-       header: "Customer",
-       cell: ({ row }) => {
-         const customerInfo = extractCustomerInfo(row.original.message);
-         return (
-           <div className="text-white">
-             <div className="font-medium">{customerInfo.name || 'Anonymous'}</div>
-             {customerInfo.email && (
-               <div className="text-xs text-gray-300">{customerInfo.email}</div>
-             )}
-             {customerInfo.phone && (
-               <div className="text-xs text-gray-300">{customerInfo.phone}</div>
-             )}
-           </div>
-         );
-       },
-     },
-     {
-       accessorKey: "reviewText",
-       header: "Review",
-       cell: ({ row }) => {
-         const cleanMessage = getCleanMessage(row.original.message);
-         return (
-           <div className="text-white">
-             <div className="text-sm max-w-xs truncate" title={cleanMessage}>
-               {cleanMessage}
-             </div>
-           </div>
-         );
-       },
-     },
+    {
+      accessorKey: "customerInfo",
+      header: "Customer",
+      cell: ({ row }) => {
+        const review = row.original as IFeedback & { name?: string; email?: string; phone?: string };
+        // Use new fields if available, fallback to extracting from message for old data
+        const customerInfo = review.name
+          ? { name: review.name, email: review.email, phone: review.phone }
+          : extractCustomerInfo(row.original.message);
+        return (
+          <div className="text-white">
+            <div className="font-medium">{customerInfo.name || 'Anonymous'}</div>
+            {customerInfo.email && (
+              <div className="text-xs text-gray-300">{customerInfo.email}</div>
+            )}
+            {customerInfo.phone && (
+              <div className="text-xs text-gray-300">{customerInfo.phone}</div>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "reviewText",
+      header: "Review",
+      cell: ({ row }) => {
+        const review = row.original as IFeedback & { name?: string };
+        // For new data, message is just the feedback; for old data, clean it
+        const displayMessage = review.name ? row.original.message : getCleanMessage(row.original.message);
+        return (
+          <div className="text-white">
+            <div className="text-sm max-w-xs truncate" title={displayMessage}>
+              {displayMessage}
+            </div>
+          </div>
+        );
+      },
+    },
     {
       accessorKey: "rating",
       header: "Rating",
@@ -248,11 +286,32 @@ const Reviews = () => {
         const isApproved = row.getValue("isApproved");
         return (
           <div className="text-white">
-            <span className={`inline-flex px-2 py-1 text-xs rounded ${
-              isApproved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-            }`}>
+            <span className={`inline-flex px-2 py-1 text-xs rounded ${isApproved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+              }`}>
               {isApproved ? 'Approved' : 'Pending'}
             </span>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "isShownPublic",
+      header: "Show",
+      cell: ({ row }) => {
+        const review = row.original;
+        const isShownPublic = (review as IFeedback & { isShownPublic?: boolean }).isShownPublic;
+        return (
+          <div className="text-white">
+            <button
+              onClick={() => toggleShowStatus(review)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isShownPublic ? 'bg-green-500' : 'bg-gray-600'
+                }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isShownPublic ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+              />
+            </button>
           </div>
         );
       },
@@ -295,16 +354,16 @@ const Reviews = () => {
               >
                 {review.isApproved ? 'Reject Review' : 'Approve Review'}
               </DropdownMenuItem>
-                             <DropdownMenuItem
-                 onClick={() => navigator.clipboard.writeText(getCleanMessage(review.message as string))}
-                 className="text-white hover:bg-white/10"
-               >
-                 Copy Review Text
-               </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => navigator.clipboard.writeText(getCleanMessage(review.message as string))}
+                className="text-white hover:bg-white/10"
+              >
+                Copy Review Text
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onSelect={(e) => e.preventDefault()}
                     className="text-red-600 hover:bg-red-50 hover:text-red-700"
                   >
@@ -370,7 +429,7 @@ const Reviews = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <div className="bg-black border border-white/10 rounded-lg p-4 text-center">
           <div className="text-2xl font-bold text-white">{reviews.length}</div>
           <div className="text-gray-400 text-sm">Total Reviews</div>
@@ -386,6 +445,12 @@ const Reviews = () => {
             {reviews.filter(r => !r.isApproved).length}
           </div>
           <div className="text-gray-400 text-sm">Pending</div>
+        </div>
+        <div className="bg-black border border-white/10 rounded-lg p-4 text-center">
+          <div className="text-2xl font-bold text-blue-400">
+            {reviews.filter(r => (r as IFeedback & { isShownPublic?: boolean }).isShownPublic).length}
+          </div>
+          <div className="text-gray-400 text-sm">Shown Publicly</div>
         </div>
       </div>
 
@@ -437,9 +502,9 @@ const Reviews = () => {
                       {header.isPlaceholder
                         ? null
                         : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                     </TableHead>
                   );
                 })}

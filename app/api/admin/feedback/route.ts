@@ -9,7 +9,7 @@ export async function GET() {
 
     const feedback = await Feedback.find({})
       .sort({ createdAt: -1 })
-      .select('_id message rating createdAt isApproved');
+      .select('_id message rating createdAt isApproved isShownPublic name email phone');
 
     return NextResponse.json({ feedback });
 
@@ -22,12 +22,13 @@ export async function GET() {
   }
 }
 
-// PATCH - Approve/Reject feedback
+// PATCH - Approve/Reject feedback or toggle show status
 export async function PATCH(request: NextRequest) {
   try {
     await connectToDatabase();
 
-    const { id, isApproved } = await request.json();
+    const body = await request.json();
+    const { id, isApproved, isShownPublic } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -36,9 +37,18 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
+    // Build update object based on what was provided
+    const updateObj: { isApproved?: boolean; isShownPublic?: boolean } = {};
+    if (typeof isApproved === 'boolean') {
+      updateObj.isApproved = isApproved;
+    }
+    if (typeof isShownPublic === 'boolean') {
+      updateObj.isShownPublic = isShownPublic;
+    }
+
     const feedback = await Feedback.findByIdAndUpdate(
       id,
-      { isApproved: Boolean(isApproved) },
+      updateObj,
       { new: true }
     );
 
@@ -50,7 +60,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     return NextResponse.json({
-      message: `Feedback ${isApproved ? 'approved' : 'rejected'} successfully`,
+      message: 'Feedback updated successfully',
       feedback
     });
 

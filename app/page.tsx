@@ -1,14 +1,12 @@
 import Nav from "./sections/Nav";
-import Intro from "./sections/Intro";
 import Products from "./sections/Products";
 import MovingWords from "./sections/MovingWords";
 import Hero from "./sections/Hero";
-import FeaturedProducts from "./sections/FeaturedProducts";
 import FeedbackForm from "./sections/FeedbackForm";
 import Footer from "./sections/Footer";
 import WhatsAppButton from "../components/WhatsAppButton";
 import MovingWordsTwo from "./sections/MovingWordsTwo";
-import CounterDown from "./sections/CounterDown";
+import Explore from "./sections/Explore";
 
 export default function Home() {
   const structuredData = {
@@ -49,7 +47,7 @@ export default function Home() {
           }
         },
         {
-          "@type": "Offer", 
+          "@type": "Offer",
           "itemOffered": {
             "@type": "Product",
             "name": "Resistance Bands",
@@ -59,7 +57,7 @@ export default function Home() {
         {
           "@type": "Offer",
           "itemOffered": {
-            "@type": "Product", 
+            "@type": "Product",
             "name": "Gymnastic Rings",
             "category": "Fitness Equipment"
           }
@@ -89,15 +87,16 @@ export default function Home() {
       >
         {JSON.stringify(structuredData)}
       </script>
-      
-      <Nav/>
-      <Hero /> 
+
+      <Nav />
+      <Hero />
       <MovingWordsTwo />
       {/* <CounterDown /> */}
       <Products />
-      <FeaturedProducts />
+      {/* <FeaturedProducts /> */}
+      <Explore />
       <MovingWords />
-      <Intro />
+      {/* <Intro /> */}
       <FeedbackForm />
       <Footer />
       <WhatsAppButton />

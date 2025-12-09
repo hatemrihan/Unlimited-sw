@@ -32,13 +32,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create new feedback with additional fields
-    const fullMessage = `${message.trim()}${name ? `\n\nFrom: ${name}` : ''}${email ? `\nEmail: ${email}` : ''}${phone ? `\nPhone: ${phone}` : ''}`;
-
+    // Create new feedback with separate fields
     const feedback = new Feedback({
-      message: fullMessage,
+      message: message.trim(),
       rating: Number(rating),
-      isApproved: false // Admin approval required
+      name: name?.trim() || '',
+      email: email?.trim() || '',
+      phone: phone?.trim() || '',
+      isApproved: false,
+      isShownPublic: false
     });
 
     await feedback.save();
@@ -57,15 +59,18 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET - Retrieve approved feedback for public display
+// GET - Retrieve approved AND publicly visible feedback
 export async function GET() {
   try {
     await connectToDatabase();
 
-    const feedback = await Feedback.find({ isApproved: true })
+    const feedback = await Feedback.find({
+      isApproved: true,
+      isShownPublic: true
+    })
       .sort({ createdAt: -1 })
       .limit(20)
-      .select('message rating createdAt');
+      .select('message rating createdAt name');
 
     return NextResponse.json({ feedback });
 
@@ -77,3 +82,4 @@ export async function GET() {
     );
   }
 }
+
