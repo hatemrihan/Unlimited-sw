@@ -51,3 +51,37 @@ export async function PATCH(
   }
 }
 
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const params = await context.params;
+    const { id } = params;
+
+    await dbConnect();
+
+    // Delete the order from the database
+    const deletedOrder = await Order.findByIdAndDelete(id);
+
+    if (!deletedOrder) {
+      return NextResponse.json(
+        { success: false, error: 'Order not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Order deleted successfully'
+    });
+
+  } catch (error: unknown) {
+    console.error('Error deleting order:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to delete order' },
+      { status: 500 }
+    );
+  }
+}
+
