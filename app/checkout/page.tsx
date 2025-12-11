@@ -43,7 +43,7 @@ interface City {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  
+
   // All hooks must be called at the top level - BEFORE any conditional logic
   const [formData, setFormData] = useState<FormData>({
     firstName: '',
@@ -67,9 +67,10 @@ export default function CheckoutPage() {
   const [promoError, setPromoError] = useState<string | null>(null);
   const [cities, setCities] = useState<City[]>([]);
   const [loadingCities, setLoadingCities] = useState(true);
+  // Key format: "productId_variantName" or "productId_default" for items without variants
   const [refreshedPrices, setRefreshedPrices] = useState<Record<string, number>>({});
   const [paymentSettings, setPaymentSettings] = useState({ codEnabled: true, instaPayEnabled: true });
-  
+
   // Safe cart access with error handling
   const cartContext = useCart();
 
@@ -79,10 +80,10 @@ export default function CheckoutPage() {
       try {
         const response = await fetch('/api/admin/payment-settings');
         const data = await response.json();
-        
+
         if (data.success) {
           setPaymentSettings(data.settings);
-          
+
           // If COD is disabled and current payment method is COD, switch to InstaPay
           if (!data.settings.codEnabled && formData.paymentMethod === 'cashOnDelivery') {
             setFormData(prev => ({ ...prev, paymentMethod: 'instaPay' }));
@@ -97,25 +98,25 @@ export default function CheckoutPage() {
     fetchPaymentSettings();
   }, []);
 
-  // Fetch cities with product-specific pricing and refresh prices on component mount
+  // Fetch cities with product-specific pricing and refresh prices on component mount - FIXED for variant prices
   useEffect(() => {
     if (!cartContext?.state?.items?.length) {
       setLoadingCities(false);
       return; // Early return if no cart context or items
     }
-    
+
     const fetchCitiesAndRefreshPrices = async () => {
       try {
         // Get product IDs from cart
-        const productIds = cartContext.state.items.map(item => item.id);
+        const productIds = [...new Set(cartContext.state.items.map(item => item.id))];
         const productIdsString = productIds.join(',');
-        
+
         // Fetch cities with product-specific pricing AND refresh product prices in parallel
         const [citiesResponse, ...priceResponses] = await Promise.all([
           fetch(`/api/checkout/cities${productIdsString ? `?productIds=${productIdsString}` : ''}`),
           ...productIds.map(id => fetch(`/api/products/${id}`))
         ]);
-        
+
         // Handle cities response
         if (citiesResponse.ok) {
           const citiesData = await citiesResponse.json();
@@ -124,26 +125,53 @@ export default function CheckoutPage() {
         } else {
           console.error('Failed to fetch cities');
         }
-        
-        // Handle price responses
-        const priceMap: Record<string, number> = {};
-        const priceResults = await Promise.all(
+
+        // Handle price responses - FIXED to build product map first
+        const productMap: Record<string, any> = {};
+        const productResults = await Promise.all(
           priceResponses.map(async (response, index) => {
             if (response.ok) {
               const data = await response.json();
-              return { id: productIds[index], price: data.product?.price || 0 };
+              return { id: productIds[index], product: data.product };
             }
-            return { id: productIds[index], price: 0 };
+            return { id: productIds[index], product: null };
           })
         );
-        
-        priceResults.forEach(({ id, price }) => {
-          priceMap[id] = price;
+
+        productResults.forEach(({ id, product }) => {
+          if (product) {
+            productMap[id] = product;
+          }
         });
-        
+
+        // Build price map with variant-specific prices
+        const priceMap: Record<string, number> = {};
+        cartContext.state.items.forEach((item: any) => {
+          const product = productMap[item.id];
+          if (product) {
+            // Create a unique key for this cart item (product + variant)
+            const variantKey = item.variant?.name || 'default';
+            const priceKey = `${item.id}_${variantKey}`;
+
+            // Find matching variant price if item has a variant
+            let price = product.price || 0;
+            if (item.variant && product.variants && Array.isArray(product.variants)) {
+              const matchingVariant = product.variants.find(
+                (v: any) => v.name === item.variant?.name
+              );
+              // Use variant price if it exists, otherwise fall back to main product price
+              if (matchingVariant && matchingVariant.price !== undefined && matchingVariant.price > 0) {
+                price = matchingVariant.price;
+              }
+            }
+
+            priceMap[priceKey] = price;
+          }
+        });
+
         setRefreshedPrices(priceMap);
-        console.log('🔄 Checkout prices refreshed from server:', priceMap);
-        
+        console.log('🔄 Checkout prices refreshed with variant support:', priceMap);
+
       } catch (error) {
         console.error('Error fetching cities and prices:', error);
       } finally {
@@ -188,17 +216,17 @@ export default function CheckoutPage() {
 
   // Calculate shipping cost based on selected governorate
   const selectedGovernorate = cities.find(city => city.cityName === formData.city);
-  
+
   // Calculate shipping cost: ONLY product-specific rates (NO GLOBAL DEFAULTS)
   let shippingCost = 0;
   let codFee = 0;
-  
+
   if (selectedGovernorate) {
     // Check if products have specific shipping rates
     let hasProductSpecificRates = false;
     let totalProductShippingCost = 0;
     let totalProductCodFee = 0;
-    
+
     for (const item of state.items) {
       const productSpecificPricing = (selectedGovernorate as any).productPricing?.[item.id];
       if (productSpecificPricing && productSpecificPricing.isActive !== false) {
@@ -208,7 +236,7 @@ export default function CheckoutPage() {
         totalProductCodFee += (productSpecificPricing.codFee || 0) * item.quantity;
       }
     }
-    
+
     if (hasProductSpecificRates) {
       // Use the sum of all product-specific shipping costs and COD fees
       shippingCost = totalProductShippingCost;
@@ -221,13 +249,15 @@ export default function CheckoutPage() {
       return;
     }
   }
-  
-  // Calculate subtotal using refreshed prices when available
+
+  // Calculate subtotal using refreshed prices when available - FIXED to use variant-aware keys
   const refreshedSubtotal = state.items.reduce((sum, item) => {
-    const currentPrice = refreshedPrices[item.id] || item.price;
+    const variantKey = item.variant?.name || 'default';
+    const priceKey = `${item.id}_${variantKey}`;
+    const currentPrice = refreshedPrices[priceKey] || item.price;
     return sum + (currentPrice * item.quantity);
   }, 0);
-  
+
   // Apply shipping waiver if promo allows, but COD fee is ALWAYS charged for COD orders
   const shouldWaiveShipping = appliedPromo && appliedPromo.waiveShipping;
   const finalCodFee = (formData.paymentMethod === 'cashOnDelivery') ? codFee : 0; // COD fee ALWAYS applies
@@ -349,15 +379,22 @@ export default function CheckoutPage() {
           city: formData.city,
           governorate: selectedGovernorate?.governorate || ''
         },
-        products: state.items.map((item: any) => ({
-          productId: item.id,
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity,
-          size: item.variant?.name || undefined, // Variant name as size for compatibility
-          color: item.variant?.color || undefined, // Extract color from variant
-          image: item.image
-        })),
+        products: state.items.map((item: any) => {
+          // FIXED: Use refreshed price with variant-aware key
+          const variantKey = item.variant?.name || 'default';
+          const priceKey = `${item.id}_${variantKey}`;
+          const correctPrice = refreshedPrices[priceKey] || item.price;
+
+          return {
+            productId: item.id,
+            name: item.name,
+            price: correctPrice, // Use the correct refreshed price
+            quantity: item.quantity,
+            size: item.variant?.name || undefined, // Variant name as size for compatibility
+            color: item.variant?.color || undefined, // Extract color from variant
+            image: item.image
+          };
+        }),
         paymentMethod: formData.paymentMethod,
         transactionScreenshot: screenshotUrl,
         totalAmount: totalWithShipping,
@@ -567,9 +604,8 @@ export default function CheckoutPage() {
                             onChange={handleInputChange}
                             className="sr-only"
                           />
-                          <div className={`w-4 h-4 rounded-full border-2 border-white mr-2 flex items-center justify-center cursor-pointer ${
-                            formData.paymentMethod === 'cashOnDelivery' ? 'bg-black' : 'bg-transparent'
-                          }`} onClick={() => setFormData(prev => ({ ...prev, paymentMethod: 'cashOnDelivery' }))}>
+                          <div className={`w-4 h-4 rounded-full border-2 border-white mr-2 flex items-center justify-center cursor-pointer ${formData.paymentMethod === 'cashOnDelivery' ? 'bg-black' : 'bg-transparent'
+                            }`} onClick={() => setFormData(prev => ({ ...prev, paymentMethod: 'cashOnDelivery' }))}>
                             {formData.paymentMethod === 'cashOnDelivery' && (
                               <div className="w-2 h-2 rounded-full bg-white"></div>
                             )}
@@ -590,9 +626,8 @@ export default function CheckoutPage() {
                           onChange={handleInputChange}
                           className="sr-only"
                         />
-                        <div className={`w-4 h-4 rounded-full border-2 border-white mr-2 flex items-center justify-center cursor-pointer ${
-                          formData.paymentMethod === 'instaPay' ? 'bg-black' : 'bg-transparent'
-                        }`} onClick={() => setFormData(prev => ({ ...prev, paymentMethod: 'instaPay' }))}>
+                        <div className={`w-4 h-4 rounded-full border-2 border-white mr-2 flex items-center justify-center cursor-pointer ${formData.paymentMethod === 'instaPay' ? 'bg-black' : 'bg-transparent'
+                          }`} onClick={() => setFormData(prev => ({ ...prev, paymentMethod: 'instaPay' }))}>
                           {formData.paymentMethod === 'instaPay' && (
                             <div className="w-2 h-2 rounded-full bg-white"></div>
                           )}
@@ -794,7 +829,8 @@ export default function CheckoutPage() {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-white">L.E {((refreshedPrices[item.id] || item.price) * item.quantity).toFixed(0)}</p>
+                      {/* FIXED to use variant-aware key */}
+                      <p className="text-white">L.E {((refreshedPrices[`${item.id}_${item.variant?.name || 'default'}`] || item.price) * item.quantity).toFixed(0)}</p>
                     </div>
                   </div>
                 ))}
@@ -814,10 +850,10 @@ export default function CheckoutPage() {
                 <div className="flex justify-between">
                   <span className="text-white">Shipping</span>
                   <span className={shouldWaiveShipping ? "text-green-400" : "text-white"}>
-                    {!selectedGovernorate 
-                      ? 'Select a governorate' 
-                      : shouldWaiveShipping 
-                        ? 'Free' 
+                    {!selectedGovernorate
+                      ? 'Select a governorate'
+                      : shouldWaiveShipping
+                        ? 'Free'
                         : `L.E ${shippingCost}`
                     }
                   </span>
