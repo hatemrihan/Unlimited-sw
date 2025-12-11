@@ -110,7 +110,7 @@ const SidebarNav = ({
     window.addEventListener('resize', onResize);
 
     if (document.fonts?.ready) {
-      document.fonts.ready.then(layout).catch(() => {});
+      document.fonts.ready.then(layout).catch(() => { });
     }
 
     const menu = mobileMenuRef.current;
@@ -234,7 +234,7 @@ const SidebarNav = ({
       await fetch('/api/admin/auth', {
         method: 'DELETE',
       });
-      
+
       // Redirect to login page
       window.location.href = '/admin/login';
     } catch (error) {
@@ -243,8 +243,8 @@ const SidebarNav = ({
   };
 
   // Admin user info
-  const userEmail = 'admin@unlimited-sw.com';
-  const userInitial = 'A';
+  const userEmail = 'MOHAMED ALKADY';
+  const userInitial = 'UL';
 
   const cssVars = {
     ['--base']: baseColor,
@@ -260,19 +260,19 @@ const SidebarNav = ({
   return (
     <>
       {/* Desktop Sidebar */}
-      <div className="hidden md:flex fixed left-0 top-0 h-full w-64 bg-black shadow-lg z-50">
+      <div className="hidden md:flex fixed left-0 top-0 h-full w-64 bg-white shadow-lg z-50 border-r border-gray-200">
         <div className="flex flex-col w-full p-6 h-full">
           {/* Logo Section */}
           <div className="mb-8 flex-shrink-0">
-            <div className="text-white font-bold text-xl">
-          UNLIMITED-SW
+            <div className="text-black font-bold text-xl">
+              UNLIMITED-SW
             </div>
           </div>
 
           {/* Visit Store Button */}
-          <button 
+          <button
             onClick={onVisitStore}
-            className="w-full bg-white text-black py-3 px-4 rounded-lg font-semibold text-sm mb-6 flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors flex-shrink-0"
+            className="w-full bg-black text-white py-3 px-4 rounded-lg font-semibold text-sm mb-6 flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors flex-shrink-0"
           >
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
               <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
@@ -281,9 +281,9 @@ const SidebarNav = ({
             VISIT STORE
           </button>
 
-          {/* Navigation Items */}
-          <div ref={navItemsRef} className="flex-1 min-h-0 overflow-y-auto pr-2">
-            <ul className="space-y-2">
+          {/* Navigation Items - Scrollable */}
+          <div className="flex-1 overflow-y-auto overflow-x-hidden pr-2 min-h-0">
+            <ul className="space-y-1 pb-4">
               {items.map((item, i) => {
                 const isActive = activeHref === item.href;
 
@@ -329,11 +329,10 @@ const SidebarNav = ({
                       <button
                         role="menuitem"
                         onClick={item.onClick}
-                        className={`${basePillClasses} ${
-                          isActive 
-                            ? 'bg-white text-black' 
-                            : 'bg-transparent text-gray-300 hover:bg-gray-800'
-                        }`}
+                        className={`${basePillClasses} ${isActive
+                          ? 'bg-black text-white'
+                          : 'bg-transparent text-gray-700 hover:bg-gray-100'
+                          }`}
                         aria-label={item.ariaLabel || item.label}
                         onMouseEnter={() => handleEnter(i)}
                         onMouseLeave={() => handleLeave(i)}
@@ -349,11 +348,10 @@ const SidebarNav = ({
                       <Link
                         role="menuitem"
                         href={item.href}
-                        className={`${basePillClasses} ${
-                          isActive 
-                            ? 'bg-white text-black' 
-                            : 'bg-transparent text-gray-300 hover:bg-gray-800'
-                        }`}
+                        className={`${basePillClasses} ${isActive
+                          ? 'bg-black text-white'
+                          : 'bg-transparent text-gray-700 hover:bg-gray-100'
+                          }`}
                         aria-label={item.ariaLabel || item.label}
                         onMouseEnter={() => handleEnter(i)}
                         onMouseLeave={() => handleLeave(i)}
@@ -369,11 +367,10 @@ const SidebarNav = ({
                       <a
                         role="menuitem"
                         href={item.href}
-                        className={`${basePillClasses} ${
-                          isActive 
-                            ? 'bg-white text-black' 
-                            : 'bg-transparent text-gray-300 hover:bg-gray-800'
-                        }`}
+                        className={`${basePillClasses} ${isActive
+                          ? 'bg-black text-white'
+                          : 'bg-transparent text-gray-700 hover:bg-gray-100'
+                          }`}
                         aria-label={item.ariaLabel || item.label}
                         onMouseEnter={() => handleEnter(i)}
                         onMouseLeave={() => handleLeave(i)}
@@ -393,19 +390,19 @@ const SidebarNav = ({
           </div>
 
           {/* User Section */}
-          <div className="mt-auto pt-6 border-t border-gray-700 flex-shrink-0">
+          <div className="mt-auto pt-6 border-t border-gray-200 flex-shrink-0">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                 <span className="text-sm font-bold text-white">{userInitial}</span>
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-bold text-gray-300 uppercase">WELCOME</div>
-                <div className="text-xs text-gray-400 truncate" title={userEmail}>
+                <div className="text-xs font-bold text-gray-700 uppercase">WELCOME</div>
+                <div className="text-xs text-gray-500 truncate" title={userEmail}>
                   {userEmail}
                 </div>
               </div>
             </div>
-            <button 
+            <button
               onClick={handleLogout}
               className="flex items-center gap-3 text-red-400 hover:text-red-300 text-sm font-medium transition-colors duration-200 w-full p-2 rounded-lg hover:bg-red-900/20"
             >
@@ -442,7 +439,7 @@ const SidebarNav = ({
       >
         <div className="p-4">
           {/* Visit Store Button */}
-          <button 
+          <button
             onClick={onVisitStore}
             className="w-full bg-white text-black py-3 px-4 rounded-lg font-semibold text-sm mb-4 flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors"
           >
@@ -535,7 +532,7 @@ const SidebarNav = ({
                 </div>
               </div>
             </div>
-            <button 
+            <button
               onClick={handleLogout}
               className="flex items-center gap-3 text-red-400 hover:text-red-300 text-sm font-medium transition-colors duration-200 w-full p-2 rounded-lg hover:bg-red-900/20"
             >

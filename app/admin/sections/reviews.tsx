@@ -229,7 +229,7 @@ const Reviews = () => {
       accessorKey: "_id",
       header: "Review ID",
       cell: ({ row }) => (
-        <div className="font-mono text-white text-sm">{(row.getValue("_id") as string).slice(-8)}</div>
+        <div className="font-mono text-gray-900 text-sm">{(row.getValue("_id") as string).slice(-8)}</div>
       ),
     },
     {
@@ -242,7 +242,7 @@ const Reviews = () => {
           ? { name: review.name, email: review.email, phone: review.phone }
           : extractCustomerInfo(row.original.message);
         return (
-          <div className="text-white">
+          <div className="text-gray-900">
             <div className="font-medium">{customerInfo.name || 'Anonymous'}</div>
             {customerInfo.email && (
               <div className="text-xs text-gray-300">{customerInfo.email}</div>
@@ -262,7 +262,7 @@ const Reviews = () => {
         // For new data, message is just the feedback; for old data, clean it
         const displayMessage = review.name ? row.original.message : getCleanMessage(row.original.message);
         return (
-          <div className="text-white">
+          <div className="text-gray-900">
             <div className="text-sm max-w-xs truncate" title={displayMessage}>
               {displayMessage}
             </div>
@@ -274,7 +274,7 @@ const Reviews = () => {
       accessorKey: "rating",
       header: "Rating",
       cell: ({ row }) => (
-        <div className="text-white">
+        <div className="text-gray-900">
           {renderStars(row.getValue("rating"))}
         </div>
       ),
@@ -285,7 +285,7 @@ const Reviews = () => {
       cell: ({ row }) => {
         const isApproved = row.getValue("isApproved");
         return (
-          <div className="text-white">
+          <div className="text-gray-900">
             <span className={`inline-flex px-2 py-1 text-xs rounded ${isApproved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
               }`}>
               {isApproved ? 'Approved' : 'Pending'}
@@ -301,7 +301,7 @@ const Reviews = () => {
         const review = row.original;
         const isShownPublic = (review as IFeedback & { isShownPublic?: boolean }).isShownPublic;
         return (
-          <div className="text-white">
+          <div className="text-gray-900">
             <button
               onClick={() => toggleShowStatus(review)}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isShownPublic ? 'bg-green-500' : 'bg-gray-600'
@@ -322,7 +322,7 @@ const Reviews = () => {
       cell: ({ row }) => {
         const date = new Date(row.getValue("createdAt"));
         return (
-          <div className="text-white text-sm">
+          <div className="text-gray-900 text-sm">
             {date.toLocaleDateString('en-US', {
               month: 'short',
               day: 'numeric',
@@ -341,22 +341,22 @@ const Reviews = () => {
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0 text-white hover:bg-white/10">
+              <Button variant="ghost" className="h-8 w-8 p-0 text-gray-900 hover:bg-white/10">
                 <span className="sr-only">Open menu</span>
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel className="text-white">Actions</DropdownMenuLabel>
+              <DropdownMenuLabel className="text-gray-900">Actions</DropdownMenuLabel>
               <DropdownMenuItem
                 onClick={() => toggleApprovalStatus(review)}
-                className="text-white hover:bg-white/10"
+                className="text-gray-900 hover:bg-white/10"
               >
                 {review.isApproved ? 'Reject Review' : 'Approve Review'}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => navigator.clipboard.writeText(getCleanMessage(review.message as string))}
-                className="text-white hover:bg-white/10"
+                className="text-gray-900 hover:bg-white/10"
               >
                 Copy Review Text
               </DropdownMenuItem>
@@ -421,36 +421,36 @@ const Reviews = () => {
   return (
     <div className="w-full">
       {/* Page Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl tracking-tight font-bold text-white mb-2">
+      <div className="mb-6">
+        <h1 className="text-xl sm:text-2xl md:text-3xl tracking-tight font-bold text-gray-900 mb-1">
           Reviews
         </h1>
-        <div className="h-1 w-24 sm:w-32 md:w-40 bg-white"></div>
+        <div className="h-1 w-24 sm:w-32 md:w-40 bg-gray-900"></div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-black border border-white/10 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-white">{reviews.length}</div>
-          <div className="text-gray-400 text-sm">Total Reviews</div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div className="bg-white border border-gray-200 rounded-lg p-3 text-center shadow-sm">
+          <div className="text-xl font-bold text-gray-900">{reviews.length}</div>
+          <div className="text-gray-500 text-xs">Total Reviews</div>
         </div>
-        <div className="bg-black border border-white/10 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-green-400">
+        <div className="bg-white border border-gray-200 rounded-lg p-3 text-center shadow-sm">
+          <div className="text-xl font-bold text-green-600">
             {reviews.filter(r => r.isApproved).length}
           </div>
-          <div className="text-gray-400 text-sm">Approved</div>
+          <div className="text-gray-500 text-xs">Approved</div>
         </div>
-        <div className="bg-black border border-white/10 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-yellow-400">
+        <div className="bg-white border border-gray-200 rounded-lg p-3 text-center shadow-sm">
+          <div className="text-xl font-bold text-yellow-600">
             {reviews.filter(r => !r.isApproved).length}
           </div>
-          <div className="text-gray-400 text-sm">Pending</div>
+          <div className="text-gray-500 text-xs">Pending</div>
         </div>
-        <div className="bg-black border border-white/10 rounded-lg p-4 text-center">
-          <div className="text-2xl font-bold text-blue-400">
+        <div className="bg-white border border-gray-200 rounded-lg p-3 text-center shadow-sm">
+          <div className="text-xl font-bold text-blue-600">
             {reviews.filter(r => (r as IFeedback & { isShownPublic?: boolean }).isShownPublic).length}
           </div>
-          <div className="text-gray-400 text-sm">Shown Publicly</div>
+          <div className="text-gray-500 text-xs">Shown Publicly</div>
         </div>
       </div>
 
@@ -460,11 +460,11 @@ const Reviews = () => {
           placeholder="Filter reviews..."
           value={globalFilter ?? ""}
           onChange={(event) => setGlobalFilter(event.target.value)}
-          className="max-w-sm bg-transparent border-white/20 text-white placeholder:text-gray-400"
+          className="max-w-sm bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
         />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto bg-transparent border-white/20 text-white hover:bg-white/10">
+            <Button variant="outline" className="ml-auto bg-white border-gray-200 text-gray-700 hover:bg-gray-50">
               Columns <ChevronDown className="ml-2 h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -476,7 +476,7 @@ const Reviews = () => {
                 return (
                   <DropdownMenuCheckboxItem
                     key={column.id}
-                    className="capitalize text-white"
+                    className="capitalize text-gray-700"
                     checked={column.getIsVisible()}
                     onCheckedChange={(value) =>
                       column.toggleVisibility(!!value)
@@ -491,14 +491,14 @@ const Reviews = () => {
       </div>
 
       {/* Table */}
-      <div className="rounded-md border border-white/10">
+      <div className="rounded-md border border-gray-200 bg-white">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="border-white/10">
+              <TableRow key={headerGroup.id} className="border-gray-200">
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id} className="text-white">
+                    <TableHead key={header.id} className="text-gray-600">
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -517,10 +517,10 @@ const Reviews = () => {
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
-                  className="border-white/10 hover:bg-white/5"
+                  className="border-gray-100 hover:bg-gray-50"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="text-white">
+                    <TableCell key={cell.id} className="text-gray-900">
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
@@ -545,7 +545,7 @@ const Reviews = () => {
 
       {/* Pagination */}
       <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="flex-1 text-sm text-gray-400">
+        <div className="flex-1 text-sm text-gray-500">
           {table.getFilteredSelectedRowModel().rows.length} of{" "}
           {table.getFilteredRowModel().rows.length} row(s) selected.
         </div>
@@ -555,7 +555,7 @@ const Reviews = () => {
             size="sm"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
-            className="bg-transparent border-white/20 text-white hover:bg-white/10"
+            className="bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
           >
             Previous
           </Button>
@@ -564,13 +564,13 @@ const Reviews = () => {
             size="sm"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
-            className="bg-transparent border-white/20 text-white hover:bg-white/10"
+            className="bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
           >
             Next
           </Button>
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 

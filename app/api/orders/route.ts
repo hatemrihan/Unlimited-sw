@@ -10,8 +10,8 @@ export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
   // Store original stock values for rollback if needed
-  const stockRollback: Array<{productId: string, variantName?: string, originalStock: number, originalVariantStock?: number}> = [];
-  
+  const stockRollback: Array<{ productId: string, variantName?: string, originalStock: number, originalVariantStock?: number }> = [];
+
   try {
     // Connect to database
     await dbConnect();
@@ -161,18 +161,19 @@ export async function POST(request: NextRequest) {
         phone: orderData.customer.phone?.trim() || '',
         address: orderData.customer.address?.trim() || ''
       },
-      
+
       products: orderData.products.map((product: unknown) => {
         const prod = product as any; // Type assertion for now
         return {
-        productId: prod.productId || '',
-        name: prod.name || '',
-        price: Number(prod.price) || 0,
-        quantity: Number(prod.quantity) || 1,
-        size: prod.size || undefined,
-        color: prod.color || undefined,
-        image: prod.image || ''
-      }}),
+          productId: prod.productId || '',
+          name: prod.name || '',
+          price: Number(prod.price) || 0,
+          quantity: Number(prod.quantity) || 1,
+          size: prod.size || undefined,
+          color: prod.color || undefined,
+          image: prod.image || ''
+        }
+      }),
       paymentMethod: orderData.paymentMethod,
       transactionScreenshot: orderData.transactionScreenshot || undefined,
       totalAmount: Number(finalTotal) || 0,
@@ -184,9 +185,9 @@ export async function POST(request: NextRequest) {
       status: 'pending',
       notes: orderData.notes?.trim() || undefined,
       orderDate: new Date()
-      
-  
-      };
+
+
+    };
 
 
 
@@ -197,11 +198,11 @@ export async function POST(request: NextRequest) {
 
     // 🔥 CRITICAL: Validate and deduct stock before creating order
     console.log('🔍 Validating and deducting stock atomically...');
-    
+
     // Validate and deduct stock for each product in the order using atomic operations
     for (const orderProduct of orderData.products) {
       const product = await Product.findById(orderProduct.productId);
-      
+
       if (!product) {
         return NextResponse.json(
           {
@@ -224,12 +225,12 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           );
         }
-        
+
         // Find the specific variant
-        const variant = product.variants.find((v: any) => 
+        const variant = product.variants.find((v: any) =>
           v.name === orderProduct.variant?.name
         );
-        
+
         if (!variant) {
           return NextResponse.json(
             {
@@ -294,16 +295,16 @@ export async function POST(request: NextRequest) {
         if (product.variants && product.variants.length > 0) {
           // Product has variants but no specific variant was selected
           // Find first available variant with enough stock
-          const availableVariant = product.variants.find((v: any) => 
+          const availableVariant = product.variants.find((v: any) =>
             Number(v.stock || 0) >= orderProduct.quantity
           );
-          
+
           if (!availableVariant) {
             // Calculate total available stock from all variants
-            const totalVariantStock = product.variants.reduce((sum: number, v: any) => 
+            const totalVariantStock = product.variants.reduce((sum: number, v: any) =>
               sum + (Number(v.stock || 0)), 0
             );
-            
+
             return NextResponse.json(
               {
                 success: false,
@@ -312,10 +313,10 @@ export async function POST(request: NextRequest) {
               { status: 400 }
             );
           }
-          
+
           // Use the available variant
           console.log(`🎯 Auto-selecting variant ${availableVariant.name} for ${product.name}`);
-          
+
           // Store original values for rollback
           stockRollback.push({
             productId: product._id.toString(),
@@ -332,7 +333,7 @@ export async function POST(request: NextRequest) {
               'variants.stock': { $gte: orderProduct.quantity }
             },
             {
-              $inc: { 
+              $inc: {
                 'variants.$.stock': -orderProduct.quantity
               }
             },
@@ -405,7 +406,7 @@ export async function POST(request: NextRequest) {
     // Create admin notification for new order
     try {
       console.log('🔔 Creating admin notification for new order...');
-      
+
       // Get updated stock levels for notification
       const stockLevels = [];
       for (const orderProduct of orderData.products) {
@@ -455,7 +456,7 @@ export async function POST(request: NextRequest) {
     // Send email notifications (don't block order creation if emails fail)
     try {
       console.log('📧 Sending order confirmation emails...');
-      
+
       const emailData = {
         customerEmail: savedOrder.customer.email,
         customerName: savedOrder.customer.name,
@@ -526,7 +527,7 @@ export async function POST(request: NextRequest) {
     // 🔄 ROLLBACK: Restore stock if order creation failed
     if (stockRollback && stockRollback.length > 0) {
       console.log('🔄 Rolling back stock changes due to order creation failure...');
-      
+
       try {
         for (const rollback of stockRollback) {
           const product = await Product.findById(rollback.productId);
@@ -567,7 +568,7 @@ export async function POST(request: NextRequest) {
 
     // Handle connection errors
     if (error && typeof error === 'object' && 'name' in error &&
-        (error.name === 'MongoNetworkError' || error.name === 'MongoTimeoutError')) {
+      (error.name === 'MongoNetworkError' || error.name === 'MongoTimeoutError')) {
       return NextResponse.json(
         {
           success: false,
@@ -605,26 +606,30 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     await dbConnect();
-    
+
 
     const orders = await Order.find({})
       .sort({ createdAt: -1 })
-      .limit(100); // Limit for performance
+      .limit(1000); // Increased limit to handle more orders
 
     return NextResponse.json({
       success: true,
       orders: orders.map(order => ({
+        _id: order._id, // IMPORTANT: Include _id for delete/update operations!
         orderId: order.orderId,
         customer: order.customer,
         products: order.products,
         paymentMethod: order.paymentMethod,
-        promoCode: order.promoCode,           
-        discountAmount: order.discountAmount, 
+        promoCode: order.promoCode,
+        discountAmount: order.discountAmount,
         transactionScreenshot: order.transactionScreenshot,
         totalAmount: order.totalAmount,
+        subtotal: order.subtotal,
+        shippingCost: order.shippingCost,
         status: order.status,
         orderDate: order.orderDate,
-        createdAt: order.createdAt
+        createdAt: order.createdAt,
+        notes: order.notes
       }))
     });
 

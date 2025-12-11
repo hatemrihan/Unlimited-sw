@@ -94,7 +94,7 @@ const Intro = () => {
         setIntroItems(introItems.filter(item => item._id !== itemToDelete._id));
         setSuccessMessage('Athlete deleted successfully!');
         setErrorMessage('');
-        
+
         // Clear success message after 3 seconds
         setTimeout(() => setSuccessMessage(''), 3000);
       } else {
@@ -102,7 +102,7 @@ const Intro = () => {
         console.error('❌ Delete failed:', errorMsg);
         setErrorMessage(errorMsg);
         setSuccessMessage('');
-        
+
         // Clear error message after 5 seconds
         setTimeout(() => setErrorMessage(''), 5000);
       }
@@ -110,7 +110,7 @@ const Intro = () => {
       console.error('❌ Error deleting intro item:', error);
       setErrorMessage('Network error. Please check your connection and try again.');
       setSuccessMessage('');
-      
+
       // Clear error message after 5 seconds
       setTimeout(() => setErrorMessage(''), 5000);
     } finally {
@@ -126,18 +126,18 @@ const Intro = () => {
   return (
     <div className="w-full">
       {/* Page Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl tracking-tight font-bold text-white mb-2">
+      <div className="mb-6">
+        <h1 className="text-xl sm:text-2xl md:text-3xl tracking-tight font-bold text-gray-900 mb-1">
           OUR ATHLETES
         </h1>
-        <div className="h-1 w-24 sm:w-32 md:w-40 bg-white"></div>
+        <div className="h-1 w-24 sm:w-32 md:w-40 bg-gray-900"></div>
       </div>
 
       {/* Action Button */}
       <div className="flex justify-end mb-6">
         <button
           onClick={() => router.push('/admin/add-intro')}
-          className="bg-black text-white px-6 py-3 rounded-lg border border-white/20 hover:bg-white hover:text-black transition-all duration-300 font-medium flex items-center gap-2"
+          className="bg-gray-900 text-white px-5 py-2 rounded-lg border border-gray-300 hover:bg-gray-800 transition-all duration-300 font-medium flex items-center gap-2 text-sm"
         >
           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
@@ -151,15 +151,15 @@ const Intro = () => {
         {loading ? (
           // Loading skeleton
           Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="bg-black border border-white/10 rounded-lg p-6 animate-pulse">
-              <div className="bg-gray-700 h-48 rounded-lg mb-4"></div>
-              <div className="bg-gray-700 h-4 rounded mb-2"></div>
-              <div className="bg-gray-700 h-4 rounded w-3/4"></div>
+            <div key={index} className="bg-white border border-gray-200 rounded-lg p-4 animate-pulse shadow-sm">
+              <div className="bg-gray-200 h-40 rounded-lg mb-3"></div>
+              <div className="bg-gray-200 h-4 rounded mb-2"></div>
+              <div className="bg-gray-200 h-4 rounded w-3/4"></div>
             </div>
           ))
         ) : introItems.length > 0 ? (
           introItems.map((item) => (
-            <div key={item._id} className="bg-black border border-white/10 rounded-lg p-6 hover:shadow-lg transition-shadow">
+            <div key={item._id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow shadow-sm">
               {/* Main Image */}
               <div className="relative mb-4">
                 {item.isVideo ? (
@@ -176,61 +176,59 @@ const Intro = () => {
                   />
                 )}
                 <div className="absolute top-2 right-2">
-                  <span className={`px-2 py-1 rounded-full text-xs ${
-                    item.isActive ? 'bg-green-600 text-white' : 'bg-gray-600 text-white'
-                  }`}>
+                  <span className={`px-2 py-1 rounded-full text-xs ${item.isActive ? 'bg-green-600 text-white' : 'bg-gray-600 text-white'
+                    }`}>
                     {item.isActive ? 'Active' : 'Inactive'}
                   </span>
                 </div>
               </div>
 
-                             {/* Title */}
-               <h3 className="text-lg font-semibold text-white mb-2 text-center">{item.title}</h3>
+              {/* Title */}
+              <h3 className="text-base font-semibold text-gray-900 mb-2 text-center">{item.title}</h3>
 
-               {/* Description */}
-               <p className="text-gray-300 text-sm mb-4 line-clamp-2 text-center">{item.description}</p>
+              {/* Description */}
+              <p className="text-gray-500 text-sm mb-3 line-clamp-2 text-center">{item.description}</p>
 
-               {/* URL */}
-               <div className="text-gray-400 text-xs mb-4 text-center">
-                 <span className="font-medium">URL:</span> {item.url}
-               </div>
+              {/* URL */}
+              <div className="text-gray-400 text-xs mb-3 text-center">
+                <span className="font-medium">URL:</span> {item.url}
+              </div>
 
-                             {/* Action Buttons */}
-               <div className="flex items-center justify-center gap-4">
-                 <button
-                   onClick={() => router.push(`/admin/edit-intro/${item._id}`)}
-                   className="text-blue-400 hover:text-blue-300 text-sm font-medium cursor-pointer"
-                 >
-                   Edit
-                 </button>
-                 <button
-                   onClick={() => toggleActiveStatus(item)}
-                   className={`text-sm font-medium cursor-pointer ${
-                     item.isActive 
-                       ? 'text-yellow-400 hover:text-yellow-300' 
-                       : 'text-green-400 hover:text-green-300'
-                   }`}
-                 >
-                   {item.isActive ? 'Deactivate' : 'Activate'}
-                 </button>
-                 <button
-                   onClick={() => openDeleteDialog(item)}
-                   className="text-red-400 hover:text-red-300 text-sm font-medium cursor-pointer"
-                 >
-                   Delete
-                 </button>
-               </div>
+              {/* Action Buttons */}
+              <div className="flex items-center justify-center gap-4">
+                <button
+                  onClick={() => router.push(`/admin/edit-intro/${item._id}`)}
+                  className="text-blue-400 hover:text-blue-300 text-sm font-medium cursor-pointer"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => toggleActiveStatus(item)}
+                  className={`text-sm font-medium cursor-pointer ${item.isActive
+                      ? 'text-yellow-400 hover:text-yellow-300'
+                      : 'text-green-400 hover:text-green-300'
+                    }`}
+                >
+                  {item.isActive ? 'Deactivate' : 'Activate'}
+                </button>
+                <button
+                  onClick={() => openDeleteDialog(item)}
+                  className="text-red-400 hover:text-red-300 text-sm font-medium cursor-pointer"
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           ))
         ) : (
-          <div className="col-span-full text-center py-12">
-            <div className="text-gray-400 mb-4">
-              <svg className="w-16 h-16 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+          <div className="col-span-full text-center py-10">
+            <div className="text-gray-300 mb-4">
+              <svg className="w-12 h-12 mx-auto" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd" />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-white mb-2">No Athletes Found</h3>
-            <p className="text-gray-400">Start by adding your first athlete to showcase them on your website.</p>
+            <h3 className="text-base font-medium text-gray-900 mb-2">No Athletes Found</h3>
+            <p className="text-gray-500 text-sm">Start by adding your first athlete to showcase them on your website.</p>
           </div>
         )}
       </div>
@@ -259,13 +257,13 @@ const Intro = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel 
+            <AlertDialogCancel
               onClick={() => setDeleteDialogOpen(false)}
               className="bg-gray-700 text-white hover:bg-gray-600 border-gray-600"
             >
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={deleteIntroItem}
               className="bg-red-600 text-white hover:bg-red-700"
             >

@@ -52,7 +52,7 @@ interface OrderProduct {
   quantity: number;
   size?: string;
   color?: string;
-  promoCode?:string;
+  promoCode?: string;
 }
 
 interface Customer {
@@ -89,22 +89,28 @@ const Orders = () => {
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
   const [globalFilter, setGlobalFilter] = useState("");
-  
+
+  // State for delete confirmation dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
+
+  // Use ref to store order ID for delete - refs persist through re-renders
+  const orderToDeleteRef = React.useRef<string | null>(null);
 
   // Function to export orders as CSV
   const exportOrdersAsCSV = () => {
     const selectedRows = table.getFilteredSelectedRowModel().rows;
     const rowsToExport = selectedRows.length > 0 ? selectedRows : table.getFilteredRowModel().rows;
-    
+
     const csvData = [
       // CSV Headers - Shipping Company Format
-      ['Customer', 'Order ID', 'Email', 'Phone', 'Shipping Address', 'Products', 'Colors', 'Discount','Promo Code', 'Payment Method', 'Total'],
+      ['Customer', 'Order ID', 'Email', 'Phone', 'Shipping Address', 'Products', 'Colors', 'Discount', 'Promo Code', 'Payment Method', 'Total'],
       // CSV Rows
       ...rowsToExport.map(row => {
         const order = row.original;
         const products = order.products.map(p => `${p.name}${p.size ? ` (${p.size})` : ''} x${p.quantity}`).join('; ');
         const colors = order.products.map(p => p.color || 'N/A').join('; ');
-        const promoCode = order.promoCode || 'N/A';        return [
+        const promoCode = order.promoCode || 'N/A'; return [
           order.customer.name,
           order.orderId,
           order.customer.email,
@@ -118,7 +124,7 @@ const Orders = () => {
         ];
       })
     ];
-    
+
     const csvContent = csvData.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -135,7 +141,7 @@ const Orders = () => {
   const exportOrdersAsJSON = () => {
     const selectedRows = table.getFilteredSelectedRowModel().rows;
     const rowsToExport = selectedRows.length > 0 ? selectedRows : table.getFilteredRowModel().rows;
-    
+
     const jsonData = rowsToExport.map(row => {
       const order = row.original;
       const products = order.products.map(p => ({
@@ -145,7 +151,7 @@ const Orders = () => {
         quantity: p.quantity,
         price: p.price
       }));
-      
+
       return {
         customer: order.customer.name,
         orderId: order.orderId,
@@ -158,7 +164,7 @@ const Orders = () => {
         total: `${order.totalAmount} L.E`
       };
     });
-    
+
     const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
@@ -174,10 +180,10 @@ const Orders = () => {
   const exportOrdersAsExcel = async () => {
     const selectedRows = table.getFilteredSelectedRowModel().rows;
     const rowsToExport = selectedRows.length > 0 ? selectedRows : table.getFilteredRowModel().rows;
-    
+
     // Import xlsx dynamically to avoid SSR issues
     const XLSX = await import('xlsx');
-    
+
     const excelData = rowsToExport.map(row => {
       const order = row.original;
       const products = order.products.map(p => `${p.name}${p.size ? ` (${p.size})` : ''} x${p.quantity}`).join('; ');
@@ -200,7 +206,7 @@ const Orders = () => {
     const worksheet = XLSX.utils.json_to_sheet(excelData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Orders');
-    
+
     // Auto-size columns (ensure full address visibility)
     const cols = [
       { wch: Math.max(12, ...excelData.map(r => String(r['Customer']).length)) },
@@ -215,7 +221,7 @@ const Orders = () => {
       { wch: 12 }, // Total
     ];
     (worksheet as any)['!cols'] = cols;
-    
+
     XLSX.writeFile(workbook, `shipping_orders_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
@@ -223,19 +229,19 @@ const Orders = () => {
   const exportOrdersAsPDF = async () => {
     const selectedRows = table.getFilteredSelectedRowModel().rows;
     const rowsToExport = selectedRows.length > 0 ? selectedRows : table.getFilteredRowModel().rows;
-    
+
     // Import jsPDF dynamically to avoid SSR issues
     const jsPDF = (await import('jspdf')).default;
     const autoTable = (await import('jspdf-autotable')).default;
-    
+
     const doc = new jsPDF();
-    
+
     // Add title
     doc.setFontSize(18);
     doc.text('Shipping Orders Report', 14, 22);
     doc.setFontSize(12);
     doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
-    
+
     // Prepare data for table
     const tableData = rowsToExport.map(row => {
       const order = row.original;
@@ -251,9 +257,9 @@ const Orders = () => {
         `${order.totalAmount} L.E`
       ];
     });
-    
+
     autoTable(doc, {
-      head: [['Customer', 'Order ID', 'Email', 'Phone', 'Address', 'Payment',  'Promo Code', 'Total']],
+      head: [['Customer', 'Order ID', 'Email', 'Phone', 'Address', 'Payment', 'Promo Code', 'Total']],
       body: tableData,
       startY: 40,
       styles: {
@@ -274,7 +280,7 @@ const Orders = () => {
         6: { cellWidth: 20 },  // Total
       } as any,
     });
-    
+
     doc.save(`shipping_orders_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
@@ -309,8 +315,8 @@ const Orders = () => {
 
       if (response.ok) {
         // Update the order in the local state
-        setOrders(orders.map(order => 
-          order._id === orderId 
+        setOrders(orders.map(order =>
+          order._id === orderId
             ? { ...order, status: newStatus as Order['status'] }
             : order
         ));
@@ -327,16 +333,22 @@ const Orders = () => {
   // Function to delete order
   const handleDeleteOrder = async (orderId: string) => {
     try {
+      console.log('🗑️ Attempting to delete order:', orderId);
       const response = await fetch(`/api/orders/${orderId}`, {
         method: 'DELETE',
       });
 
-      if (response.ok) {
+      const data = await response.json();
+      console.log('🗑️ Delete response:', data);
+
+      if (response.ok && data.success) {
         // Remove the order from the local state
         setOrders(orders.filter(order => order._id !== orderId));
+        setDeleteDialogOpen(false);
+        setOrderToDelete(null);
         alert('Order deleted successfully');
       } else {
-        alert('Failed to delete order');
+        alert(`Failed to delete order: ${data.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error deleting order:', error);
@@ -344,311 +356,302 @@ const Orders = () => {
     }
   };
 
+  // Function to open delete confirmation dialog
+  const openDeleteDialog = (order: Order) => {
+    orderToDeleteRef.current = order._id; // Store ID in ref for reliable access
+    setOrderToDelete(order);
+    setDeleteDialogOpen(true);
+  };
+
   // Define table columns
   const columns: ColumnDef<Order>[] = [
-  {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
-        onCheckedChange={(value: boolean) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value: boolean) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: "customer.name",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="text-white hover:bg-white/10"
-        >
-          Customer
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      )
+    {
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && "indeterminate")
+          }
+          onCheckedChange={(value: boolean) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value: boolean) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
     },
-    cell: ({ row }) => (
-      <div className="font-medium text-white">{row.original.customer.name}</div>
-    ),
-  },
-  {
-    accessorKey: "orderId",
-    header: "Order ID",
-    cell: ({ row }) => (
-      <div className="font-mono text-white">{row.getValue("orderId")}</div>
-    ),
-  },
-  {
-    accessorKey: "customer.email",
-    header: "Email",
-    cell: ({ row }) => (
-      <div className="text-white">{row.original.customer.email}</div>
-    ),
-  },
-  {
-    accessorKey: "customer.phone",
-    header: "Phone",
-    cell: ({ row }) => (
-      <div className="text-white">{row.original.customer.phone}</div>
-    ),
-  },
-  {
-    accessorKey: "customer.address",
-    header: "Shipping Address",
-    cell: ({ row }) => (
-      <div className="text-white">
-        <div className="text-sm max-w-md whitespace-normal break-words" title={row.original.customer.address}>
-          {row.original.customer.address}
-        </div>
-      </div>
-    ),
-  },
-  {
-    accessorKey: "products",
-    header: "Products",
-    cell: ({ row }) => {
-      const products = row.original.products;
-      return (
-        <div className="text-white">
-          <div className="text-sm font-medium">{products.length} item(s)</div>
-          <div className="text-xs text-gray-300 max-w-sm">
-            {products.map((product, index) => (
-              <div key={index} className="whitespace-normal break-words">
-                <div className="font-medium">{product.name}</div>
-                <div className="text-xs text-gray-400">
-                  {product.size && <span className="mr-2">Size: {product.size}</span>}
-                  <span className="font-semibold">Qty: {product.quantity}</span>
-                </div>
-              </div>
-            ))}
+    {
+      accessorKey: "customer.name",
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="text-gray-900 hover:bg-white/10"
+          >
+            Customer
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        )
+      },
+      cell: ({ row }) => (
+        <div className="font-medium text-gray-900">{row.original.customer.name}</div>
+      ),
+    },
+    {
+      accessorKey: "orderId",
+      header: "Order ID",
+      cell: ({ row }) => (
+        <div className="font-mono text-gray-900">{row.getValue("orderId")}</div>
+      ),
+    },
+    {
+      accessorKey: "customer.email",
+      header: "Email",
+      cell: ({ row }) => (
+        <div className="text-gray-900">{row.original.customer.email}</div>
+      ),
+    },
+    {
+      accessorKey: "customer.phone",
+      header: "Phone",
+      cell: ({ row }) => (
+        <div className="text-gray-900">{row.original.customer.phone}</div>
+      ),
+    },
+    {
+      accessorKey: "customer.address",
+      header: "Shipping Address",
+      cell: ({ row }) => (
+        <div className="text-gray-900">
+          <div className="text-sm max-w-md whitespace-normal break-words" title={row.original.customer.address}>
+            {row.original.customer.address}
           </div>
         </div>
-      );
+      ),
     },
-  },
-  {
-    accessorKey: "color",
-    header: "Color",
-    cell: ({ row }) => {
-      const products = row.original.products;
-      return (
-        <div className="text-white">
-          {products.map((product, index) => (
-            <div key={index} className="mb-1">
-              {product.color ? (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm">
-                  🎨 {product.color.toUpperCase()}
-                </span>
-              ) : (
-                <span className="text-gray-500 text-xs">-</span>
-              )}
-            </div>
-          ))}
-        </div>
-      );
-    },
-  },
-
-  {
-    accessorKey: "paymentMethod",
-    header: "Payment",
-    cell: ({ row }) => {
-      const method = row.getValue("paymentMethod") as string;
-      return (
-        <div className="text-white">
-          <span className={`inline-flex px-2 py-1 text-xs rounded ${
-            method === 'instaPay' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
-          }`}>
-            {method === 'instaPay' ? 'InstaPay' : 'Cash on Delivery'}
-          </span>
-        </div>
-      );
-    },
-  },
-  {
-    accessorKey: "promoCode",
-    header: "Promo Code",
-    cell: ({ row }) => {
-      const order = row.original;
-      return (
-        <div className="text-white">
-          {order.promoCode ? (
-            <div>
-              <span className="inline-flex px-2 py-1 text-xs rounded bg-yellow-100 text-yellow-800 font-medium">
-                {order.promoCode}
-              </span>
-              {order.discountAmount && (
-
-                <div className="text-xs text-green-400 mt-1">
-                  -L.E {order.discountAmount}
-                </div>
-              )}
-            </div>
-          ) : (
-            <span className="text-gray-400 text-xs">No promo</span>
-          )}
-        </div>
-      );
-    },
-  },
-  {
-    accessorKey: "transactionScreenshot",
-    header: "Receipt",
-    cell: ({ row }) => {
-      const order = row.original;
-      if (order.paymentMethod === 'instaPay' && order.transactionScreenshot) {
+    {
+      accessorKey: "products",
+      header: "Products",
+      cell: ({ row }) => {
+        const products = row.original.products;
         return (
-          <div className="text-white">
-            <div className="flex items-center gap-2">
-              <a
-                href={order.transactionScreenshot}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 text-sm transition-colors duration-150"
-              >
-                <Eye className="w-3 h-3" />
-                View Receipt
-              </a>
-            
+          <div className="text-gray-900">
+            <div className="text-sm font-medium">{products.length} item(s)</div>
+            <div className="text-xs text-gray-300 max-w-sm">
+              {products.map((product, index) => (
+                <div key={index} className="whitespace-normal break-words">
+                  <div className="font-medium">{product.name}</div>
+                  <div className="text-xs text-gray-400">
+                    {product.size && <span className="mr-2">Size: {product.size}</span>}
+                    <span className="font-semibold">Qty: {product.quantity}</span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         );
-      }
-      return (
-        <div className="text-gray-400 text-sm">
-          {order.paymentMethod === 'instaPay' ? 'No receipt uploaded' : 'N/A'}
-        </div>
-      );
+      },
     },
-  },
-
-  {
-    accessorKey: "totalAmount",
-    header: () => <div className="text-right text-white">Total</div>,
-    cell: ({ row }) => {
-      const amount = parseFloat(row.getValue("totalAmount"));
-      return (
-        <div className="text-right font-medium text-white">
-          L.E {amount.toLocaleString()}
-        </div>
-      );
+    {
+      accessorKey: "color",
+      header: "Color",
+      cell: ({ row }) => {
+        const products = row.original.products;
+        return (
+          <div className="text-gray-900">
+            {products.map((product, index) => (
+              <div key={index} className="mb-1">
+                {product.color ? (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-blue-500 to-blue-600 text-gray-900 shadow-sm">
+                    🎨 {product.color.toUpperCase()}
+                  </span>
+                ) : (
+                  <span className="text-gray-500 text-xs">-</span>
+                )}
+              </div>
+            ))}
+          </div>
+        );
+      },
     },
-  },
-  {
-    accessorKey: "orderDate",
-    header: "Order Date",
-    cell: ({ row }) => {
-      const date = new Date(row.getValue("orderDate"));
-      return (
-        <div className="text-white text-sm">
-          {date.toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric'
-          })}
-        </div>
-      );
+
+    {
+      accessorKey: "paymentMethod",
+      header: "Payment",
+      cell: ({ row }) => {
+        const method = row.getValue("paymentMethod") as string;
+        return (
+          <div className="text-gray-900">
+            <span className={`inline-flex px-2 py-1 text-xs rounded ${method === 'instaPay' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
+              }`}>
+              {method === 'instaPay' ? 'InstaPay' : 'Cash on Delivery'}
+            </span>
+          </div>
+        );
+      },
     },
-  },
-  {
-    id: "actions",
-    enableHiding: false,
-    cell: ({ row }) => {
-      const order = row.original;
+    {
+      accessorKey: "promoCode",
+      header: "Promo Code",
+      cell: ({ row }) => {
+        const order = row.original;
+        return (
+          <div className="text-gray-900">
+            {order.promoCode ? (
+              <div>
+                <span className="inline-flex px-2 py-1 text-xs rounded bg-yellow-100 text-yellow-800 font-medium">
+                  {order.promoCode}
+                </span>
+                {order.discountAmount && (
 
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0 text-white hover:bg-white/10">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel className="text-white">Actions</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(order.orderId)}
-              className="text-white hover:bg-white/10"
-            >
-              Copy Order ID
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(order.customer.email)}
-              className="text-white hover:bg-white/10"
-            >
-              Copy Customer Email
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(order.customer.phone)}
-              className="text-white hover:bg-white/10"
-            >
-              Copy Customer Phone
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(order.customer.address)}
-              className="text-white hover:bg-white/10"
-            >
-              Copy Shipping Address
-            </DropdownMenuItem>
-
-            {order.transactionScreenshot && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => window.open(order.transactionScreenshot, '_blank')}
-                  className="text-white hover:bg-white/10"
-                >
-                  View Payment Screenshot
-                </DropdownMenuItem>
-              </>
+                  <div className="text-xs text-green-400 mt-1">
+                    -L.E {order.discountAmount}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <span className="text-gray-400 text-xs">No promo</span>
             )}
-            <DropdownMenuSeparator />
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <DropdownMenuItem 
-                  onSelect={(e) => e.preventDefault()}
-                  className="text-red-400 hover:bg-red-900/20"
-                >
-                  Delete Order
-                </DropdownMenuItem>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete the order for "{order.customer.name}" 
-                    and remove it from your system.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => handleDeleteOrder(order._id)}>
-                    Delete Order
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
+          </div>
+        );
+      },
     },
-  },
-];
+    {
+      accessorKey: "transactionScreenshot",
+      header: "Receipt",
+      cell: ({ row }) => {
+        const order = row.original;
+        if (order.paymentMethod === 'instaPay' && order.transactionScreenshot) {
+          return (
+            <div className="text-gray-900">
+              <div className="flex items-center gap-2">
+                <a
+                  href={order.transactionScreenshot}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 text-sm transition-colors duration-150"
+                >
+                  <Eye className="w-3 h-3" />
+                  View Receipt
+                </a>
+
+              </div>
+            </div>
+          );
+        }
+        return (
+          <div className="text-gray-400 text-sm">
+            {order.paymentMethod === 'instaPay' ? 'No receipt uploaded' : 'N/A'}
+          </div>
+        );
+      },
+    },
+
+    {
+      accessorKey: "totalAmount",
+      header: () => <div className="text-right text-gray-900">Total</div>,
+      cell: ({ row }) => {
+        const amount = parseFloat(row.getValue("totalAmount"));
+        return (
+          <div className="text-right font-medium text-gray-900">
+            L.E {amount.toLocaleString()}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "orderDate",
+      header: "Order Date",
+      cell: ({ row }) => {
+        const date = new Date(row.getValue("orderDate"));
+        return (
+          <div className="text-gray-900 text-sm">
+            {date.toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric'
+            })}
+          </div>
+        );
+      },
+    },
+    {
+      id: "actions",
+      enableHiding: false,
+      cell: ({ row }) => {
+        const order = row.original;
+
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0 text-gray-900 hover:bg-white/10">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel className="text-gray-900">Actions</DropdownMenuLabel>
+              <DropdownMenuItem
+                onClick={() => navigator.clipboard.writeText(order.orderId)}
+                className="text-gray-900 hover:bg-white/10"
+              >
+                Copy Order ID
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => navigator.clipboard.writeText(order.customer.email)}
+                className="text-gray-900 hover:bg-white/10"
+              >
+                Copy Customer Email
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => navigator.clipboard.writeText(order.customer.phone)}
+                className="text-gray-900 hover:bg-white/10"
+              >
+                Copy Customer Phone
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => navigator.clipboard.writeText(order.customer.address)}
+                className="text-gray-900 hover:bg-white/10"
+              >
+                Copy Shipping Address
+              </DropdownMenuItem>
+
+              {order.transactionScreenshot && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => window.open(order.transactionScreenshot, '_blank')}
+                    className="text-gray-900 hover:bg-white/10"
+                  >
+                    View Payment Screenshot
+                  </DropdownMenuItem>
+                </>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => {
+                  if (window.confirm(`Are you sure you want to delete the order for "${order.customer.name}"? This action cannot be undone.`)) {
+                    handleDeleteOrder(order._id);
+                  }
+                }}
+                className="text-red-400 hover:bg-red-900/20"
+              >
+                Delete Order
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ];
 
   // Initialize table
   const table = useReactTable({
@@ -678,11 +681,11 @@ const Orders = () => {
   }, []);
 
   return (
-    <div className="bg-black text-white min-h-screen p-6">
+    <div className="bg-white text-gray-900 min-h-screen p-6">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl tracking-tight font-bold text-white mb-2">Orders Management</h1>
-        <p className="text-gray-300">Manage and track all customer orders</p>
+      <div className="mb-6">
+        <h1 className="text-xl sm:text-2xl md:text-3xl tracking-tight font-bold text-gray-900 mb-1">Orders Management</h1>
+        <p className="text-gray-500 text-sm">Manage and track all customer orders</p>
       </div>
 
       {/* Table Controls */}
@@ -693,44 +696,44 @@ const Orders = () => {
           onChange={(event) => setGlobalFilter(event.target.value)}
           className="max-w-sm"
         />
-        
+
         {/* Export Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="text-white border-white/20 hover:bg-white/10">
+            <Button variant="outline" className="text-gray-700 border-gray-300 hover:bg-gray-100">
               <Download className="mr-2 h-4 w-4" />
               Export As
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel className="text-white">Export Options</DropdownMenuLabel>
+          <DropdownMenuContent align="end" className="bg-white border-gray-200">
+            <DropdownMenuLabel className="text-gray-900">Export Options</DropdownMenuLabel>
             <DropdownMenuItem
               onClick={exportOrdersAsCSV}
-              className="text-white hover:bg-white/10"
+              className="text-gray-700 hover:bg-gray-100"
             >
               Export as CSV
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={exportOrdersAsExcel}
-              className="text-white hover:bg-white/10"
+              className="text-gray-700 hover:bg-gray-100"
             >
               Export as Excel
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={exportOrdersAsPDF}
-              className="text-white hover:bg-white/10"
+              className="text-gray-700 hover:bg-gray-100"
             >
               Export as PDF
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={exportOrdersAsJSON}
-              className="text-white hover:bg-white/10"
+              className="text-gray-700 hover:bg-gray-100"
             >
               Export as JSON
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-gray-400 text-xs">
-              {table.getFilteredSelectedRowModel().rows.length > 0 
+              {table.getFilteredSelectedRowModel().rows.length > 0
                 ? `Export ${table.getFilteredSelectedRowModel().rows.length} selected rows`
                 : `Export all ${table.getFilteredRowModel().rows.length} rows`
               }
@@ -740,7 +743,7 @@ const Orders = () => {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto text-white border-white/20 hover:bg-white/10">
+            <Button variant="outline" className="ml-auto text-gray-700 border-gray-300 hover:bg-gray-100">
               Columns <ChevronDown className="ml-2 h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -752,7 +755,7 @@ const Orders = () => {
                 return (
                   <DropdownMenuCheckboxItem
                     key={column.id}
-                    className="capitalize text-white hover:bg-white/10"
+                    className="capitalize text-gray-700 hover:bg-gray-100"
                     checked={column.getIsVisible()}
                     onCheckedChange={(value) =>
                       column.toggleVisibility(!!value)
@@ -768,14 +771,14 @@ const Orders = () => {
 
       {/* Data Table */}
       {loadingOrders ? (
-        <div className="bg-black border border-white/10 rounded-lg p-8">
+        <div className="bg-white border border-gray-200 rounded-lg p-8">
           <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-            <span className="ml-3 text-white">Loading orders...</span>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600"></div>
+            <span className="ml-3 text-gray-600">Loading orders...</span>
           </div>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-md border border-white/10">
+        <div className="overflow-hidden rounded-md border border-gray-200 bg-white">
           <Table>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
@@ -786,9 +789,9 @@ const Orders = () => {
                         {header.isPlaceholder
                           ? null
                           : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
                       </TableHead>
                     )
                   })}
@@ -816,12 +819,12 @@ const Orders = () => {
                 <TableRow>
                   <TableCell
                     colSpan={columns.length}
-                    className="h-24 text-center text-white"
+                    className="h-24 text-center text-gray-600"
                   >
                     <div className="text-center">
                       <div className="text-gray-400 text-6xl mb-4">📦</div>
-                      <h3 className="text-lg font-medium text-white mb-2">No Orders Found</h3>
-                      <p className="text-gray-300">
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No Orders Found</h3>
+                      <p className="text-gray-500">
                         {globalFilter ? 'Try adjusting your search criteria.' : 'Orders will appear here once customers start placing them.'}
                       </p>
                     </div>
@@ -835,7 +838,7 @@ const Orders = () => {
 
       {/* Pagination */}
       <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="text-gray-300 flex-1 text-sm">
+        <div className="text-gray-600 flex-1 text-sm">
           {table.getFilteredSelectedRowModel().rows.length} of{" "}
           {table.getFilteredRowModel().rows.length} row(s) selected.
         </div>
@@ -845,7 +848,7 @@ const Orders = () => {
             size="sm"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
-            className="text-white border-white/20 hover:bg-white/10"
+            className="text-gray-700 border-gray-300 hover:bg-gray-100"
           >
             Previous
           </Button>
@@ -854,7 +857,7 @@ const Orders = () => {
             size="sm"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
-            className="text-white border-white/20 hover:bg-white/10"
+            className="text-gray-700 border-gray-300 hover:bg-gray-100"
           >
             Next
           </Button>
