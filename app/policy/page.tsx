@@ -1,63 +1,21 @@
-'use client'
+import { Metadata } from "next";
+import PrivacyClient from "./PrivacyClient";
 
-import React from 'react'
-import Link from 'next/link'
-import Nav from '../sections/Nav'
+export const metadata: Metadata = {
+  title: "Privacy Policy - UNLIMITED | Your Data Protection",
+  description: "Learn how UNLIMITED protects your personal information. Our privacy policy explains data collection, usage, security measures, and your rights.",
+  alternates: {
+    canonical: "https://unlimited-sw.com/privacy",
+  },
+  openGraph: {
+    title: "Privacy Policy - UNLIMITED | Your Data Protection",
+    description: "Learn how UNLIMITED protects your personal information. Our privacy policy explains data collection, usage, and security.",
+    url: "https://unlimited-sw.com/privacy",
+    siteName: "UNLIMITED",
+    type: "website",
+  },
+};
 
-const ThankYouPage = () => {
-
-  
-  return (
-    <>
-      <Nav />
-      <main className="min-h-screen bg-black pt-20 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-4 py-16 text-center">
-          <h1 className="text-4xl md:text-5xl font-light mb-8 text-[#b3b3b3] transition-colors duration-300">SHIPPING POLICY</h1>
-          
-          <div className="max-w-2xl mx-auto space-y-6 text-[#b3b3b3] transition-colors duration-300">
-            <p>
-            Shipping Coverage
-  We currently ship *only within the Arab Republic of Egypt.
-  <br />
-Carrier
-  Deliveries are handled via hashtag courier service.
-  <br />
-Delivery Time
-  Orders arrive within 3–7 business days from confirmation. Same‑day delivery is not available.
-<br />
-Order Tracking & Support
-  For updates or questions, contact us vias:
-
-  Phone/WhatsApp: 01006176203
-  Email: [unlimited.egy.1@gmail.com](mailto:unlimited.egy.1@gmail.com)
-Damaged in Transit
-  If your item arrives damaged during shipping, we will replace it at no extra cost. All other cases are not eligible for replacement, refund, or re‑shipment.
-
-            </p>
-            
-         
-       
-            
-            {/* Navigation buttons */}
-           
-            <p>
-              You will pay on delivery. Please have the exact amount ready.
-            </p>
-            <p className="text-sm">
-              If you have any questions, feel free to contact us.
-            </p>
-          </div>
-
-          <Link 
-            href="/"
-            className="inline-block mt-12 px-8 py-4 bg-black text-white dark:bg-white dark:text-black hover:bg-gray-900 dark:hover:bg-gray-200 transition-colors duration-300"
-          >
-            Back to Home
-          </Link>
-        </div>
-      </main>
-    </>
-  )
+export default function PrivacyPage() {
+  return <PrivacyClient />;
 }
-
-export default ThankYouPage 

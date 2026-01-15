@@ -398,7 +398,7 @@ export default function CheckoutPage() {
         paymentMethod: formData.paymentMethod,
         transactionScreenshot: screenshotUrl,
         totalAmount: totalWithShipping,
-        subtotal: state.total,
+        subtotal: refreshedSubtotal,
         shippingCost: finalShippingCost,
         codFee: finalCodFee,
         promoCode: appliedPromo ? appliedPromo.code : '',

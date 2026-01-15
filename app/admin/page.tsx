@@ -11,6 +11,7 @@ import PromoCodes from './sections/promoCodes';
 import Intro from './sections/intro';
 import Reviews from './sections/reviews';
 import Notifications from './sections/notifications';
+import Contacts from './sections/contacts';
 import { useSession } from 'next-auth/react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -773,6 +774,16 @@ const AdminDashboard = () => {
                   onClick: () => setActiveSection('intro')
                 },
                 {
+                  label: 'Contact Requests',
+                  href: '#contacts',
+                  icon: (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                  ),
+                  onClick: () => setActiveSection('contacts')
+                },
+                {
                   label: 'Reviews',
                   href: '#reviews',
                   icon: (
@@ -864,6 +875,7 @@ const AdminDashboard = () => {
             {activeSection === 'products' && <Products />}
             {activeSection === 'promo' && <PromoCodes />}
             {activeSection === 'orders' && <Orders />}
+            {activeSection === 'contacts' && <Contacts />}
 
 
           </div>
