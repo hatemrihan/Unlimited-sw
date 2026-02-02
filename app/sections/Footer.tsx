@@ -21,7 +21,7 @@ const navItems = [
     isExternal: false
   },
   {
-    href: '/https://tomm.one',
+    href: 'https://tomm.one',
     label: 'Site Credit',
     isExternal: true
   },
