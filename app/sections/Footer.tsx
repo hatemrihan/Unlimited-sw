@@ -20,6 +20,11 @@ const navItems = [
     label: 'Shop',
     isExternal: false
   },
+  {
+    href: '/https://tomm.one',
+    label: 'Site Credit',
+    isExternal: true
+  },
   // {
   //   href: '/#intro',
   //   label: 'Our Athletes',
