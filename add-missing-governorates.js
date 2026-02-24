@@ -19,16 +19,16 @@ const missingGovernorates = [
   { name: 'Sharqia', shippingCost: 30, codFee: 8 },
   { name: 'Qalyubia', shippingCost: 25, codFee: 8 },
   { name: 'Fayoum', shippingCost: 35, codFee: 10 },
-  { name: 'Damietta', shippingCost: 30, codFee: 8 }
+  { name: 'Damietta', shippingCost: 30, codFee: 8 },
 ];
 
 async function addGovernorates() {
   try {
     console.log('🏛️ Adding missing governorates...');
-    
+
     // Replace with your actual domain
     const baseUrl = 'http://localhost:3000'; // or your production URL
-    
+
     for (const gov of missingGovernorates) {
       try {
         const response = await fetch(`${baseUrl}/api/admin/cities`, {
@@ -46,7 +46,7 @@ async function addGovernorates() {
         });
 
         const data = await response.json();
-        
+
         if (data.success) {
           console.log(`✅ Added: ${gov.name}`);
         } else {
@@ -56,7 +56,7 @@ async function addGovernorates() {
         console.log(`❌ Error adding ${gov.name}:`, error.message);
       }
     }
-    
+
     console.log('🎉 Finished adding governorates!');
   } catch (error) {
     console.error('❌ Script error:', error);

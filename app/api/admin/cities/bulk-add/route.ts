@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
 
       // Matrouh Governorate (North Coast)
       { cityName: 'Marsa Matrouh', governorate: 'Matrouh', shippingCost: 50, codFee: 15 },
+      { cityName: 'Beni Suef', governorate: 'Beni Suef', shippingCost: 50, codFee: 20 },
     ];
 
     // Asiut Governorate cities (Upper Egypt - ~375km south of Cairo)
