@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../../../../lib/mongodb';
 import Product from '../../../../../../models/product';
 import CityPricing from '../../../../../../models/cityPricing';
-import { invalidateAdminProductsCache } from '../../route';
-import { invalidateProductsCache } from '../../../../products/route';
-import { productCache } from '../../../../../../lib/cache';
+import { invalidateProductCache, productCache } from '../../../../../../lib/cache';
 
 // GET - Get city pricing for a specific product
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -96,6 +94,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     // 3) DO NOT modify global CityPricing collection (that's for defaults only)
     const productCityPricing: any[] = [];
 
+    // Pre-fetch all needed cities to avoid N+1 queries in the loop
+    const allGovNames = cityPricing.map((gp: any) => gp.governorate);
+    const allGovCities = await CityPricing.find({ governorate: { $in: allGovNames } });
+
     for (const gp of cityPricing) {
       const govName = gp.governorate;
       const price = Number(gp.price) || 0;
@@ -106,8 +108,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       // Store product-specific pricing including shipping costs and COD fees
       console.log(`📦 Setting product-specific pricing for ${govName}: price=${price}, shipping=${shippingCost}, cod=${codFee}, active=${isActive}`);
 
-      // Fetch all cities for this governorate to create product-specific entries
-      const govCities = await CityPricing.find({ governorate: govName });
+      // Filter from pre-fetched cities (O(n) in memory is way faster than DB query)
+      const govCities = allGovCities.filter(c => c.governorate === govName);
       for (const city of govCities) {
         productCityPricing.push({
           cityName: city.cityName,
@@ -130,9 +132,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     console.log('✅ Product city pricing updated:', updatedProduct.name);
     
     // 🚀 CRITICAL: Invalidate ALL caches immediately for real-time updates
-    invalidateAdminProductsCache();
-    invalidateProductsCache();
-    productCache.delete(`product:detail:${productId}`);
+    invalidateProductCache(productId.toString());
     console.log('🗑️ All product caches invalidated after city pricing update');
     
     return NextResponse.json({

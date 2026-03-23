@@ -16,6 +16,7 @@ export interface Product {
     name: string;      // Variant name like "Small Kit", "Large Set", "Premium Bundle"
     stock: number;     // Stock for this variant
     price?: number;    // Optional different price for variant
+    images?: string[]; // Optional variant-specific images
   }>;
   stock: number;
   isActive: boolean;
@@ -26,7 +27,7 @@ export interface Product {
   showOutOfStockBadge?: boolean;
   showPreorderBadge?: boolean;
 
-  // NEW: Detailed product information (optional fields for admin control)
+  // Detailed product information (optional fields for admin control)
   detailedDescription?: string;  // Long detailed description
   specifications?: string;       // Technical specs/details
   shippingInfo?: string;         // Shipping information
@@ -40,6 +41,8 @@ export interface Product {
     cityName: string;
     governorate: string;
     price: number;
+    shippingCost?: number;
+    codFee?: number;
     isActive: boolean;
   }>;
 
@@ -149,7 +152,7 @@ const ProductSchema = new mongoose.Schema({
     default: false,
   },
 
-  // NEW: Detailed product information (optional fields for admin control)
+  // Detailed product information (optional fields for admin control)
   detailedDescription: {
     type: String,
     default: '',
@@ -185,10 +188,10 @@ const ProductSchema = new mongoose.Schema({
 });
 
 // Create OPTIMIZED indexes for ultra-fast querying
+ProductSchema.index({ name: 'text', description: 'text' }); // For scalable search
 ProductSchema.index({ isActive: 1, order: 1 }); // For regular products
 ProductSchema.index({ isFeatured: 1, isActive: 1, order: 1 }); // For featured products
-ProductSchema.index({ _id: 1 }); // For single product lookups
-ProductSchema.index({ stock: 1 }); // For stock queries
+
 
 // Export the model
 export default mongoose.models.Product || mongoose.model('Product', ProductSchema);

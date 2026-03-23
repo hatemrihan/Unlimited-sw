@@ -7,8 +7,7 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "setup:mongo": "node scripts/setup-mongodb.js",
-    "test:cloudinary": "node test-cloudinary.js"
+    "setup:mongo": "node scripts/setup-mongodb.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.914.0",
@@ -22,7 +21,6 @@
     "@tanstack/react-table": "^8.21.3",
     "@types/nodemailer": "^7.0.1",
     "class-variance-authority": "^0.7.1",
-    "cloudinary": "^2.7.0",
     "clsx": "^2.1.1",
     "dotenv": "^17.2.2",
     "gsap": "^3.13.0",
@@ -33,7 +31,6 @@
     "motion": "^12.23.12",
     "next": "^15.5.7",
     "next-auth": "^4.24.11",
-    "next-cloudinary": "^6.16.0",
     "nodemailer": "^6.10.1",
     "ogl": "^1.0.11",
     "react": "19.1.0",
@@ -42,7 +39,8 @@
     "recharts": "^2.15.4",
     "split-type": "^0.3.4",
     "tailwind-merge": "^3.3.1",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

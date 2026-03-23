@@ -1,212 +1,90 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import Nav from '../sections/Nav';
 import { useCart } from '../../contexts/CartContext';
-
-interface CartItem {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  size?: string;
-  color?: string;
-  image: string;
-  discount?: number;
-}
-
-interface FormData {
-  firstName: string;
-  lastName: string;
-  phone: string;
-  email: string;
-  address: string;
-  apartment: string;
-  city: string;
-  notes: string;
-  promoCode: string;
-  paymentMethod: 'cashOnDelivery' | 'instaPay';
-  transactionScreenshot: any;
-}
-
-interface City {
-  _id: string;
-  cityName: string;
-  governorate: string;
-  shippingCost: number;
-  codFee: number;
-  isActive: boolean;
-}
+import { useCheckoutPricing } from './hooks/useCheckoutPricing';
+import { useCheckoutForm } from './hooks/useCheckoutForm';
 
 export default function CheckoutPage() {
-  const router = useRouter();
+  const [paymentSettings, setPaymentSettings] = useState({ codEnabled: true, instaPayEnabled: true });
+  const [orderError, setOrderError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // All hooks must be called at the top level - BEFORE any conditional logic
-  const [formData, setFormData] = useState<FormData>({
-    firstName: '',
-    lastName: '',
-    phone: '',
-    email: '',
-    address: '',
-    apartment: '',
-    city: '',
-    notes: '',
-    promoCode: '',
-    paymentMethod: 'cashOnDelivery',
-    transactionScreenshot: null
+  const cartContext = useCart();
+  const { state, clearCart } = cartContext || {};
+
+  const {
+    formData,
+    setFormData,
+    errors,
+    handleInputChange,
+    handleFileChange,
+    validateForm,
+    screenShotPreview,
+    isUploading
+  } = useCheckoutForm();
+
+  const {
+    cities,
+    loadingCities,
+    selectedGovernorate,
+    shippingConfigError,
+    refreshedPrices,
+    refreshedSubtotal,
+    shippingCost,
+    codFee,
+    discountAmount,
+    totalWithShipping,
+    appliedPromo,
+    promoError,
+    shouldWaiveShipping,
+    applyPromoCode,
+  } = useCheckoutPricing({
+    cartItems: state?.items || [],
+    paymentMethod: formData.paymentMethod,
+    cityName: formData.city,
   });
 
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [orderError, setOrderError] = useState<string | null>(null);
-  const [screenShotPreview, setScreenShotPreview] = useState<string | null>(null);
-  const [appliedPromo, setAppliedPromo] = useState<any>(null);
-  const [promoError, setPromoError] = useState<string | null>(null);
-  const [cities, setCities] = useState<City[]>([]);
-  const [loadingCities, setLoadingCities] = useState(true);
-  // Key format: "productId_variantName" or "productId_default" for items without variants
-  const [refreshedPrices, setRefreshedPrices] = useState<Record<string, number>>({});
-  const [paymentSettings, setPaymentSettings] = useState({ codEnabled: true, instaPayEnabled: true });
-
-  // Safe cart access with error handling
-  const cartContext = useCart();
-
-  // Fetch payment settings
   useEffect(() => {
     const fetchPaymentSettings = async () => {
       try {
         const response = await fetch('/api/admin/payment-settings');
         const data = await response.json();
-
         if (data.success) {
           setPaymentSettings(data.settings);
-
-          // If COD is disabled and current payment method is COD, switch to InstaPay
           if (!data.settings.codEnabled && formData.paymentMethod === 'cashOnDelivery') {
             setFormData(prev => ({ ...prev, paymentMethod: 'instaPay' }));
           }
         }
       } catch (error) {
         console.error('Error fetching payment settings:', error);
-        // Keep default settings on error
       }
     };
-
     fetchPaymentSettings();
-  }, []);
+  }, [formData.paymentMethod, setFormData]);
 
-  // Fetch cities with product-specific pricing and refresh prices on component mount - FIXED for variant prices
-  useEffect(() => {
-    if (!cartContext?.state?.items?.length) {
-      setLoadingCities(false);
-      return; // Early return if no cart context or items
-    }
-
-    const fetchCitiesAndRefreshPrices = async () => {
-      try {
-        // Get product IDs from cart
-        const productIds = [...new Set(cartContext.state.items.map(item => item.id))];
-        const productIdsString = productIds.join(',');
-
-        // Fetch cities with product-specific pricing AND refresh product prices in parallel
-        const [citiesResponse, ...priceResponses] = await Promise.all([
-          fetch(`/api/checkout/cities${productIdsString ? `?productIds=${productIdsString}` : ''}`),
-          ...productIds.map(id => fetch(`/api/products/${id}`))
-        ]);
-
-        // Handle cities response
-        if (citiesResponse.ok) {
-          const citiesData = await citiesResponse.json();
-          setCities(citiesData.cities || []);
-          console.log('✅ Loaded cities with product-specific pricing');
-        } else {
-          console.error('Failed to fetch cities');
-        }
-
-        // Handle price responses - FIXED to build product map first
-        const productMap: Record<string, any> = {};
-        const productResults = await Promise.all(
-          priceResponses.map(async (response, index) => {
-            if (response.ok) {
-              const data = await response.json();
-              return { id: productIds[index], product: data.product };
-            }
-            return { id: productIds[index], product: null };
-          })
-        );
-
-        productResults.forEach(({ id, product }) => {
-          if (product) {
-            productMap[id] = product;
-          }
-        });
-
-        // Build price map with variant-specific prices
-        const priceMap: Record<string, number> = {};
-        cartContext.state.items.forEach((item: any) => {
-          const product = productMap[item.id];
-          if (product) {
-            // Create a unique key for this cart item (product + variant)
-            const variantKey = item.variant?.name || 'default';
-            const priceKey = `${item.id}_${variantKey}`;
-
-            // Find matching variant price if item has a variant
-            let price = product.price || 0;
-            if (item.variant && product.variants && Array.isArray(product.variants)) {
-              const matchingVariant = product.variants.find(
-                (v: any) => v.name === item.variant?.name
-              );
-              // Use variant price if it exists, otherwise fall back to main product price
-              if (matchingVariant && matchingVariant.price !== undefined && matchingVariant.price > 0) {
-                price = matchingVariant.price;
-              }
-            }
-
-            priceMap[priceKey] = price;
-          }
-        });
-
-        setRefreshedPrices(priceMap);
-        console.log('🔄 Checkout prices refreshed with variant support:', priceMap);
-
-      } catch (error) {
-        console.error('Error fetching cities and prices:', error);
-      } finally {
-        setLoadingCities(false);
-      }
-    };
-
-    fetchCitiesAndRefreshPrices();
-  }, [cartContext?.state?.items]); // Re-fetch when cart items change
-
-  // Handle loading state and missing cart context
+  // Prevent rendering if cart is missing
   if (!cartContext) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-medium mb-4">Loading...</h2>
+          <div className="animate-pulse h-10 w-48 bg-gray-700 rounded mx-auto mb-4" />
           <p>Please wait while we load your cart.</p>
         </div>
       </div>
     );
   }
 
-  const { state, clearCart } = cartContext;
-
-  // Handle empty cart
-  if (state.items.length === 0) {
+  if (state!.items.length === 0) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center" suppressHydrationWarning>
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-medium mb-4 text-[#b3b3b3]">Your cart is empty</h2>
           <p className="text-[#b3b3b3]/70 mb-6">Add some products to your cart before checking out</p>
-          <Link
-            href="/shop"
-            className="inline-block bg-[#b3b3b3] text-black px-6 py-2 rounded hover:bg-white transition-colors duration-300"
-          >
+          <Link href="/shop" className="inline-block bg-[#b3b3b3] text-black px-6 py-2 rounded hover:bg-white transition-colors duration-300">
             Continue Shopping
           </Link>
         </div>
@@ -214,159 +92,15 @@ export default function CheckoutPage() {
     );
   }
 
-  // Calculate shipping cost based on selected governorate
-  const selectedGovernorate = cities.find(city => city.cityName === formData.city);
-
-  // Calculate shipping cost: ONLY product-specific rates (NO GLOBAL DEFAULTS)
-  let shippingCost = 0;
-  let codFee = 0;
-
-  if (selectedGovernorate) {
-    // Check if products have specific shipping rates
-    let hasProductSpecificRates = false;
-    let totalProductShippingCost = 0;
-    let totalProductCodFee = 0;
-
-    for (const item of state.items) {
-      const productSpecificPricing = (selectedGovernorate as any).productPricing?.[item.id];
-      if (productSpecificPricing && productSpecificPricing.isActive !== false) {
-        hasProductSpecificRates = true;
-        // SUM product-specific shipping cost and COD fee for each item in cart
-        totalProductShippingCost += (productSpecificPricing.shippingCost || 0) * item.quantity;
-        totalProductCodFee += (productSpecificPricing.codFee || 0) * item.quantity;
-      }
-    }
-
-    if (hasProductSpecificRates) {
-      // Use the sum of all product-specific shipping costs and COD fees
-      shippingCost = totalProductShippingCost;
-      codFee = totalProductCodFee;
-      console.log(`✅ Using summed product-specific rates: shipping=${shippingCost}, cod=${codFee}`);
-    } else {
-      // NO GLOBAL DEFAULTS - Show error if no product-specific rates
-      console.error('❌ No product-specific shipping rates found');
-      setOrderError('Shipping costs not configured for selected products. Please contact support.');
-      return;
-    }
-  }
-
-  // Calculate subtotal using refreshed prices when available - FIXED to use variant-aware keys
-  const refreshedSubtotal = state.items.reduce((sum, item) => {
-    const variantKey = item.variant?.name || 'default';
-    const priceKey = `${item.id}_${variantKey}`;
-    const currentPrice = refreshedPrices[priceKey] || item.price;
-    return sum + (currentPrice * item.quantity);
-  }, 0);
-
-  // Apply shipping waiver if promo allows, but COD fee is ALWAYS charged for COD orders
-  const shouldWaiveShipping = appliedPromo && appliedPromo.waiveShipping;
-  const finalCodFee = (formData.paymentMethod === 'cashOnDelivery') ? codFee : 0; // COD fee ALWAYS applies
-  const finalShippingCost = shouldWaiveShipping ? 0 : shippingCost;
-  const discountAmount = appliedPromo ? appliedPromo.discount : 0;
-  const subtotalAfterDiscount = Math.max(0, refreshedSubtotal - discountAmount);
-  const totalWithShipping = subtotalAfterDiscount + finalShippingCost + finalCodFee;
-
-  // Apply promo code
-  const applyPromoCode = async () => {
-    if (!formData.promoCode.trim()) {
-      setPromoError('Please enter a promo code');
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/promo', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          code: formData.promoCode,
-          orderTotal: state.total
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setAppliedPromo(data.promo);
-        setPromoError(null);
-        console.log('✅ Promo code applied:', data.promo);
-      } else {
-        setPromoError(data.error || 'Invalid promo code');
-        setAppliedPromo(null);
-      }
-    } catch (error) {
-      console.error('❌ Promo code validation error:', error);
-      setPromoError('Failed to validate promo code');
-      setAppliedPromo(null);
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    // Validate customer information
-    if (!formData.firstName?.trim()) newErrors.firstName = 'First name is required';
-    if (!formData.lastName?.trim()) newErrors.lastName = 'Last name is required';
-    if (!formData.email?.trim()) newErrors.email = 'Email is required';
-    if (!formData.phone?.trim()) newErrors.phone = 'Phone number is required';
-    if (!formData.address?.trim()) newErrors.address = 'Address is required';
-    if (!formData.city) newErrors.city = 'Please select a governorate';
-
-    // Validate payment method
-    if (!formData.paymentMethod) {
-      newErrors.paymentMethod = 'Please select a payment method';
-    } else if (formData.paymentMethod === 'instaPay' && !formData.transactionScreenshot) {
-      newErrors.transactionScreenshot = 'Transaction screenshot is required for InstaPay';
-    }
-
-    // Validate cart has items
-    if (!state.items || state.items.length === 0) {
-      setOrderError('Your cart is empty');
-      return false;
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!validateForm()) return;
+    if (!validateForm(state!.items.length, shippingConfigError)) return;
 
     setIsSubmitting(true);
+    setOrderError(null);
 
     try {
-      // PayMob payment method removed as requested
-
-      // Handle screenshot upload if InstaPay is selected
-      let screenshotUrl = null;
-      if (formData.paymentMethod === 'instaPay' && formData.transactionScreenshot) {
-        try {
-          const formDataForImage = new FormData();
-          formDataForImage.append('file', formData.transactionScreenshot);
-          formDataForImage.append('upload_preset', 'kleankuts_upload');
-          formDataForImage.append('folder', 'transaction_screenshots');
-
-          const response = await fetch('https://api.cloudinary.com/v1_1/dvcs7czio/image/upload', {
-            method: 'POST',
-            body: formDataForImage
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            screenshotUrl = data.secure_url;
-          }
-        } catch (uploadError) {
-          console.error('Error uploading screenshot:', uploadError);
-          setOrderError('Failed to upload transaction screenshot');
-          setIsSubmitting(false);
-          return;
-        }
-      }
-
-      // Prepare order data for other payment methods
       const orderData = {
         customer: {
           name: `${formData.firstName.trim()} ${formData.lastName.trim()}`,
@@ -379,8 +113,7 @@ export default function CheckoutPage() {
           city: formData.city,
           governorate: selectedGovernorate?.governorate || ''
         },
-        products: state.items.map((item: any) => {
-          // FIXED: Use refreshed price with variant-aware key
+        products: state!.items.map((item: any) => {
           const variantKey = item.variant?.name || 'default';
           const priceKey = `${item.id}_${variantKey}`;
           const correctPrice = refreshedPrices[priceKey] || item.price;
@@ -388,19 +121,19 @@ export default function CheckoutPage() {
           return {
             productId: item.id,
             name: item.name,
-            price: correctPrice, // Use the correct refreshed price
+            price: correctPrice,
             quantity: item.quantity,
-            size: item.variant?.name || undefined, // Variant name as size for compatibility
-            color: item.variant?.color || undefined, // Extract color from variant
+            size: item.variant?.name || undefined,
+            color: item.variant?.color || undefined,
             image: item.image
           };
         }),
         paymentMethod: formData.paymentMethod,
-        transactionScreenshot: screenshotUrl,
+        transactionScreenshot: formData.transactionScreenshot,
         totalAmount: totalWithShipping,
         subtotal: refreshedSubtotal,
-        shippingCost: finalShippingCost,
-        codFee: finalCodFee,
+        shippingCost: shippingCost,
+        codFee: codFee,
         promoCode: appliedPromo ? appliedPromo.code : '',
         discountAmount: discountAmount,
         notes: formData.notes.trim(),
@@ -408,7 +141,6 @@ export default function CheckoutPage() {
         orderDate: new Date().toISOString()
       };
 
-      // Submit order to your API
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: {
@@ -420,7 +152,6 @@ export default function CheckoutPage() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // Store order details for thank you page
         sessionStorage.setItem('lastOrder', JSON.stringify({
           orderId: data.order.orderId,
           paymentMethod: formData.paymentMethod,
@@ -428,78 +159,23 @@ export default function CheckoutPage() {
           customer: data.order.customer
         }));
 
-        clearCart();
-        // Use window.location for reliable redirect
+        clearCart!();
         window.location.href = `/thankyou?orderId=${data.order.orderId}`;
       } else {
         setOrderError(data.error || 'Something went wrong with your order');
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Order submission error:', error);
-      setOrderError('An unexpected error occurred');
+      setOrderError(error instanceof Error ? error.message : 'An unexpected error occurred');
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-
-    if (errors[name as keyof FormData]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[name as keyof FormData];
-        return newErrors;
-      });
-    }
-
-    if (orderError) {
-      setOrderError(null);
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-
-      const maxSize = 5 * 1024 * 1024; // 5MB
-      if (file.size > maxSize) {
-        setErrors(prev => ({
-          ...prev,
-          transactionScreenshot: 'File size must be less than 5MB'
-        }));
-        return;
-      }
-
-      if (!file.type.startsWith('image/')) {
-        setErrors(prev => ({
-          ...prev,
-          transactionScreenshot: 'Only image files are allowed'
-        }));
-        return;
-      }
-
-      setFormData(prev => ({ ...prev, transactionScreenshot: file }));
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setScreenShotPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors.transactionScreenshot;
-        return newErrors;
-      });
     }
   };
 
   return (
     <>
       <Nav />
-      <div className="min-h-screen bg-stone-900 pt-20">
+      <div className="min-h-screen bg-stone-900 pt-20 pb-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 text-white">
           <Link href="/cart" className="inline-flex items-center gap-2 text-white hover:text-gray-300 mb-8 transition-colors duration-300">
             <span>←</span>
@@ -555,13 +231,14 @@ export default function CheckoutPage() {
 
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    Phone Number *
+                    Phone Number (Egypt) *
                   </label>
                   <input
                     type="tel"
                     name="phone"
                     value={formData.phone}
                     onChange={handleInputChange}
+                    placeholder="01xxxxxxxxx"
                     className={`w-full p-3 bg-transparent border border-white text-white focus:outline-none focus:border-gray-400 transition-colors duration-300 ${errors.phone ? 'border-red-500' : ''}`}
                   />
                   {errors.phone && (
@@ -585,13 +262,12 @@ export default function CheckoutPage() {
                   )}
                 </div>
 
-                {/* Payment Method Selection */}
+                {/* Payment Method */}
                 <div>
                   <label className="block text-sm font-medium mb-2">
                     Payment Method *
                   </label>
                   <div className="space-y-3">
-                    {/* Cash on Delivery - Admin Controlled */}
                     {paymentSettings.codEnabled && (
                       <div className="flex items-center">
                         <div className="relative">
@@ -604,10 +280,10 @@ export default function CheckoutPage() {
                             onChange={handleInputChange}
                             className="sr-only"
                           />
-                          <div className={`w-4 h-4 rounded-full border-2 border-white mr-2 flex items-center justify-center cursor-pointer ${formData.paymentMethod === 'cashOnDelivery' ? 'bg-black' : 'bg-transparent'
+                          <div className={`w-4 h-4 rounded-full border-2 border-white mr-2 flex items-center justify-center cursor-pointer ${formData.paymentMethod === 'cashOnDelivery' ? 'bg-white' : 'bg-transparent'
                             }`} onClick={() => setFormData(prev => ({ ...prev, paymentMethod: 'cashOnDelivery' }))}>
                             {formData.paymentMethod === 'cashOnDelivery' && (
-                              <div className="w-2 h-2 rounded-full bg-white"></div>
+                              <div className="w-2 h-2 rounded-full bg-black"></div>
                             )}
                           </div>
                         </div>
@@ -626,58 +302,57 @@ export default function CheckoutPage() {
                           onChange={handleInputChange}
                           className="sr-only"
                         />
-                        <div className={`w-4 h-4 rounded-full border-2 border-white mr-2 flex items-center justify-center cursor-pointer ${formData.paymentMethod === 'instaPay' ? 'bg-black' : 'bg-transparent'
+                        <div className={`w-4 h-4 rounded-full border-2 border-white mr-2 flex items-center justify-center cursor-pointer ${formData.paymentMethod === 'instaPay' ? 'bg-white' : 'bg-transparent'
                           }`} onClick={() => setFormData(prev => ({ ...prev, paymentMethod: 'instaPay' }))}>
                           {formData.paymentMethod === 'instaPay' && (
-                            <div className="w-2 h-2 rounded-full bg-white"></div>
+                            <div className="w-2 h-2 rounded-full bg-black"></div>
                           )}
                         </div>
                       </div>
                       <label htmlFor="instaPay" className="text-sm cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, paymentMethod: 'instaPay' }))}>Pay with InstaPay</label>
                     </div>
-
                   </div>
                 </div>
 
-
-                {/* InstaPay Instructions and Screenshot Upload */}
+                {/* InstaPay Upload */}
                 {formData.paymentMethod === 'instaPay' && (
-                  <div className="p-4 border border-gray-300 dark:border-gray-600 rounded-md">
+                  <div className="p-4 border border-gray-600 rounded-md bg-white/5">
                     <div className="mb-4">
-                      <h3 className="font-medium mb-2">InstaPay Payment Instructions</h3>
-                      <p className="text-sm mb-2">Click the link to send money to:</p>
-                      <p className="font-medium mb-2">muhamed.alkady@instapay</p>
-                      <p className="text-sm mb-2">Powered by InstaPay:</p>
+                      <h3 className="font-medium mb-2 text-white">InstaPay Payment Instructions</h3>
+                      <p className="text-sm mb-2 text-gray-300">Click the link to send money to:</p>
+                      <p className="font-medium mb-2 text-white">muhamed.alkady@instapay</p>
+                      <p className="text-sm mb-2 text-gray-300">Powered by InstaPay:</p>
                       <a
                         href="https://ipn.eg/S/muhamed.alkady/instapay/8kB0I3"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-600 dark:text-blue-400 underline text-sm"
+                        className="text-white underline text-sm hover:text-gray-300"
                       >
                         https://ipn.eg/S/muhamed.alkady/instapay/8kB0I3
                       </a>
                     </div>
 
                     <div className="mb-2">
-                      <label className="block text-sm font-medium mb-1">
+                      <label className="block text-sm font-medium mb-1 text-white">
                         Upload Transaction Screenshot *
                       </label>
                       <input
                         type="file"
                         accept="image/*"
                         onChange={handleFileChange}
+                        disabled={isUploading}
                         className="block w-full text-sm text-white file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-white file:text-black hover:file:bg-gray-200"
                       />
+                      {isUploading && <p className="text-sm text-yellow-400 mt-2">Uploading image...</p>}
                       {errors.transactionScreenshot && (
                         <p className="text-red-500 text-sm mt-1">{errors.transactionScreenshot}</p>
                       )}
                     </div>
 
-                    {/* Preview of the screenshot */}
                     {screenShotPreview && (
                       <div className="mt-3">
-                        <p className="text-sm font-medium mb-1">Preview:</p>
-                        <div className="relative w-40 h-40 border border-gray-300">
+                        <p className="text-sm font-medium mb-1 text-white">Preview (Uploaded!):</p>
+                        <div className="relative w-40 h-40 border border-gray-500 rounded bg-black">
                           <Image
                             src={screenShotPreview}
                             alt="Transaction screenshot"
@@ -689,7 +364,6 @@ export default function CheckoutPage() {
                     )}
                   </div>
                 )}
-
 
                 <div>
                   <label className="block text-sm font-medium mb-1">
@@ -724,26 +398,32 @@ export default function CheckoutPage() {
                   <label className="block text-sm font-medium mb-1">
                     Governorate *
                   </label>
-                  <select
-                    name="city"
-                    value={formData.city}
-                    onChange={handleInputChange}
-                    className={`w-full p-3 bg-transparent border border-white text-white focus:outline-none focus:border-gray-400 transition-colors duration-300 ${errors.city ? 'border-red-500' : ''}`}
-                  >
-                    <option value="" className="bg-black text-white">
-                      {loadingCities ? 'Loading governorates...' : 'Select a governorate'}
-                    </option>
-                    {cities
-                      .filter(city => city.isActive)
-                      .map((city) => (
-                        <option key={city._id} value={city.cityName} className="bg-black text-white">
-                          {city.governorate} (L.E {city.shippingCost})
-                        </option>
-                      ))}
-                  </select>
-                  {errors.city && (
+                  <div className="relative">
+                    {loadingCities ? (
+                      <div className="w-full p-3 bg-white/10 border border-white/50 text-white rounded flex animate-pulse items-center">
+                        <div className="h-4 w-32 bg-gray-500 rounded"></div>
+                      </div>
+                    ) : (
+                      <select
+                        name="city"
+                        value={formData.city}
+                        onChange={handleInputChange}
+                        className={`w-full p-3 bg-transparent border border-white text-white focus:outline-none focus:border-gray-400 transition-colors duration-300 appearance-none ${errors.city ? 'border-red-500' : ''}`}
+                      >
+                        <option value="" className="bg-stone-900 text-white">Select a governorate</option>
+                        {cities.filter((city: any) => city.isActive).map((city: any) => (
+                          <option key={city._id} value={city.cityName} className="bg-stone-900 text-white">
+                            {city.governorate} (L.E {city.shippingCost})
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                  {errors.city ? (
                     <p className="text-red-500 text-sm mt-1">{errors.city}</p>
-                  )}
+                  ) : shippingConfigError ? (
+                    <p className="text-red-500 text-sm mt-1">{shippingConfigError}</p>
+                  ) : null}
                 </div>
 
                 <div>
@@ -763,9 +443,9 @@ export default function CheckoutPage() {
                   )}
                   <button
                     type="button"
-                    onClick={applyPromoCode}
+                    onClick={() => applyPromoCode(formData.promoCode)}
                     disabled={!formData.promoCode.trim()}
-                    className="mt-2 px-4 py-2 bg-black white border border-white hover:bg-white hover:text-black not-allowed transition-colors duration-300 text-sm"
+                    className="mt-2 px-4 py-2 bg-black text-white border border-white hover:bg-white hover:text-black disabled:cursor-not-allowed transition-colors duration-300 text-sm"
                   >
                     Apply Code
                   </button>
@@ -796,20 +476,20 @@ export default function CheckoutPage() {
 
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="w-full p-3 bg-white text-black rounded-md hover:bg-gray-200 focus:outline-none transition-colors duration-300 font-medium"
+                  disabled={isSubmitting || isUploading}
+                  className="w-full p-3 bg-white text-black rounded-md hover:bg-gray-200 focus:outline-none transition-colors duration-300 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isSubmitting ? 'Processing...' : 'Place Order'}
+                  {isSubmitting ? 'Processing...' : isUploading ? 'Uploading Image...' : 'Place Order'}
                 </button>
               </form>
             </div>
 
             {/* Order Summary */}
-            <div className="w-full lg:w-1/3 bg-black border bowhite p-6 rounded-lg h-fit">
+            <div className="w-full lg:w-1/3 bg-black border border-white p-6 rounded-lg h-fit">
               <h2 className="text-xl font-medium mb-4 text-white">Order Summary</h2>
 
               <div className="space-y-4 mb-6">
-                {state.items.map((item: any) => (
+                {state!.items.map((item: any) => (
                   <div key={`${item.id}-${item.variant?.size}-${item.variant?.color}`} className="flex items-center gap-4">
                     <div className="w-16 h-16 relative bg-gray-800 overflow-hidden">
                       {item.image && (
@@ -829,7 +509,6 @@ export default function CheckoutPage() {
                       </p>
                     </div>
                     <div className="text-right">
-                      {/* FIXED to use variant-aware key */}
                       <p className="text-white">L.E {((refreshedPrices[`${item.id}_${item.variant?.name || 'default'}`] || item.price) * item.quantity).toFixed(0)}</p>
                     </div>
                   </div>
@@ -858,10 +537,10 @@ export default function CheckoutPage() {
                     }
                   </span>
                 </div>
-                {formData.paymentMethod === 'cashOnDelivery' && finalCodFee > 0 && (
+                {formData.paymentMethod === 'cashOnDelivery' && codFee > 0 && (
                   <div className="flex justify-between">
                     <span className="text-white">Cash on Delivery Fee</span>
-                    <span className="text-white">L.E {finalCodFee}</span>
+                    <span className="text-white">L.E {codFee}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-medium text-lg pt-2 border-t border-gray-600">

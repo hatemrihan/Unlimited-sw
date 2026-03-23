@@ -1,16 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
 import { Product } from '../../models/product';
 import { useCart } from '../../contexts/CartContext';
+import Image from "next/image";
+import Link from "next/link";
 
-const Products = () => {
-  // State for managing products from database
-  const [products, setProducts] = useState<Product[]>([]);
-  const [featuredProduct, setFeaturedProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState<boolean>(false); // Start with false for instant display
-
+const Products = ({ initialProducts = [] }: { initialProducts: Product[] }) => {
   // Cart functionality
   const { addItem, state: cartState } = useCart();
   const [showCartNotification, setShowCartNotification] = useState<boolean>(false);
@@ -20,92 +17,56 @@ const Products = () => {
   const sectionRef = React.useRef(null);
   const isInView = useInView(sectionRef, { once: true, margin: "-100px" });
 
-  // Fetch products from admin-controlled database with instant loading
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        // Fast fetch without showing loading state
-        const response = await fetch('/api/products');
-        
-        if (response.ok) {
-          const data = await response.json();
-          
-          if (data.products) {
-            setProducts(data.products);
-            
-            // Set featured product (first one or specifically marked as featured)
-            const featured = data.products.find((p: Product) => p.isFeatured) || data.products[0];
-            setFeaturedProduct(featured);
-          }
-        }
-      } catch (error) {
-        console.error('❌ Error fetching products:', error);
+  // Memoize stock calculation for O(1) lookups during render
+  const stockMap = useMemo(() => {
+    const map = new Map<string, number>();
+    initialProducts.forEach(p => {
+      if (!p._id) return;
+      if (Array.isArray(p.variants) && p.variants.length > 0) {
+        map.set(
+          p._id,
+          p.variants.reduce((sum, v: any) => sum + (Number((v as any).stock) || 0), 0)
+        );
+      } else {
+        map.set(p._id, Number((p as any).stock) || 0);
       }
-    };
+    });
+    return map;
+  }, [initialProducts]);
 
-    // Immediate fetch without loading state
-    fetchProducts();
-  }, []);
-
-  // Compute available stock: prefer variants if provided, otherwise use product.stock
-  const getAvailableStock = (p: Product): number => {
-    if (Array.isArray(p.variants) && p.variants.length > 0) {
-      return p.variants.reduce((sum: number, v: any) => sum + (Number((v as any).stock) || 0), 0);
-    }
-    return Number((p as any).stock) || 0;
-  };
-
-  // Handle shop button click
-  const handleShopClick = () => {
-    if (typeof window !== 'undefined') {
-      window.location.href = '/shop';
-    }
-  };
-
-  // Handle product card click
-  const handleProductClick = (productId: string) => {
-    if (typeof window !== 'undefined') {
-      window.location.href = `/product/${productId}`;
-    }
+  const getAvailableStock = (productId: string): number => {
+    return stockMap.get(productId) || 0;
   };
 
   // Handle add to cart with beautiful animation
-  const handleAddToCart = (product: Product) => {
+  const handleAddToCart = (e: React.MouseEvent, product: Product) => {
+    e.preventDefault(); // Prevent Link navigation
+    e.stopPropagation();
+    
     try {
-      // Calculate total available stock from variants or use product stock
-      const availableStock = getAvailableStock(product);
+      const availableStock = getAvailableStock(product._id!);
       
-      // Don't add if no stock available
-      if (availableStock <= 0) {
-        console.log('❌ Cannot add to cart - no stock available');
-        return;
-      }
+      if (availableStock <= 0) return;
 
       addItem({
         id: product._id!,
         name: product.name,
         image: product.mainImage,
         price: product.price,
-        stock: availableStock // Use calculated total stock
+        stock: availableStock 
       }, 1);
 
-      // Show beautiful cart notification
       setCartNotificationKey(prev => prev + 1);
       setShowCartNotification(true);
 
-      // Hide notification after 3 seconds
       setTimeout(() => {
         setShowCartNotification(false);
       }, 3000);
-
-      console.log('✅ Added to cart:', product.name, `(Stock: ${availableStock})`);
 
     } catch (error) {
       console.error('❌ Error adding to cart:', error);
     }
   };
-
-  // Remove loading screen - show content immediately
 
   return (
     <section className="relative bg-stone-900 text-[#b3b3b3] pt-22 pb-8 sm:pt-12 sm:pb-12 lg:pt-16 lg:pb-12 xl:pb-16" id="products">
@@ -115,94 +76,91 @@ const Products = () => {
         — OUR PRODUCTS
       </div>
 
-        {/* Products Grid - Calisthenics Equipment Style */}
-        {products.length > 0 ? (
+        {initialProducts.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
-            {products.map((product, index) => (
-              <div
-                key={product._id}
-                className="group cursor-pointer"
-                onClick={() => handleProductClick(product._id!)}
-              >
-                {/* Product Image */}
-                <div 
-                  className="mb-2 lg:mb-3 overflow-hidden bg-gray-800 max-w-[140px] sm:max-w-[160px] lg:max-w-[180px] mx-auto relative"
-                  style={{ aspectRatio: '1080 / 1350' }} // 1080px width × 1350px height
+            {initialProducts.map((product, index) => {
+              const availableStock = getAvailableStock(product._id!);
+              
+              return (
+              <article key={product._id}>
+                <Link
+                  href={`/product/${product._id}`}
+                  className="group block"
                 >
-                  <img
-                    src={product.mainImage}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  {/* Product Image */}
+                  <div 
+                    className="mb-2 lg:mb-3 overflow-hidden bg-gray-800 max-w-[140px] sm:max-w-[160px] lg:max-w-[180px] mx-auto relative"
                     style={{ aspectRatio: '1080 / 1350' }}
-                    onError={(e) => {
-                      console.error('❌ Product image load error:', product.name);
-                      e.currentTarget.style.backgroundColor = '#333';
-                    }}
-                  />
-                  
-                  {/* Badges Container - Stacked Vertically */}
-                  <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
-                    {/* Discount Badge */}
-                    {product.discount && Number(product.discount) > 0 && product.originalPrice && (
-                      <div className="bg-stone-900 text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
-                        {product.discount}% OFF
-                      </div>
-                    )}
+                  >
+                    <Image
+                      src={product.mainImage}
+                      alt={product.name}
+                      fill
+                      sizes="(max-width: 640px) 140px, (max-width: 1024px) 160px, 180px"
+                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      priority={index < 3}
+                    />
                     
-                    {/* Stock-based Badges */}
-                    {getAvailableStock(product) === 0 &&
-                      ((product as any).showPreorderBadge ? (
-                        <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
-                          PREORDER
+                    {/* Badges Container - Stacked Vertically */}
+                    <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
+                      {Number(product.discount) > 0 && !!product.originalPrice && (
+                        <div className="bg-stone-900 text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
+                          {product.discount}% OFF
                         </div>
-                      ) : (
-                        <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
-                          OUT OF STOCK
-                        </div>
-                      ))}
+                      )}
+                      
+                      {availableStock === 0 &&
+                        ((product as any).showPreorderBadge ? (
+                          <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
+                            PREORDER
+                          </div>
+                        ) : (
+                          <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
+                            OUT OF STOCK
+                          </div>
+                        ))}
+                    </div>
                   </div>
-                </div>
-                
-                {/* Product Info */}
-                <div className="text-center">
-                  <h3 className="text-white text-xs sm:text-sm lg:text-base font-medium mb-1 group-hover:text-gray-300 transition-colors duration-300 line-clamp-2">
-                    {product.name}
-                  </h3>
                   
-                  {/* Price */}
-                  <div className="mb-2">
-                    <span className="text-white font-bold text-sm lg:text-base">
-                      {product.price.toLocaleString()} L.E
-                    </span>
-                    {product.originalPrice && product.originalPrice > product.price && (
-                      <div className="text-gray-400 line-through text-xs lg:text-sm mt-1">
-                        {product.originalPrice.toLocaleString()} L.E
-                      </div>
+                  {/* Product Info */}
+                  <div className="text-center">
+                    <h3 className="text-white text-xs sm:text-sm lg:text-base font-medium mb-1 group-hover:text-gray-300 transition-colors duration-300 line-clamp-2">
+                      {product.name}
+                    </h3>
+                    
+                    {/* Price */}
+                    <div className="mb-2">
+                      <span className="text-white font-bold text-sm lg:text-base">
+                        {product.price.toLocaleString()} L.E
+                      </span>
+                      {product.originalPrice && product.originalPrice > product.price && (
+                        <div className="text-gray-400 line-through text-xs lg:text-sm mt-1">
+                          {product.originalPrice.toLocaleString()} L.E
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Add to Cart Button */}
+                    {availableStock > 0 ? (
+                      <button
+                        onClick={(e) => handleAddToCart(e, product)}
+                        className="bg-transparent border border-white text-white px-3 py-1.5 text-xs font-medium uppercase tracking-wider hover:bg-white hover:text-black transition-all duration-300 whitespace-nowrap"
+                      >
+                        ADD TO CART
+                      </button>
+                    ) : (
+                      <button
+                        disabled
+                        onClick={(e) => e.preventDefault()}
+                        className="bg-gray-700 border border-gray-600 text-gray-400 px-3 py-1.5 text-xs font-medium uppercase tracking-wider cursor-not-allowed whitespace-nowrap opacity-60"
+                      >
+                        OUT OF STOCK
+                      </button>
                     )}
                   </div>
-                  
-                  {/* Add to Cart Button */}
-                  {getAvailableStock(product) > 0 ? (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleAddToCart(product);
-                      }}
-                      className="bg-transparent border border-white text-white px-3 py-1.5 text-xs font-medium uppercase tracking-wider hover:bg-white hover:text-black transition-all duration-300 whitespace-nowrap"
-                    >
-                      ADD TO CART
-                    </button>
-                  ) : (
-                    <button
-                      disabled
-                      className="bg-gray-700 border border-gray-600 text-gray-400 px-3 py-1.5 text-xs font-medium uppercase tracking-wider cursor-not-allowed whitespace-nowrap opacity-60"
-                    >
-                      OUT OF STOCK
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
+                </Link>
+              </article>
+            )})}
           </div>
         ) : (
           /* Skeleton Loading or No Products State */

@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { XAxis, YAxis, CartesianGrid, ResponsiveContainer, AreaChart, Area, Tooltip } from 'recharts';
-import LightRays from '../../components/LightRays';
 import ProtectedAdminRoute from '@/components/auth/protected-admin-route';
 import SidebarNav from './sections/SideBarNav';
 import Orders from './sections/orders';
@@ -44,50 +43,6 @@ const AdminDashboard = () => {
     }
   };
 
-  // Function to process orders for chart data
-  const processOrdersForChart = (orders: any[]) => {
-    const last7Days: Array<{ date: string, orders: number, revenue: number }> = [];
-    const today = new Date();
-
-    // Generate last 7 days
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
-
-      last7Days.push({
-        date: dayName,
-        orders: 0,
-        revenue: 0
-      });
-    }
-
-    // Count orders and revenue for each day
-    if (orders && orders.length > 0) {
-      orders.forEach((order: any) => {
-        try {
-          const orderDate = new Date(order.orderDate || order.createdAt);
-          if (!isNaN(orderDate.getTime())) {
-            const today = new Date();
-            const daysDiff = Math.floor((today.getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24));
-
-            if (daysDiff >= 0 && daysDiff <= 6) {
-              const dayIndex = 6 - daysDiff;
-              if (last7Days[dayIndex]) {
-                last7Days[dayIndex].orders += 1;
-                last7Days[dayIndex].revenue += order.totalAmount || order.total || 0;
-              }
-            }
-          }
-        } catch (error) {
-          console.error('Error processing order for chart:', error);
-        }
-      });
-    }
-
-    return last7Days;
-  };
-
   // Function to process monthly data
   const processMonthlyData = (orders: any[]) => {
     const months = [
@@ -117,7 +72,7 @@ const AdminDashboard = () => {
   };
 
   // Function to fetch dashboard statistics
-  const fetchDashboardStats = async () => {
+  const fetchDashboardStats = useCallback(async () => {
     try {
       setLoadingStats(true);
 
@@ -173,13 +128,10 @@ const AdminDashboard = () => {
       // Get orders count and chart data
       if (ordersResponse.ok) {
         const ordersData = await ordersResponse.json();
-        console.log('Orders data received:', ordersData);
         stats.orders = ordersData.orders?.length || 0;
 
         // Process orders for chart data (last 7 days)
         const orders = ordersData.orders || [];
-        console.log('Processing orders:', orders.length);
-        const chartData = processOrdersForChart(orders);
         const monthlyData = processMonthlyData(orders);
         const recentOrdersData = orders.slice(0, 5).map((order: any) => {
           // Properly format the date
@@ -209,9 +161,10 @@ const AdminDashboard = () => {
           };
         });
 
-        console.log('Chart data:', chartData);
-        console.log('Monthly data:', monthlyData);
-        console.log('Recent orders:', recentOrdersData);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Monthly data:', monthlyData);
+          console.log('Recent orders:', recentOrdersData);
+        }
 
         setMonthlyData(monthlyData);
         setRecentOrders(recentOrdersData);
@@ -302,7 +255,7 @@ const AdminDashboard = () => {
     } finally {
       setLoadingStats(false);
     }
-  };
+  }, []);
 
   // Fetch stats when component mounts
   useEffect(() => {
@@ -314,7 +267,7 @@ const AdminDashboard = () => {
     if (activeSection === 'dashboard') {
       fetchDashboardStats();
     }
-  }, [activeSection]);
+  }, [activeSection, fetchDashboardStats]);
 
   // Render dashboard content
   const renderDashboardContent = () => (
@@ -823,26 +776,6 @@ const AdminDashboard = () => {
                   ),
                   onClick: () => setActiveSection('orders')
                 },
-                // { 
-                //   label: '🎥 Video Setup', 
-                //   href: '/admin/cloudinary-check', 
-                //   icon: (
-                //     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                //       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                //     </svg>
-                //   ), 
-                //   onClick: () => window.open('/admin/cloudinary-check', '_blank') 
-                // },
-                // { 
-                //   label: '📧 Email Setup', 
-                //   href: '/admin/email-check', 
-                //   icon: (
-                //     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                //       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                //     </svg>
-                //   ), 
-                //   onClick: () => window.open('/admin/email-check', '_blank') 
-                // },
                 {
                   label: '💳 Payment Settings',
                   href: '/admin/payment-settings',
@@ -851,7 +784,7 @@ const AdminDashboard = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                     </svg>
                   ),
-                  onClick: () => window.open('/admin/payment-settings', '_blank')
+                  onClick: () => { if (typeof window !== 'undefined') window.open('/admin/payment-settings', '_blank'); }
                 },
 
               ]}

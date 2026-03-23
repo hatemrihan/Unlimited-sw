@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   keywords: [
     "calisthenics equipment",
     "pull up bars",
-    "resistance bands", 
+    "resistance bands",
     "gymnastic rings",
     "workout equipment",
     "fitness gear",
@@ -107,14 +107,14 @@ export default function RootLayout({
         <meta name="theme-color" content="#000000" />
       </head>
       <body
-  className={cn(`antialiased bg-stone-900 text-[#b3b3b3] transition-colors duration-300 font-sans`)}
->
-  <SessionWrapper>
-    <CartProvider>
-      {children}
-    </CartProvider>
-  </SessionWrapper>
-</body>
+        className={cn(`antialiased bg-stone-900 text-[#b3b3b3] transition-colors duration-300 font-sans`)}
+      >
+        <SessionWrapper>
+          <CartProvider>
+            {children}
+          </CartProvider>
+        </SessionWrapper>
+      </body>
 
     </html>
   );

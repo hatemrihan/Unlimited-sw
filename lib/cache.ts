@@ -7,8 +7,7 @@ interface CacheEntry<T> {
 
 // Global cache storage to persist across hot reloads in development
 declare global {
-  var _cacheStorage: Map<string, CacheEntry<any>> | undefined;
-  var _productCacheStorage: Map<string, CacheEntry<any>> | undefined;
+  var _cacheStorages: Map<string, Map<string, CacheEntry<any>>> | undefined;
 }
 
 class PerformanceCache {
@@ -20,12 +19,11 @@ class PerformanceCache {
     this.cacheId = cacheId;
     // Use global cache in development to persist across hot reloads
     if (process.env.NODE_ENV === 'development') {
-      if (cacheId === 'product' && !global._productCacheStorage) {
-        global._productCacheStorage = new Map();
-      } else if (cacheId === 'api' && !global._cacheStorage) {
-        global._cacheStorage = new Map();
+      if (!global._cacheStorages) global._cacheStorages = new Map();
+      if (!global._cacheStorages.has(cacheId)) {
+        global._cacheStorages.set(cacheId, new Map());
       }
-      this.cache = cacheId === 'product' ? (global._productCacheStorage || new Map()) : (global._cacheStorage || new Map());
+      this.cache = global._cacheStorages.get(cacheId)!;
     } else {
       this.cache = new Map();
     }
@@ -56,6 +54,25 @@ class PerformanceCache {
     }
     
     return entry.data as T;
+  }
+
+  /**
+   * Returns stale (expired) data if it exists, WITHOUT deleting it.
+   * Used for stale-while-revalidate: caller serves stale data immediately
+   * and triggers a background refresh.
+   * Returns null only if the key never existed.
+   */
+  getStale<T>(key: string): T | null {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+    return entry.data as T;
+  }
+
+  /** Returns true if the key exists AND is expired (stale but present). */
+  isStale(key: string): boolean {
+    const entry = this.cache.get(key);
+    if (!entry) return false;
+    return Date.now() - entry.timestamp > entry.ttl;
   }
 
   has(key: string): boolean {
@@ -117,8 +134,7 @@ class PerformanceCache {
     return {
       total: this.cache.size,
       valid: validEntries,
-      expired: expiredEntries,
-      memoryUsage: `${Math.round(JSON.stringify([...this.cache.entries()]).length / 1024)}KB`
+      expired: expiredEntries
     };
   }
 }
@@ -139,7 +155,9 @@ export const invalidateProductCache = (productId?: string) => {
   apiCache.delete('products:featured');
   apiCache.delete('products:admin');
   
-  console.log('🗑️ Product cache invalidated');
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🗑️ Product cache invalidated');
+  }
 };
 
 export const invalidateAllCaches = () => {

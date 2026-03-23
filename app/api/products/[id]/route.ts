@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../../lib/mongodb';
 import Product from '../../../../models/product';
 import { productCache } from '../../../../lib/cache';
-import { promises as fs } from 'fs';
-import path from 'path';
 
 // GET - Fetch single product by ID
 export async function GET(
@@ -34,7 +32,7 @@ export async function GET(
       
       // 🚀 OPTIMIZED QUERY: Select ALL fields for complete product details + lean for 3x speed
       const product = await Product.findById(productId)
-        .select('name description price originalPrice discount mainImage images video stock variants cityPricing isActive isFeatured category tags specifications shippingInfo faqs detailedDescription promoCode showOutOfStockBadge showPreorderBadge order')
+        .select('name description price originalPrice discount mainImage images videos stock variants cityPricing isActive isFeatured category tags specifications shippingInfo faqs detailedDescription promoCode showOutOfStockBadge showPreorderBadge order')
         .lean() // 3x faster - returns plain objects
         .exec();
       
@@ -57,45 +55,11 @@ export async function GET(
       });
       
     } catch (mongoError) {
-      console.error('❌ MongoDB error, using file fallback for product detail:', mongoError);
-      
-      // Fallback to file storage
-      
-      try {
-        const dataFilePath = path.join(process.cwd(), 'data', 'products.json');
-        
-        // Read products from file
-        let products = [];
-        try {
-          const data = await fs.readFile(dataFilePath, 'utf8');
-          products = JSON.parse(data);
-        } catch (e) {
-          products = [];
-        }
-        
-        // Find product by ID
-        const product = products.find((p: unknown) =>
-          p && typeof p === 'object' && '_id' in p && p._id === params.id
-        );
-        
-        if (!product) {
-          return NextResponse.json(
-            { success: false, error: 'Product not found' },
-            { status: 404 }
-          );
-        }
-        
-        console.log('✅ Found product in file:', product.name);
-        
-        return NextResponse.json({
-          success: true,
-          product: product
-        });
-        
-      } catch (fileError) {
-        console.error('❌ File fallback also failed for product detail:', fileError);
-        throw fileError;
-      }
+      console.error('❌ MongoDB error fetching product detail:', mongoError instanceof Error ? mongoError.message : String(mongoError));
+      return NextResponse.json(
+        { success: false, error: 'Failed to fetch product details' },
+        { status: 500 }
+      );
     }
     
   } catch (error) {

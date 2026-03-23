@@ -2,13 +2,58 @@ import Nav from "./sections/Nav";
 import Products from "./sections/Products";
 import MovingWords from "./sections/MovingWords";
 import Hero from "./sections/Hero";
-import FeedbackForm from "./sections/FeedbackForm";
+import FeedbackFormLazy from "./sections/FeedbackFormLazy";
 import Footer from "./sections/Footer";
 import WhatsAppButton from "../components/WhatsAppButton";
 import MovingWordsTwo from "./sections/MovingWordsTwo";
 import Explore from "./sections/Explore";
 
-export default function Home() {
+export const metadata = {
+  title: "Unlimited SW | Premium Calisthenics Equipment Egypt",
+  description:
+    "Shop professional calisthenics equipment in Egypt. Pull-up bars, resistance bands, gymnastic rings, and workout gear.",
+  keywords: [
+    "calisthenics equipment Egypt",
+    "pull-up bars Egypt",
+    "resistance bands Egypt",
+    "gymnastic rings Egypt"
+  ],
+  openGraph: {
+    title: "Unlimited SW | Calisthenics Equipment Egypt",
+    description: "Premium calisthenics equipment and training gear in Egypt.",
+    url: "https://unlimited-sw.com",
+    siteName: "Unlimited SW",
+    images: [
+      {
+        url: "https://unlimited-sw.com/og-image.jpg",
+        width: 1200,
+        height: 630,
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Unlimited SW",
+    description: "Premium calisthenics equipment in Egypt.",
+    images: ["https://unlimited-sw.com/og-image.jpg"],
+  },
+  alternates: {
+    canonical: "https://unlimited-sw.com",
+  },
+};
+
+export default async function Home() {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || "https://unlimited-sw.com";
+  
+  // Fetch products server-side — zero waterfall, instant render
+  const res = await fetch(`${baseUrl}/api/products`, {
+    next: { revalidate: 1800 } // matches your 30min cache
+  });
+  const data = await res.json();
+  const initialProducts = data.products ?? [];
+
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "Store",
@@ -92,12 +137,12 @@ export default function Home() {
       <Hero />
       <MovingWordsTwo />
       {/* <CounterDown /> */}
-      <Products />
+      <Products initialProducts={initialProducts} />
       {/* <FeaturedProducts /> */}
       <Explore />
       <MovingWords />
       {/* <Intro /> */}
-      <FeedbackForm />
+      <FeedbackFormLazy />
       <Footer />
       <WhatsAppButton />
     </>

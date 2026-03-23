@@ -1,10 +1,16 @@
 // Cache warming utility to pre-load data on server start
-import { apiCache, productCache } from './cache';
+import { apiCache } from './cache';
+import { CACHE_TTL } from './cache-ttl';
+import { cacheKeys } from './cache-keys';
 import dbConnect from './mongodb';
 import Product from '../models/product';
 
+const PRODUCT_FIELDS = 'name price originalPrice discount mainImage images videos description promoCode variants stock isActive isFeatured order showOutOfStockBadge showPreorderBadge category tags specifications shippingInfo faqs detailedDescription cityPricing';
+
 export async function warmCache() {
-  console.log('🔥 Starting cache warming...');
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔥 Starting cache warming...');
+  }
   const startTime = Date.now();
   
   try {
@@ -13,14 +19,14 @@ export async function warmCache() {
     
     // Pre-load all active products
     const allProductsPromise = Product.find({ isActive: true })
-      .select('name price originalPrice discount mainImage images videos description promoCode variants stock isActive isFeatured order showOutOfStockBadge showPreorderBadge category tags specifications shippingInfo faqs detailedDescription cityPricing')
+      .select(PRODUCT_FIELDS)
       .sort({ order: 1 })
       .lean()
       .exec();
     
     // Pre-load featured products
     const featuredProductsPromise = Product.find({ isFeatured: true, isActive: true })
-      .select('name price originalPrice discount mainImage images videos description promoCode variants stock isActive isFeatured order showOutOfStockBadge showPreorderBadge category tags specifications shippingInfo faqs detailedDescription cityPricing')
+      .select(PRODUCT_FIELDS)
       .sort({ order: 1 })
       .lean()
       .exec();
@@ -31,14 +37,14 @@ export async function warmCache() {
       featuredProductsPromise
     ]);
     
-    // Cache the results with 30-minute TTL
-    apiCache.set('products:all', allProducts, 1800000);
-    apiCache.set('products:featured', featuredProducts, 1800000);
+    // Cache the results with 5-minute TTL
+    apiCache.set(cacheKeys.products.all(), allProducts, CACHE_TTL.PRODUCTS);
+    apiCache.set(cacheKeys.products.featured(), featuredProducts, CACHE_TTL.PRODUCTS);
     
     const warmTime = Date.now() - startTime;
-    console.log(`✅ Cache warmed successfully in ${warmTime}ms`);
-    console.log(`   - Cached ${allProducts.length} active products`);
-    console.log(`   - Cached ${featuredProducts.length} featured products`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`✅ Cache warmed in ${warmTime}ms — ${allProducts.length} products, ${featuredProducts.length} featured`);
+    }
     
     return true;
   } catch (error) {
@@ -49,13 +55,7 @@ export async function warmCache() {
 
 // Auto-warm cache in production
 if (process.env.NODE_ENV === 'production') {
-  // Warm cache on server start
   warmCache().catch(console.error);
-  
-  // Re-warm cache every 25 minutes to keep it fresh
-  setInterval(() => {
-    warmCache().catch(console.error);
-  }, 25 * 60 * 1000);
 }
 
 
