@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { withDb } from '../../../../../lib/withDb';
 import {
   getProductById,
@@ -30,6 +31,11 @@ export const PATCH = withDb(async (req: NextRequest, ctx?: any) => {
   }
 
   const product = await toggleProductFeatured(id, isFeatured);
+
+  // Bust Next.js Data Cache so the frontend reflects changes immediately
+  revalidatePath('/');
+  revalidatePath(`/product/${id}`);
+
   return NextResponse.json({
     success: true,
     product,
@@ -51,6 +57,11 @@ export const PUT = withDb(async (req: NextRequest, ctx?: any) => {
   }
 
   const product = await updateProduct(id, parsed.data);
+
+  // Bust Next.js Data Cache so the frontend reflects changes immediately
+  revalidatePath('/');
+  revalidatePath(`/product/${id}`);
+
   return NextResponse.json({ success: true, product, message: 'Product updated successfully' });
 });
 
@@ -58,5 +69,10 @@ export const PUT = withDb(async (req: NextRequest, ctx?: any) => {
 export const DELETE = withDb(async (_req: NextRequest, ctx?: any) => {
   const { id } = await (ctx as Ctx).params;
   await deleteProduct(id);
+
+  // Bust Next.js Data Cache so the frontend reflects changes immediately
+  revalidatePath('/');
+  revalidatePath(`/product/${id}`);
+
   return NextResponse.json({ success: true, message: 'Product deleted successfully' });
 });

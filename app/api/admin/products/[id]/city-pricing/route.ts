@@ -1,19 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import dbConnect from '../../../../../../lib/mongodb';
+import { z } from 'zod';
+import { withDb } from '../../../../../../lib/withDb';
 import Product from '../../../../../../models/product';
 import CityPricing from '../../../../../../models/cityPricing';
 import { invalidateProductCache, productCache } from '../../../../../../lib/cache';
 
+// Schema for the bulk governorate pricing update sent by the admin client
+const bulkCityPricingSchema = z.array(z.object({
+  governorate:  z.string().min(1),
+  price:        z.number().nonnegative(),
+  shippingCost: z.number().nonnegative().optional().default(0),
+  codFee:       z.number().nonnegative().optional().default(0),
+  isActive:     z.boolean().default(true),
+}));
+
 // GET - Get city pricing for a specific product
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    console.log('💰 Fetching product city pricing...');
-    
-    const { id: productId } = await params;
-    
-    await dbConnect();
-    
-    // Get product with city pricing
+export const GET = withDb(async (request: NextRequest, ctx?: any) => {
+  if (process.env.NODE_ENV === 'development') console.log('💰 Fetching product city pricing...');
+  
+  const { id: productId } = await ctx.params;
+  
+  // Get product with city pricing
     const product = await Product.findById(productId).select('name price cityPricing');
     if (!product) {
       return NextResponse.json(
@@ -42,41 +49,33 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         };
       }
     }
-    const cityPricingData = Object.values(govMap);
-    
-    return NextResponse.json({
-      success: true,
-      productName: product.name,
-      basePrice: product.price,
-      cityPricing: cityPricingData
-    });
-    
-  } catch (error) {
-    console.error('❌ Error fetching product city pricing:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch city pricing' },
-      { status: 500 }
-    );
-  }
-}
+  const cityPricingData = Object.values(govMap);
+  
+  return NextResponse.json({
+    success: true,
+    productName: product.name,
+    basePrice: product.price,
+    cityPricing: cityPricingData
+  });
+});
 
 // PUT - Update city pricing for a specific product
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    console.log('💰 Updating product city pricing...');
-    
-    const { id: productId } = await params;
-    const body = await request.json();
-    const { cityPricing } = body;
-    
-    if (!cityPricing || !Array.isArray(cityPricing)) {
-      return NextResponse.json(
-        { success: false, error: 'City pricing data is required' },
-        { status: 400 }
-      );
-    }
-    
-    await dbConnect();
+export const PUT = withDb(async (request: NextRequest, ctx?: any) => {
+  if (process.env.NODE_ENV === 'development') console.log('💰 Updating product city pricing...');
+  
+  const { id: productId } = await ctx.params;
+  const body = await request.json();
+  
+  // Validate request body
+  const parsed = bulkCityPricingSchema.safeParse(body.cityPricing);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { success: false, error: 'Validation failed', details: parsed.error.flatten() },
+      { status: 400 }
+    );
+  }
+  
+  const cityPricing = parsed.data;
     
     // Validate product exists
     const product = await Product.findById(productId);
@@ -106,7 +105,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       const isActive = gp.isActive !== false;
 
       // Store product-specific pricing including shipping costs and COD fees
-      console.log(`📦 Setting product-specific pricing for ${govName}: price=${price}, shipping=${shippingCost}, cod=${codFee}, active=${isActive}`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`📦 Setting product-specific pricing for ${govName}: price=${price}, shipping=${shippingCost}, cod=${codFee}, active=${isActive}`);
+      }
 
       // Filter from pre-fetched cities (O(n) in memory is way faster than DB query)
       const govCities = allGovCities.filter(c => c.governorate === govName);
@@ -129,23 +130,15 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       { new: true, runValidators: true }
     );
     
-    console.log('✅ Product city pricing updated:', updatedProduct.name);
-    
-    // 🚀 CRITICAL: Invalidate ALL caches immediately for real-time updates
-    invalidateProductCache(productId.toString());
-    console.log('🗑️ All product caches invalidated after city pricing update');
-    
-    return NextResponse.json({
-      success: true,
-      message: 'City pricing updated successfully',
-      cityPricing: updatedProduct.cityPricing
-    });
-    
-  } catch (error) {
-    console.error('❌ Error updating product city pricing:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to update city pricing' },
-      { status: 500 }
-    );
-  }
-}
+  if (process.env.NODE_ENV === 'development') console.log('✅ Product city pricing updated:', updatedProduct.name);
+  
+  // 🚀 CRITICAL: Invalidate ALL caches immediately for real-time updates
+  invalidateProductCache(productId.toString());
+  if (process.env.NODE_ENV === 'development') console.log('🗑️ All product caches invalidated after city pricing update');
+  
+  return NextResponse.json({
+    success: true,
+    message: 'City pricing updated successfully',
+    cityPricing: updatedProduct.cityPricing
+  });
+});

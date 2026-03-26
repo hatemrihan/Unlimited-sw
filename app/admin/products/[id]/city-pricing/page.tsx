@@ -26,10 +26,23 @@ const ProductCityPricingPage = () => {
   const [saving, setSaving] = useState(false);
   const [data, setData] = useState<ProductCityPricingData | null>(null);
   const [cityPricing, setCityPricing] = useState<CityPricing[]>([]);
+  
+  // Inline feedback states replacing native alerts
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  // Auto-clear success message
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
 
   // Fetch product city pricing data
   const fetchData = async () => {
     try {
+      setError(null);
       const response = await fetch(`/api/admin/products/${productId}/city-pricing`);
       const result = await response.json();
       
@@ -37,11 +50,11 @@ const ProductCityPricingPage = () => {
         setData(result);
         setCityPricing(result.cityPricing);
       } else {
-        alert('Error: ' + result.error);
+        setError('Error: ' + result.error);
       }
-    } catch (error) {
-      console.error('Error fetching city pricing:', error);
-      alert('Failed to fetch city pricing data');
+    } catch (err) {
+      console.error('Error fetching city pricing:', err);
+      setError('Failed to fetch city pricing data');
     } finally {
       setLoading(false);
     }
@@ -53,11 +66,11 @@ const ProductCityPricingPage = () => {
     }
   }, [productId]);
 
-  // Governorate-level editing is handled inline via input handlers below.
-
   // Save changes
   const handleSave = async () => {
     setSaving(true);
+    setError(null);
+    setSuccess(null);
     
     try {
       const response = await fetch(`/api/admin/products/${productId}/city-pricing`, {
@@ -71,15 +84,14 @@ const ProductCityPricingPage = () => {
       const result = await response.json();
       
       if (result.success) {
-        alert('City pricing updated successfully!');
-        // Refresh the data to show updated values
+        setSuccess('City pricing updated successfully!');
         await fetchData();
       } else {
-        alert('Error: ' + result.error);
+        setError('Error: ' + result.error);
       }
-    } catch (error) {
-      console.error('Error saving city pricing:', error);
-      alert('Failed to save city pricing');
+    } catch (err) {
+      console.error('Error saving city pricing:', err);
+      setError('Failed to save city pricing');
     } finally {
       setSaving(false);
     }
@@ -88,13 +100,11 @@ const ProductCityPricingPage = () => {
   // Apply base price to all cities
   const applyBasePriceToAll = () => {
     if (!data) return;
-    
-    if (confirm(`Apply base price (${data.basePrice} LE) to all cities?`)) {
-      setCityPricing(prev => prev.map(city => ({
-        ...city,
-        price: data.basePrice
-      })));
-    }
+    // Removed native confirm() — changes are safe because they must be explicitly saved
+    setCityPricing(prev => prev.map(city => ({
+      ...city,
+      price: data.basePrice
+    })));
   };
 
   const govs = [...cityPricing].sort((a, b) => a.governorate.localeCompare(b.governorate));
@@ -126,6 +136,20 @@ const ProductCityPricingPage = () => {
   return (
     <div className="min-h-screen bg-black text-white p-4">
       <div className="max-w-7xl mx-auto">
+        {/* Inline Feedback Alerts */}
+        {error && (
+          <div className="bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded mb-6 flex justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError(null)} className="text-red-200 hover:text-white">✕</button>
+          </div>
+        )}
+        {success && (
+          <div className="bg-green-900/50 border border-green-500 text-green-200 px-4 py-3 rounded mb-6 flex justify-between">
+            <span>{success}</span>
+            <button onClick={() => setSuccess(null)} className="text-green-200 hover:text-white">✕</button>
+          </div>
+        )}
+
         {/* Header */}
         <div className="mb-8">
           <button
@@ -163,9 +187,9 @@ const ProductCityPricingPage = () => {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="bg-white text-black px-6 py-3 font-medium hover:bg-gray-200 transition-colors disabled:opacity-50"
+                className="bg-white text-black px-6 py-3 font-medium hover:bg-gray-200 transition-colors disabled:opacity-50 min-w-[160px]"
               >
-                {saving ? 'Saving...' : 'Save Changes'}
+                {saving ? 'Saving...' : success ? 'Saved!' : 'Save Changes'}
               </button>
             </div>
           </div>
@@ -237,7 +261,9 @@ const ProductCityPricingPage = () => {
           <div className="bg-black border border-white/10 p-4 rounded-lg">
             <h3 className="text-lg font-medium mb-2">Price Range</h3>
             <p className="text-2xl font-bold text-purple-400">
-              {Math.min(...cityPricing.map(g => g.price))} - {Math.max(...cityPricing.map(g => g.price))} LE
+              {cityPricing.length > 0 
+                ? `${Math.min(...cityPricing.map(g => g.price))} - ${Math.max(...cityPricing.map(g => g.price))}` 
+                : '0'} LE
             </p>
           </div>
         </div>
