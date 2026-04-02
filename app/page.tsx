@@ -50,7 +50,7 @@ export default async function Home() {
 
   // Fetch products server-side — zero waterfall, instant render (first page only)
   let initialProducts = [];
-  let initialHasMore = false;
+  const initialHasMore = false;
   
   // Instant Fallback Mode replacing the actual fetch call
   initialProducts = getStaticActiveProducts(false) as any;

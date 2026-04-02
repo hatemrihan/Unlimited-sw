@@ -3,8 +3,8 @@ import dbConnect from './mongodb';
 import { toStatusCode } from './errors';
 
 type RouteContext = { params: Record<string, string> | Promise<Record<string, string>> };
-type RouteHandler<C extends RouteContext | undefined = undefined> =
-  (req: NextRequest, ctx: C) => Promise<NextResponse>;
+type RouteHandler =
+  (req: NextRequest, ctx?: any) => Promise<NextResponse>;
 
 /**
  * withDb — middleware wrapper that ensures the MongoDB connection is ready
@@ -14,10 +14,10 @@ type RouteHandler<C extends RouteContext | undefined = undefined> =
  * Usage:
  *   export const GET = withDb(async (req) => { ... });
  */
-export function withDb<C extends RouteContext | undefined = undefined>(
-  handler: RouteHandler<C>
-): RouteHandler<C> {
-  return async (req: NextRequest, ctx: C): Promise<NextResponse> => {
+export function withDb(
+  handler: RouteHandler
+): RouteHandler {
+  return async (req: NextRequest, ctx?: any): Promise<NextResponse> => {
     try {
       await dbConnect();
     } catch (err) {
