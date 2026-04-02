@@ -20,10 +20,9 @@ const Typewriter = ({
   const [isTyping, setIsTyping] = useState(false)
 
   useEffect(() => {
-    let timeout: NodeJS.Timeout
     let interval: NodeJS.Timeout
 
-    timeout = setTimeout(() => {
+    const timeout = setTimeout(() => {
       setIsTyping(true)
       let i = 0
       interval = setInterval(() => {

@@ -14,10 +14,9 @@ const HeaderTypewriter = ({ text, delay = 0, speed = 40, className = '' }: { tex
   const [displayedText, setDisplayedText] = useState('');
 
   useEffect(() => {
-    let timeout: NodeJS.Timeout;
     let interval: NodeJS.Timeout;
 
-    timeout = setTimeout(() => {
+    const timeout = setTimeout(() => {
       let i = 0;
       interval = setInterval(() => {
         setDisplayedText(text.slice(0, i + 1));
