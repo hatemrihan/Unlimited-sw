@@ -108,7 +108,7 @@ const Products = ({
   };
 
   return (
-    <section className="relative bg-stone-900 text-[#b3b3b3] pt-22 pb-8 sm:pt-12 sm:pb-12 lg:pt-16 lg:pb-12 xl:pb-16" id="products">
+    <section className="relative bg-stone-900 text-[#b3b3b3] pt-24 pb-8 sm:pt-28 sm:pb-12 lg:pt-36 lg:pb-12 xl:pt-48 xl:pb-16" id="products">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
       <div className="text-lg sm:text-xl font-bold tracking-[0.2em] uppercase mb-12 lg:mb-16 text-center text-[#b3b3b3]">
@@ -122,14 +122,14 @@ const Products = ({
                 const availableStock = getAvailableStock(product._id!);
                 
                 return (
-                <article key={product._id}>
+                <article key={product._id} className="h-full">
                   <Link
                     href={`/product/${nameToSlug(product.name)}`}
-                    className="group block"
+                    className="group flex flex-col h-full"
                   >
                     {/* Product Image */}
                     <div 
-                      className="mb-2 lg:mb-3 overflow-hidden bg-gray-800 max-w-[140px] sm:max-w-[160px] lg:max-w-[180px] mx-auto relative"
+                      className="mb-2 lg:mb-3 overflow-hidden bg-gray-800 max-w-[140px] sm:max-w-[160px] lg:max-w-[180px] mx-auto relative w-full"
                       style={{ aspectRatio: '1080 / 1350' }}
                     >
                       <Image
@@ -171,7 +171,7 @@ const Products = ({
                     </div>
                     
                     {/* Product Info */}
-                    <div className="text-center">
+                    <div className="text-center flex flex-col flex-grow">
                       <h3 className="text-white text-xs sm:text-sm lg:text-base font-medium mb-1 group-hover:text-gray-300 transition-colors duration-300 line-clamp-2">
                         {product.name}
                       </h3>
@@ -188,23 +188,21 @@ const Products = ({
                         )}
                       </div>
                       
-                      {/* Add to Cart Button */}
-                      {availableStock > 0 ? (
-                        <button
-                          onClick={(e) => handleAddToCart(e, product)}
-                          className="bg-transparent border border-white text-white px-3 py-1.5 text-xs font-medium uppercase tracking-wider hover:bg-white hover:text-black transition-all duration-300 whitespace-nowrap"
-                        >
-                          ADD TO CART
-                        </button>
-                      ) : (
-                        <button
-                          disabled
-                          onClick={(e) => e.preventDefault()}
-                          className="bg-gray-700 border border-gray-600 text-gray-400 px-3 py-1.5 text-xs font-medium uppercase tracking-wider cursor-not-allowed whitespace-nowrap opacity-60"
-                        >
-                          OUT OF STOCK
-                        </button>
-                      )}
+                      {/* Add to Cart Button aligned to bottom */}
+                      <div className="mt-auto pt-4 pb-2">
+                        {availableStock > 0 ? (
+                          <button
+                            onClick={(e) => handleAddToCart(e, product)}
+                            className="inline-block pb-1 border-b border-[#b3b3b3] text-[#b3b3b3] hover:text-white hover:border-white uppercase tracking-[0.15em] text-[10px] sm:text-xs font-bold transition-colors duration-300"
+                          >
+                            ADD TO CART
+                          </button>
+                        ) : (
+                          <span className="inline-block pb-1 border-b border-stone-600 text-stone-600 uppercase tracking-[0.15em] text-[10px] sm:text-xs font-bold cursor-not-allowed">
+                            OUT OF STOCK
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </Link>
                 </article>

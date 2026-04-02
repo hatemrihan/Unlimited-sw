@@ -70,7 +70,7 @@ const ProductCard = ({ product, onAddToCart, index }: ProductCardProps) => {
   const isOutOfStock = getAvailableStock(product) === 0;
 
   return (
-    <article className="group block relative">
+    <article className="group relative flex flex-col h-full">
       <Link href={`/product/${nameToSlug(product.name)}`} className="block">
         <div className="relative aspect-[3/4] w-full overflow-hidden bg-gray-800 mb-3 max-w-[180px] mx-auto">
           {product.mainImage ? (
@@ -117,7 +117,7 @@ const ProductCard = ({ product, onAddToCart, index }: ProductCardProps) => {
         </div>
       </Link>
 
-      <div className="text-center mt-2">
+      <div className="text-center flex flex-col flex-grow mt-2">
         <Link href={`/product/${nameToSlug(product.name)}`}>
           <h3 className="text-sm font-light text-[#b3b3b3] mb-1 hover:underline line-clamp-2">
             {product.name}
@@ -133,24 +133,23 @@ const ProductCard = ({ product, onAddToCart, index }: ProductCardProps) => {
           )}
         </div>
 
-        {isOutOfStock ? (
-          <button
-            disabled
-            className="bg-gray-700 border border-gray-600 text-gray-400 px-4 py-2 text-xs font-medium uppercase tracking-wider cursor-not-allowed opacity-60"
-          >
-            OUT OF STOCK
-          </button>
-        ) : (
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              onAddToCart(product);
-            }}
-            className="bg-transparent border border-white text-white px-4 py-2 text-xs font-medium uppercase tracking-wider hover:bg-white hover:text-black transition-colors duration-300"
-          >
-            ADD TO CART
-          </button>
-        )}
+        <div className="mt-auto pt-4 pb-2">
+          {isOutOfStock ? (
+            <span className="inline-block pb-1 border-b border-stone-600 text-stone-600 uppercase tracking-[0.15em] text-[10px] sm:text-xs font-bold cursor-not-allowed">
+              OUT OF STOCK
+            </span>
+          ) : (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                onAddToCart(product);
+              }}
+              className="inline-block pb-1 border-b border-[#b3b3b3] text-[#b3b3b3] hover:text-white hover:border-white uppercase tracking-[0.15em] text-[10px] sm:text-xs font-bold transition-colors duration-300"
+            >
+              ADD TO CART
+            </button>
+          )}
+        </div>
       </div>
     </article>
   );

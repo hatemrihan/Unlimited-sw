@@ -1,108 +1,172 @@
 "use client";
-import { FC, useEffect, useState } from "react";
-import Button from '@/components/Button';
-import { motion, useInView } from "motion/react";
-import useTextRevealAnimation from "@/hooks/UsetextRevealAnimation";
-import React from "react";
+import React, { FC, useEffect, useState } from "react";
+import Image from "next/image";
+import Link from 'next/link';
+
+import oneImage from '../../public/images/one-image.jpg'
+import twoImage from '../../public/images/two-image.jpg'
+import threeImage from '../../public/images/three-image.jpg'
+import fourImage from '../../public/images/four-image.jpg'
+import aboutImage from '../../public/images/about-image.jpg'
 
 
-
-const Alkady: FC = () => {
-  const { scope, entranceAnimation } = useTextRevealAnimation();
-  const heroRef = React.useRef(null);
-  const isInView = useInView(heroRef, { once: true, margin: "-100px" });
+const HeaderTypewriter = ({ text, delay = 0, speed = 40, className = '' }: { text: string, delay?: number, speed?: number, className?: string }) => {
+  const [displayedText, setDisplayedText] = useState('');
 
   useEffect(() => {
-    entranceAnimation();
-  }, [entranceAnimation]);
+    let timeout: NodeJS.Timeout;
+    let interval: NodeJS.Timeout;
+
+    timeout = setTimeout(() => {
+      let i = 0;
+      interval = setInterval(() => {
+        setDisplayedText(text.slice(0, i + 1));
+        i++;
+        if (i >= text.length) {
+          clearInterval(interval);
+        }
+      }, speed);
+    }, delay);
+
+    return () => {
+      clearTimeout(timeout);
+      clearInterval(interval);
+    };
+  }, [text, delay, speed]);
+
+  return <span className={className}>{displayedText}</span>;
+};
+
+const Hero: FC = () => {
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      // Normalize mouse coordinates to range [-1, 1] for central origin
+      const x = (e.clientX / window.innerWidth - 0.5) * 2;
+      const y = (e.clientY / window.innerHeight - 0.5) * 2;
+      setMousePos({ x, y });
+    };
+
+    // For touch devices (optional infinite drag feeling)
+    const handleTouchMove = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      const x = (touch.clientX / window.innerWidth - 0.5) * 2;
+      const y = (touch.clientY / window.innerHeight - 0.5) * 2;
+      setMousePos({ x, y });
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('touchmove', handleTouchMove);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, []);
 
   const handleClickMobileNavItem = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
-    setIsOpen(false);
     const url = new URL(e.currentTarget.href);
     const hash = url.hash;
     const target = document.querySelector(hash);
     if (!target) return;
     target.scrollIntoView({ behavior: 'smooth' });
   }
-  const [isOpen, setIsOpen] = useState(false);
 
+  // Strictly placed on the corners/edges to NEVER obscure the center.
+  // The 'speed' affects the parallax amount, simulating 3D depth in all vectors Z, X, Y
+  const floatingElements = [
+    // Top Left Zone
+    { src: oneImage, top: '5%', left: '5%', width: '12vw', speed: 1.5, zIndex: 10, type: 'image' },
+    { src: '/images/one.MP4', type: 'video', top: '30%', left: '15%', width: '10vw', speed: 3.2, zIndex: 5 },
+    // Bottom Left Zone
+    { src: twoImage, top: '60%', left: '8%', width: '14vw', speed: 2.1, zIndex: 15, type: 'image' },
+    // Top Right Zone
+    { src: threeImage, top: '8%', left: '75%', width: '13vw', speed: 2.8, zIndex: 12, type: 'image' },
+    { src: '/images/two.mov', type: 'video', top: '78%', left: '40%', width: '12vw', speed: 1.4, zIndex: 8 },
+    { src: fourImage, top: '32%', left: '85%', width: '9vw', speed: 0.9, zIndex: 6, type: 'image' },
+    // Bottom Right Zone
+    { src: aboutImage, top: '65%', left: '72%', width: '16vw', speed: 1.7, zIndex: 20, type: 'image' },
+  ];
 
+  return (
+    <section className="relative w-full h-[100svh] bg-stone-900 overflow-hidden flex items-center justify-center font-sans tracking-tight" style={{ perspective: '1200px' }}>
 
-  return <section className="bg-stone-900" ref={heroRef}>
-    <div className="grid md:grid-cols-12 md:h-screen  -mt-8 top-0">
-      <div className="md:col-span-7 flex flex-col justify-center">
-        <div className="container !max-w-full">
-          <motion.h1
-            initial={{ opacity: 0, y: 50 }}
-            animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
-            transition={{ duration: 0.3, delay: 0.1 }}
-            className="text-2xl md:text-3xl lg:text-4xl mt-34 md:mt-0 text-center uppercase text-[#b3b3b3]  tracking-wide leading-relaxed px-4"
-            ref={scope as React.RefObject<HTMLHeadingElement>} >
-            WHERE IS ALL IN ONE PLACE
-            STRENGTH EQUIPMENT
-            AND CALISTHENICS.
-          </motion.h1>
-        </div>
+      {/* 3D Scattered Parallax Image Layer */}
+      <div className="absolute inset-0 pointer-events-none" style={{ transformStyle: 'preserve-3d' }}>
+        {floatingElements.map((elem, i) => {
+          // Calculate movement in X and Y, plus a scaling depth trick to feel 3D
+          const moveX = mousePos.x * elem.speed * -35;
+          const moveY = mousePos.y * elem.speed * -35;
+          const rotateX = mousePos.y * elem.speed * 5;
+          const rotateY = mousePos.x * elem.speed * -5;
 
+          return (
+            <div
+              key={i}
+              className="absolute overflow-hidden rounded-sm shadow-[0_10px_30px_rgba(0,0,0,0.5)] transition-transform duration-700 ease-out"
+              style={{
+                top: elem.top,
+                left: elem.left,
+                width: elem.width,
+                minWidth: '80px',
+                aspectRatio: '3/4',
+                zIndex: elem.zIndex,
+                transform: `translate3d(${moveX}px, ${moveY}px, ${elem.speed * 40}px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`,
+              }}
+            >
+              {elem.type === 'video' ? (
+                <video src={elem.src as string} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+              ) : (
+                <Image src={elem.src as any} fill sizes="(max-width: 768px) 30vw, 15vw" alt="" className="object-cover" />
+              )}
+            </div>
+          );
+        })}
+      </div>
 
-        <div className="flex flex-col md:flex-row md:items-center mt-20  items-center gap-6 justify-center sm:items-center">
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
-            transition={{ duration: 0.2, delay: 0.2 }}
-          >
-            <a href="#products" onClick={handleClickMobileNavItem}>
-              <button className="inline-flex items-center px-6 py-3 bg-stone-900 border border-[#b3b3b3] text-[#b3b3b3] font-semibold hover:bg-white hover:text-black transition-all duration-300 group">
-                <span className="text-[#b3b3b3] group-hover:text-black transition-colors duration-300">View Products</span>
-                <div className="overflow-hidden w-5 h-5 ml-2">
-                  <div className="h-5 w-10 flex group-hover:-translate-x-1/2 transition-transform duration-500">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 flex-shrink-0">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 5.25 7.5 7.5 7.5-7.5m-15 6 7.5 7.5 7.5-7.5" />
-                    </svg>
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 flex-shrink-0">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 5.25 7.5 7.5 7.5-7.5m-15 6 7.5 7.5 7.5-7.5" />
-                    </svg>
-                  </div>
+      {/* Radial gradient removed as requested to show images normally */}
+
+      {/* Foreground Content (Safe Zone) */}
+      <div className="relative z-50 flex flex-col items-center justify-center text-center px-4 max-w-4xl mx-auto h-full pointer-events-none">
+
+        <h1 className="text-[2rem] sm:text-[2.5rem] md:text-[2.5rem] lg:text-[3.5rem] leading-[1.2] font-medium tracking-tight text-white mb-8 md:mb-12 uppercase drop-shadow-2xl whitespace-pre-line">
+          <HeaderTypewriter 
+            text={"WHERE IS ALL IN ONE PLACE\nSTRENGTH EQUIPMENT\nAND CALISTHENICS."} 
+            delay={300} 
+            speed={70} 
+          />
+          {/* Cursor pulse */}
+          <span className="animate-pulse ml-2 font-light opacity-60">|</span>
+        </h1>
+
+        <div className="flex flex-col md:flex-row items-center gap-6 justify-center pointer-events-auto">
+          <a href="#products" onClick={handleClickMobileNavItem}>
+            <button className="inline-flex items-center px-5 py-2.5 bg-white border border-white text-black font-semibold hover:bg-transparent hover:text-white transition-all duration-300 group rounded-full">
+              <span className="tracking-widest uppercase text-[10px] md:text-sm">View Products</span>
+              <div className="overflow-hidden w-4 h-4 ml-2">
+                <div className="h-4 w-8 flex group-hover:-translate-x-1/2 transition-transform duration-500">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 flex-shrink-0">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 5.25 7.5 7.5 7.5-7.5m-15 6 7.5 7.5 7.5-7.5" />
+                  </svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 flex-shrink-0">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 5.25 7.5 7.5 7.5-7.5m-15 6 7.5 7.5 7.5-7.5" />
+                  </svg>
                 </div>
-              </button>
-            </a>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
-            transition={{ duration: 0.2, delay: 0.3 }}
-          >
-            <a href="#contact" onClick={handleClickMobileNavItem}>
-              <Button variant="text" className="text-[#b3b3b3] relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-white after:transition-all after:duration-300 hover:after:w-full">START NOW.</Button>
-            </a>
-          </motion.div>
+              </div>
+            </button>
+          </a>
+
+          <a href="#contact" onClick={handleClickMobileNavItem}>
+            <button className="px-4 py-2 text-[#b3b3b3] hover:text-white transition-colors tracking-widest text-[10px] md:text-sm relative uppercase after:absolute after:bottom-0 after:left-0 after:w-0 after:h-[1px] after:bg-white after:transition-all after:duration-300 hover:after:w-full">
+              START NOW.
+            </button>
+          </a>
         </div>
       </div>
-      <motion.div
-        className="md:col-span-5 relative"
-        initial={{ opacity: 0, x: 100 }}
-        animate={isInView ? { opacity: 1, x: 0 } : { opacity: 0, x: 100 }}
-        transition={{ duration: 0.3, delay: 0.2 }}
-      >
-        <div className="mt-20 md:mt-0 md:size-full md:absolute md:right-0 max-md:!w-full">
-          <video
-            src="/videos/intro.mp4"
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="size-full object-cover"
-            onError={(e) => {
-              console.error('Video failed to load:', e);
-            }}
-          />
-        </div>
-      </motion.div>
-    </div>
 
-  </section>;
+    </section>
+  );
 };
 
-
-export default Alkady;
+export default Hero;

@@ -5,7 +5,6 @@ import Hero from "./sections/Hero";
 import FeedbackFormLazy from "./sections/FeedbackFormLazy";
 import Footer from "./sections/Footer";
 import WhatsAppButton from "../components/WhatsAppButton";
-import MovingWordsTwo from "./sections/MovingWordsTwo";
 import Explore from "./sections/Explore";
 
 export const metadata = {
@@ -51,7 +50,7 @@ export default async function Home() {
   // Fetch products server-side — zero waterfall, instant render (first page only)
   let initialProducts = [];
   const initialHasMore = false;
-  
+
   // Instant Fallback Mode replacing the actual fetch call
   initialProducts = getStaticActiveProducts(false) as any;
 
@@ -136,7 +135,6 @@ export default async function Home() {
 
       <Nav />
       <Hero />
-      <MovingWordsTwo />
       {/* <CounterDown /> */}
       <Products initialProducts={initialProducts} initialHasMore={initialHasMore} />
       {/* <FeaturedProducts /> */}

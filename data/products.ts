@@ -216,7 +216,17 @@ export const STATIC_PRODUCTS: Product[] = [
       '• Bar diameter: 4.1 cm (1.6 inch)\n' +
       '• Mounting base length: 20 cm\n' +
       '• Steel thickness: 3 mm\n' +
-      '• Recommended distance between bars: 45–55 cm',
+      '• Recommended distance between bars: 45–55 cm\n\n' +
+      'العقلة:\n' +
+      '• طول البار: ١١٠ سم\n' +
+      '• المسافة من الجدار للبار: ٨٥ سم\n' +
+      '• قطر البار: ١.٢ بوصة (٣.١ سم)\n\n' +
+      'المتوازي:\n' +
+      '• طول البار: ٦٠ سم\n' +
+      '• قطر البار: ٤.١ سم (١.٦ بوصة)\n' +
+      '• طول قاعدة التثبيت: ٢٠ سم\n' +
+      '• سمك الحديد: ٣ مم\n' +
+      '• المسافة الموصى بها بين البارين: ٤٥ - ٥٥ سم',
     shippingInfo: 'Shipping delivery takes from 24–48 hours.',
     faqs: [
       { question: 'Bar length?', answer: '110 cm' },
@@ -264,7 +274,14 @@ export const STATIC_PRODUCTS: Product[] = [
       '• Steel thickness: 3 mm & 6 mm plates\n' +
       '• Net weight: 17 kg\n' +
       '• Comes with 8 mounting bolts (size 17) + wall plugs\n' +
-      '• External support brace included',
+      '• External support brace included\n\n' +
+      '• طول البار: ١١٠ سم\n' +
+      '• المسافة من الجدار للبار: ٨٥ سم\n' +
+      '• قطر البار: ١.٢ بوصة (٣.١ سم)\n' +
+      '• سمك الحديد: ألواح ٣ مم و ٦ مم\n' +
+      '• الوزن الصافي: ١٧ كيلو\n' +
+      '• يأتي مع ٨ مسامير تثبيت (مقاس ١٧) + فيشر\n' +
+      '• دعامة بار خارجية متضمنة للثبات',
     shippingInfo:
       'Shipping delivery takes from 24–48 hours.\n\n' +
       'قبل الشراء ولجدية الشراء لو اخترت الدفع عند الاستلام بتدفع ديبوزت لضمان جدية الشراء والاستلام ولو فيه أي عيب صناعة طبعاً بتسترد فلوسك وبنرجعها.',
@@ -315,7 +332,12 @@ export const STATIC_PRODUCTS: Product[] = [
       '• Bar diameter: 4.1 cm (1.6 inch)\n' +
       '• Mounting base length: 20 cm\n' +
       '• Steel thickness: 3 mm\n' +
-      '• Recommended distance between bars: 45–55 cm',
+      '• Recommended distance between bars: 45–55 cm\n\n' +
+      '• طول البار: ٦٠ سم\n' +
+      '• قطر البار: ٤.١ سم (١.٦ بوصة)\n' +
+      '• طول قاعدة التثبيت: ٢٠ سم\n' +
+      '• سمك الحديد: ٣ مم\n' +
+      '• المسافة الموصى بها بين البارين: ٤٥ - ٥٥ سم',
     shippingInfo: 'Shipping delivery takes from 24–48 hours.',
     faqs: [
       { question: 'Recommended distance between the two bars?', answer: '45–55 cm' },
@@ -351,7 +373,11 @@ export const STATIC_PRODUCTS: Product[] = [
       '• Material: Beech wood\n' +
       '• Length: 50 cm\n' +
       '• Thickness: 41 mm\n' +
-      '• Height: 12 cm',
+      '• Height: 12 cm\n\n' +
+      '• المادة: خشب زان\n' +
+      '• الطول: ٥٠ سم\n' +
+      '• السمك: ٤١ مم\n' +
+      '• الارتفاع: ١٢ سم',
     shippingInfo:
       'الشحن من ٢٤ : ٤٨ ساعة\n' +
       'وزن الطرد ٦ كيلو',

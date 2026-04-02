@@ -1,120 +1,100 @@
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Nav from '../sections/Nav';
-import useTextRevealAnimationSimple from '@/hooks/UsetextRevealAnimation-simple';
-import { motion, useInView } from 'framer-motion';
-import MovingWords from '../sections/MovingWords';
 import Footer from '../sections/Footer';
 import Image from 'next/image';
 import aboutImage from '../../public/images/about-image.jpg';
+import Link from 'next/link';
 
-import Mohamed from '../sections/mohamed';
-
-const MohamedaboutProfile = () => {
-  const {scope, entranceAnimation} = useTextRevealAnimationSimple();
-  const inView = useInView(scope, { once: true, margin: "-50px" });
+// Simple Typewriter specifically for the header to match the ThankYou feel
+const HeaderTypewriter = ({ text, delay = 0, speed = 90, className = '' }: { text: string, delay?: number, speed?: number, className?: string }) => {
+  const [displayedText, setDisplayedText] = useState('');
 
   useEffect(() => {
-    if (inView) {
-      entranceAnimation();
-    }
-  }, [inView, entranceAnimation]);
-  return ( 
-  <>
-    <Nav />
-    <section className="min-h-screen bg-stone-900  text-[#b3b3b3]  pt-16 lg:pt-20 w-full overflow-x-hidden transition-colors duration-300">
-        <div className="w-full px-4 sm:px-6 py-8 lg:py-24">
-          {/* Hero Text */}
-          <div className="text-center mb-8 lg:mb-16 w-full">
-            <motion.h1 
-              className="text-3xl xs:text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl font-black uppercase leading-none mb-4 lg:mb-8 w-full"
-              style={{ 
-                letterSpacing: '0.05em',
-                wordBreak: 'keep-all',
-                overflowWrap: 'normal'
-              }}
-              initial={{ opacity: 0, y: 100 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-            >
-            Who We Are?
-            </motion.h1>
-            
-            <motion.h2 
-              className="text-base sm:text-lg md:text-xl lg:text-2xl xl:text-3xl font-bold uppercase tracking-wider mb-4 lg:mb-8"
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.4 }}
-            >
-              THE END OF LIMITS.
-            </motion.h2>
-            
-            <motion.div 
-              className="max-w-4xl mx-auto mb-8 lg:mb-12 px-4"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.6 }}
-            >
-              <p className="text-xs sm:text-sm lowercase md:text-base lg:text-lg leading-relaxed mb-6 lg:mb-8 text-[#b3b3b3]/  px-2 sm:px-0">
-              UNLIMITED is a community brand for athletes, we started our journey and we are here, we train, we coach, we compete, we teach, we sell and we grow.
-              </p>
-              
-              <a href="/shop">
-              <motion.button 
-                className="inline-flex items-center px-6 py-3 lg:px-8 lg:py-4 bg-stone-900 border border-[#b3b3b3] text-[#b3b3b3] font-semibold  hover:bg-[#b3b3b3] hover:text-black transition-all duration-300 text-sm lg:text-base group"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.8 }}
-              >
-               OUR EQUIPMENTS
-               <div className="w-5 h-5 lg:w-6 lg:h-6 overflow-hidden ml-2">
-                 <div className="w-10 h-5 lg:w-12 lg:h-6 flex transition-transform duration-300 group-hover:-translate-x-1/2">
-                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 lg:w-6 lg:h-6 flex-shrink-0">
-                     <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 19.5 15-15m0 0H8.25m11.25 0v11.25" />
-                   </svg>
-                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 lg:w-6 lg:h-6 flex-shrink-0">
-                     <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 19.5 15-15m0 0H8.25m11.25 0v11.25" />
-                   </svg>
-                 </div>
-               </div>
-              </motion.button>
-              </a>
-            </motion.div>
-          </div>
+    let timeout: NodeJS.Timeout;
+    let interval: NodeJS.Timeout;
 
-          {/* Image Section */}
-          <motion.div 
-            className="mb-12 lg:mb-16"
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-          >
-            {/* Enhanced Image Container */}
-            <div className="relative max-w-4xl mx-auto  overflow-hidden 
-                           
-                           p-6 lg:p-8  ">
-              <div className="aspect-video  overflow-hidden ">
-                <Image
-                  width={1000}
-                  height={1000}
-                  src={aboutImage}
-                  alt="about-Image"
-                  className="w-full h-full object-contain"
-                />
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-      <Mohamed />
-    <MovingWords />
-    <Footer />
-  </>
-  );
+    timeout = setTimeout(() => {
+      let i = 0;
+      interval = setInterval(() => {
+        setDisplayedText(text.slice(0, i + 1));
+        i++;
+        if (i >= text.length) {
+          clearInterval(interval);
+        }
+      }, speed);
+    }, delay);
 
+    return () => {
+      clearTimeout(timeout);
+      clearInterval(interval);
+    };
+  }, [text, delay, speed]);
+
+  return <span className={className}>{displayedText}</span>;
 };
 
-export default MohamedaboutProfile;
+export default function AboutPage() {
+  return (
+    <div className="min-h-screen bg-stone-900 text-[#b3b3b3] font-sans selection:bg-white selection:text-black flex flex-col">
+      <Nav />
+
+      <main className="flex-1 w-full max-w-[1400px] mx-auto px-6 md:px-12 lg:px-16 pt-32 lg:pt-40 pb-24">
+
+        {/* Animated Huge Header just like Adam Brandon */}
+        <div className="mb-20 md:mb-32 lg:mb-40 max-w-6xl">
+          <h1 className="text-[1rem] xs:text-[2rem] sm:text-[2rem] md:text-[4rem] lg:text-[4rem] leading-[1.05] tracking-[-0.03em] font-medium text-white">
+            <HeaderTypewriter
+              text="UNLIMITED is a community brand for athletes, we started our journey and we are here, we train, we coach, we compete, we teach, we sell and we grow."
+              delay={300}
+              speed={40}
+            />
+            {/* The cursor styling to keep it clean */}
+            <span className="animate-pulse ml-2 opacity-50 font-light">|</span>
+          </h1>
+        </div>
+
+        {/* 2-Column Layout */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-24 items-start">
+
+          {/* Left Column: Text & Button */}
+          <div className="md:col-span-6 lg:col-span-5 flex flex-col space-y-8 text-base md:text-lg lg:text-[1.15rem] leading-[1.6] text-[#b3b3b3] font-medium tracking-tight">
+            <p>
+              Muhamed Alkady is a dedicated and dynamic sports science professional with a Ph.D. in Biomechanics in Sports Training and more than 14 years of coaching experience.
+            </p>
+            <p>
+              Lecturer at the Faculty of Sports Sciences, Benha University, and Founder of Gravity Benha for Calisthenics training, he specializes in the training and development of professional athletes.
+            </p>
+            <p>
+              Involved in ongoing scientific research and academic publishing, Muhamed focuses on advancing practical and theoretical knowledge in calisthenics, gymnastics, and biomechanics.
+            </p>
+
+            <div className="pt-8 flex items-center">
+              <Link href="/shop" className="inline-flex items-center text-sm font-bold uppercase tracking-[0.15em] text-white hover:opacity-60 transition-opacity pb-1 border-b-2 border-white group">
+                Explore Equipments
+                <svg className="w-4 h-4 ml-3 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+              </Link>
+            </div>
+          </div>
+
+          {/* Right Column: Grayscale Image */}
+          <div className="md:col-span-6 lg:col-span-7 w-full relative aspect-[4/5] bg-stone-800">
+            <Image
+              src={aboutImage}
+              alt="Unlimited About Image"
+              fill
+              priority
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="object-cover grayscale hover:grayscale-0 transition-all duration-[1000ms] ease-in-out"
+            />
+          </div>
+        </div>
+      </main>
+
+      <Footer />
+    </div>
+  );
+}

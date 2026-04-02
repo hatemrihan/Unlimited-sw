@@ -2,7 +2,7 @@
 
 import { FC, useEffect, useState, MouseEvent } from "react";
 import { useAnimate } from "framer-motion";
-import { useSession, signOut } from "next-auth/react";
+import { useSession, signOut, signIn } from "next-auth/react";
 import { useCart } from "../../contexts/CartContext";
 import Image from "next/image";
 import Link from "next/link";
@@ -18,10 +18,10 @@ const navItems = [
     label: "Shop",
     href: "/shop",
   },
-  {
-    label: "Our Athletes",
-    href: "#intro",
-  },
+  // {
+  //   label: "Our Athletes",
+  //   href: "#intro",
+  // },
 
   {
     label: "Reviews",
@@ -394,11 +394,9 @@ const Nav: FC = () => {
                   ) : (
                     <button
                       className="text-[#b3b3b3] hover:text-gray-400 transition-colors duration-300 p-2 hover:bg-gray-700/30 rounded-lg cursor-pointer"
-                      onClick={() => {
-                        // Redirect to NextAuth signin with Google provider
-                        if (typeof window !== 'undefined') {
-                          window.location.href = '/api/auth/signin?callbackUrl=/';
-                        }
+                      onClick={(e) => {
+                        e.preventDefault();
+                        signIn('google', { callbackUrl: '/' });
                       }}
                       aria-label="Sign in with Google"
                       suppressHydrationWarning
@@ -456,11 +454,9 @@ const Nav: FC = () => {
                     <button
                       className="text-[#b3b3b3] hover:text-gray-400 transition-colors duration-300 p-2 hover:bg-gray-700/30 rounded-lg cursor-pointer"
                       data-dynamic-color="true"
-                      onClick={() => {
-                        // Redirect to NextAuth signin with Google provider
-                        if (typeof window !== 'undefined') {
-                          window.location.href = '/api/auth/signin?callbackUrl=/';
-                        }
+                      onClick={(e) => {
+                        e.preventDefault();
+                        signIn('google', { callbackUrl: '/' });
                       }}
                       aria-label="Sign in with Google"
                       suppressHydrationWarning
