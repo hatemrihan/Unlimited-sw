@@ -32,12 +32,12 @@ import { Product } from '../models/product';
  * ═══════════════════════════════════════════════════════
  */
 const STOCK = {
-  P1_GRAY: 0,    // Wall-mounted pull-up bar + Wall-parallel bar — Gray variant (OUT OF STOCK)
-  P1_BLACK: 0,    // Wall-mounted pull-up bar + Wall-parallel bar — Black variant (OUT OF STOCK)
-  P2_BLACK: 0,    // Wall-mounted pull-up bar — Black variant (OUT OF STOCK)
-  P2_GRAY: 0,    // Wall-mounted pull-up bar — Gray variant (OUT OF STOCK)
-  P3_BLACK: 99,   // Wall-parallel bar — Black variant
-  P4_WOOD: 99,   // Floor parallettes — Wood variant
+  P1_GRAY: 30,    // Wall-mounted pull-up bar + Wall-parallel bar — Gray variant (OUT OF STOCK)
+  P1_BLACK: 30,    // Wall-mounted pull-up bar + Wall-parallel bar — Black variant (OUT OF STOCK)
+  P2_BLACK: 30,    // Wall-mounted pull-up bar — Black variant (OUT OF STOCK)
+  P2_GRAY: 30,    // Wall-mounted pull-up bar — Gray variant (OUT OF STOCK)
+  P3_BLACK: 30,   // Wall-parallel bar — Black variant
+  P4_WOOD: 30,   // Floor parallettes — Wood variant
 } as const;
 
 // ─────────────────────────────────────────────────────────────

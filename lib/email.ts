@@ -26,7 +26,11 @@ const createTransporter = () => {
   });
 };
 
-const transporter = createTransporter();
+let transporter: ReturnType<typeof createTransporter> | null = null;
+function getTransporter() {
+  if (!transporter) transporter = createTransporter();
+  return transporter;
+}
 
 // Verify transporter configuration on startup
 const verifyTransporter = async () => {
@@ -43,7 +47,7 @@ const verifyTransporter = async () => {
       return false;
     }
 
-    await transporter.verify();
+    await getTransporter().verify();
     console.log('✅ BREVO email transporter verified successfully');
     return true;
   } catch (error) {
@@ -53,8 +57,6 @@ const verifyTransporter = async () => {
   }
 };
 
-// Verify on module load
-verifyTransporter();
 
 export interface OrderEmailData {
   customerEmail: string;
@@ -143,7 +145,7 @@ UNLIMITED-SW Team
       subject: mailOptions.subject
     });
 
-    const result = await transporter.sendMail(mailOptions);
+    const result = await getTransporter().sendMail(mailOptions);
     console.log('✅ Order confirmation email sent successfully:', result.messageId);
     return { success: true, messageId: result.messageId };
   } catch (error) {
@@ -188,7 +190,7 @@ export async function sendAdminNotificationEmail(orderData: OrderEmailData) {
       subject: mailOptions.subject
     });
 
-    const result = await transporter.sendMail(mailOptions);
+    const result = await getTransporter().sendMail(mailOptions);
     console.log('✅ Admin notification email sent successfully:', result.messageId);
     return { success: true, messageId: result.messageId };
   } catch (error) {
