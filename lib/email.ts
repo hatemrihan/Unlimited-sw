@@ -1,15 +1,14 @@
 import nodemailer from 'nodemailer';
 
-// Brevo SMTP configuration - Use correct authentication
+// Brevo SMTP configuration
 const createTransporter = () => {
   console.log('🔧 Creating Brevo SMTP transporter...');
 
-  // For Brevo SMTP, you need to use the SMTP login (not your email) as the user
-  const smtpUser = process.env.BREVO_SMTP_USER || '969421001@smtp-brevo.com';
+  const smtpUser = process.env.BREVO_SMTP_USER;
   const smtpPassword = process.env.BREVO_SMTP_PASSWORD;
 
-  if (!smtpPassword) {
-    throw new Error('BREVO_SMTP_PASSWORD is required!');
+  if (!smtpUser || !smtpPassword) {
+    throw new Error('BREVO_SMTP_USER and BREVO_SMTP_PASSWORD are required!');
   }
 
   console.log('🔧 SMTP User:', smtpUser);
@@ -32,30 +31,6 @@ function getTransporter() {
   return transporter;
 }
 
-// Verify transporter configuration on startup
-const verifyTransporter = async () => {
-  try {
-    // Log current configuration for debugging
-    console.log('🔧 BREVO Configuration Check:');
-    console.log('- SMTP Login:', process.env.BREVO_SMTP_USER || '969421001@smtp-brevo.com');
-    console.log('- SMTP Password Set:', !!process.env.BREVO_SMTP_PASSWORD);
-    console.log('- Sender Email:', 'orders@unlimited-sw.com');
-
-    if (!process.env.BREVO_SMTP_PASSWORD && !process.env.BREVO_API_KEY) {
-      console.error('❌ BREVO email credentials not configured! Check environment variables.');
-      console.error('💡 Add BREVO_SMTP_PASSWORD or BREVO_API_KEY to .env.local');
-      return false;
-    }
-
-    await getTransporter().verify();
-    console.log('✅ BREVO email transporter verified successfully');
-    return true;
-  } catch (error) {
-    console.error('❌ BREVO email transporter verification failed:', error);
-    console.error('💡 Make sure your .env.local has correct BREVO credentials');
-    return false;
-  }
-};
 
 
 export interface OrderEmailData {
@@ -94,14 +69,7 @@ export async function sendOrderConfirmationEmail(orderData: OrderEmailData) {
   try {
     console.log('📧 Sending order confirmation email to:', orderData.customerEmail);
 
-    // Check if email service is configured
-    if (!process.env.BREVO_SMTP_USER || !process.env.BREVO_SMTP_PASSWORD) {
-      console.error('❌ Brevo email credentials not configured');
-      return {
-        success: false,
-        error: 'Email service not configured. Please set BREVO_SMTP_USER and BREVO_SMTP_PASSWORD environment variables.'
-      };
-    }
+
 
     const emailHtml = generateOrderEmailTemplate(orderData);
 
@@ -163,14 +131,7 @@ export async function sendAdminNotificationEmail(orderData: OrderEmailData) {
   try {
     console.log('📧 Sending admin notification email for order:', orderData.orderId);
 
-    // Check if email service is configured
-    if (!process.env.BREVO_SMTP_USER || !process.env.BREVO_SMTP_PASSWORD) {
-      console.error('❌ Brevo email credentials not configured');
-      return {
-        success: false,
-        error: 'Email service not configured. Please set BREVO_SMTP_USER and BREVO_SMTP_PASSWORD environment variables.'
-      };
-    }
+
 
     const emailHtml = generateAdminEmailTemplate(orderData);
 

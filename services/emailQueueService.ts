@@ -10,7 +10,7 @@ import { logger } from '../utils/logger';
  */
 export function dispatchOrderPostProcessing(savedOrder: any, orderData: any) {
   return processAsyncRoutines(savedOrder, orderData).catch(err => {
-    logger.error("❌ Isolated background queue failed safely:", err);
+    logger.error(`❌ Email dispatch failed for order ${savedOrder.orderId}:`, err);
   });
 }
 
