@@ -1,15 +1,4 @@
-export interface CartItem {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  image: string;
-  variant?: {
-    name: string;
-    size?: string;
-    color?: string;
-  };
-}
+import { CartItem } from '../../contexts/CartContext';
 
 export interface City {
   _id: string;
@@ -39,7 +28,8 @@ export interface PromoData {
   code: string;
   discountType: 'percentage' | 'fixed';
   discountValue: number;
-  discount: number;
   waiveShipping?: boolean;
   description?: string;
 }
+
+export type { CartItem };

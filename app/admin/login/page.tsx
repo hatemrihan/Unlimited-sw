@@ -1,11 +1,8 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { signIn } from 'next-auth/react';
 
 const AdminLoginPage = () => {
-  const router = useRouter();
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,26 +13,22 @@ const AdminLoginPage = () => {
     setLoading(true);
 
     try {
-      // Call API to verify password and set cookie
       const response = await fetch('/api/admin/auth', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),
       });
 
       const data = await response.json();
 
       if (data.success) {
-        // Redirect to admin dashboard
-        router.push('/admin');
+        window.location.href = '/admin';
       } else {
         setError('Invalid password. Please try again.');
+        setLoading(false);
       }
-    } catch (error) {
+    } catch {
       setError('An error occurred. Please try again.');
-    } finally {
       setLoading(false);
     }
   };
@@ -44,13 +37,11 @@ const AdminLoginPage = () => {
     <div className="min-h-screen bg-black flex items-center justify-center p-4">
       <div className="max-w-md w-full">
         <div className="bg-black border border-white/10 rounded-lg p-8">
-          {/* Logo/Title */}
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-white mb-2">UNLIMITED-SW</h1>
             <p className="text-gray-400">Admin Dashboard</p>
           </div>
 
-          {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-white mb-2">
@@ -68,14 +59,12 @@ const AdminLoginPage = () => {
               />
             </div>
 
-            {/* Error Message */}
             {error && (
               <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
                 <p className="text-red-400 text-sm">{error}</p>
               </div>
             )}
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
@@ -85,7 +74,6 @@ const AdminLoginPage = () => {
             </button>
           </form>
 
-          {/* Info */}
           <div className="mt-6 pt-6 border-t border-white/10">
             <p className="text-xs text-gray-500 text-center">
               Protected admin area. Authorized personnel only.

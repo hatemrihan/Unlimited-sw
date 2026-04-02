@@ -46,12 +46,12 @@ const DeleteProductPage = () => {
           setProduct(data.product);
         } else {
           alert('Failed to load product data');
-          router.back();
+          router.push('/admin#products');
         }
       } catch (error) {
         console.error('Error fetching product:', error);
         alert('Error loading product data');
-        router.back();
+        router.push('/admin#products');
       } finally {
         setLoading(false);
       }
@@ -120,7 +120,7 @@ const DeleteProductPage = () => {
             <div className="text-center">
               <p className="text-red-400 mb-4">Product not found</p>
               <button
-                onClick={() => router.back()}
+                onClick={() => router.push('/admin#products')}
                 className="bg-white text-black px-6 py-3 rounded-lg font-medium hover:bg-gray-200 transition-all duration-300"
               >
                 Back to Products
@@ -139,7 +139,7 @@ const DeleteProductPage = () => {
         <div className="mb-6">
           <div className="flex items-center gap-4 mb-3">
             <button
-              onClick={() => router.back()}
+              onClick={() => router.push('/admin#products')}
               className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors"
             >
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -262,7 +262,7 @@ const DeleteProductPage = () => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button
               type="button"
-              onClick={() => router.back()}
+              onClick={() => router.push('/admin#products')}
               className="bg-white text-black px-4 py-2 rounded-lg font-medium hover:bg-gray-200 transition-all duration-300"
             >
               Cancel

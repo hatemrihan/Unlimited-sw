@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Nav from '../sections/Nav';
 import Footer from '../sections/Footer';
 import { useCart } from '../../contexts/CartContext';
+import { nameToSlug, getStaticActiveProducts } from '../../data/products';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -43,6 +44,7 @@ interface Product {
   variants?: ProductVariant[];
   showPreorderBadge?: boolean;
   showOutOfStockBadge?: boolean;
+  customOutOfStockMessage?: string;
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -69,7 +71,7 @@ const ProductCard = ({ product, onAddToCart, index }: ProductCardProps) => {
 
   return (
     <article className="group block relative">
-      <Link href={`/product/${product._id}`} className="block">
+      <Link href={`/product/${nameToSlug(product.name)}`} className="block">
         <div className="relative aspect-[3/4] w-full overflow-hidden bg-gray-800 mb-3 max-w-[180px] mx-auto">
           {product.mainImage ? (
             <Image
@@ -94,22 +96,29 @@ const ProductCard = ({ product, onAddToCart, index }: ProductCardProps) => {
               </div>
             )}
             {isOutOfStock && (
-              product.showPreorderBadge ? (
-                <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
-                  PREORDER
-                </div>
-              ) : (
-                <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
-                  OUT OF STOCK
-                </div>
-              )
+              <>
+                {product.customOutOfStockMessage && (
+                  <div className="bg-red-600 border border-red-500 text-white px-2 py-1 text-[10px] font-bold uppercase tracking-widest animate-pulse shadow-md rounded-sm w-fit" dir="auto">
+                    {product.customOutOfStockMessage}
+                  </div>
+                )}
+                {product.showPreorderBadge ? (
+                  <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase w-fit">
+                    PREORDER
+                  </div>
+                ) : (
+                  <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase w-fit">
+                    OUT OF STOCK
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
       </Link>
 
       <div className="text-center mt-2">
-        <Link href={`/product/${product._id}`}>
+        <Link href={`/product/${nameToSlug(product.name)}`}>
           <h3 className="text-sm font-light text-[#b3b3b3] mb-1 hover:underline line-clamp-2">
             {product.name}
           </h3>
@@ -164,33 +173,8 @@ export default function Shop() {
     const load = async () => {
       try {
         setLoading(true);
-        const [regularRes, featuredRes] = await Promise.all([
-          fetch('/api/products'),
-          fetch('/api/products?featured=true'),
-        ]);
-
-        let allProducts: Product[] = [];
-        let featuredList: Product[] = [];
-
-        if (regularRes.ok) {
-          const d = await regularRes.json();
-          allProducts = d.products ?? [];
-        }
-        if (featuredRes.ok) {
-          const d = await featuredRes.json();
-          featuredList = (d.products ?? []).map((p: Product) => ({ ...p, isFeatured: true }));
-        }
-
-        // Merge, deduplicate by _id
-        const seen = new Set<string>();
-        const combined: Product[] = [];
-        for (const p of [...allProducts, ...featuredList]) {
-          if (!seen.has(p._id)) {
-            seen.add(p._id);
-            combined.push(p);
-          }
-        }
-
+        // Instant Fallback Mode (bypassing slow API route timeout)
+        const combined = getStaticActiveProducts() as unknown as Product[];
         setProducts(combined);
       } catch (err) {
         setError('Failed to load products');
@@ -338,19 +322,19 @@ export default function Shop() {
             )}
           </motion.div>
 
-          {/* Product Grid — single responsive grid, no three-clone approach */}
+          {/* Product Grid — flex layout to ensure centering on all screen sizes */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.4 }}
           >
             {loading ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                {Array.from({ length: 10 }).map((_, i) => (
-                  <div key={i} className="animate-pulse">
-                    <div className="aspect-[3/4] w-full bg-gray-800 mb-2 max-w-[180px] mx-auto" />
-                    <div className="h-4 bg-gray-800 rounded mb-1 max-w-[180px] mx-auto" />
-                    <div className="h-3 bg-gray-800 rounded w-16 mx-auto" />
+              <div className="flex flex-wrap justify-center gap-4 sm:gap-6 lg:gap-12">
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <div key={i} className="animate-pulse w-[calc(50%-0.5rem)] sm:w-[calc(33.333%-1rem)] lg:w-[calc(25%-2.25rem)] max-w-[280px] shrink-0">
+                    <div className="aspect-[3/4] w-full bg-gray-800 mb-2 max-w-[220px] mx-auto" />
+                    <div className="h-4 bg-gray-800 rounded mb-1 max-w-[200px] mx-auto" />
+                    <div className="h-3 bg-gray-800 rounded w-20 mx-auto" />
                   </div>
                 ))}
               </div>
@@ -359,14 +343,15 @@ export default function Shop() {
                 <p className="text-gray-400">No products found matching your criteria.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+              <div className="flex flex-wrap justify-center gap-4 sm:gap-6 lg:gap-12">
                 {filteredProducts.map((product, index) => (
-                  <ProductCard
-                    key={product._id}
-                    product={product}
-                    onAddToCart={handleAddToCart}
-                    index={index}
-                  />
+                  <div key={product._id} className="w-[calc(50%-0.5rem)] sm:w-[calc(33.333%-1rem)] lg:w-[calc(25%-2.25rem)] max-w-[280px] shrink-0">
+                    <ProductCard
+                      product={product}
+                      onAddToCart={handleAddToCart}
+                      index={index}
+                    />
+                  </div>
                 ))}
               </div>
             )}

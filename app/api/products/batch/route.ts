@@ -1,25 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import dbConnect from '../../../../lib/mongodb';
-import Product from '../../../../models/product';
+import { STATIC_PRODUCTS } from '../../../../data/products';
 
 export async function POST(request: NextRequest) {
-  try {
-    const { ids } = await request.json();
-    if (!ids || !Array.isArray(ids) || ids.length === 0) {
-      return NextResponse.json({ success: false, error: 'Invalid product IDs' }, { status: 400 });
-    }
+  const { ids } = await request.json();
 
-    await dbConnect();
-
-    // Using .lean() for fast JS object responses
-    const products = await Product.find({ _id: { $in: ids } }).lean();
-
-    return NextResponse.json({
-      success: true,
-      products
-    });
-  } catch (error) {
-    console.error('Batch fetch error:', error);
-    return NextResponse.json({ success: false, error: 'Failed to fetch products batch' }, { status: 500 });
+  if (!ids || !Array.isArray(ids) || ids.length === 0) {
+    return NextResponse.json({ success: false, error: 'Invalid product IDs' }, { status: 400 });
   }
+
+  // Serve from static data instantly
+  const products = STATIC_PRODUCTS.filter(p => ids.includes(p._id));
+
+  return NextResponse.json({ success: true, products });
 }

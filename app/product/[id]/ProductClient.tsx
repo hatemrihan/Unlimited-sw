@@ -8,6 +8,7 @@ import ProductDetailsTabs from './ProductDetailsTabs';
 import { useCart } from '../../../contexts/CartContext';
 import { motion, AnimatePresence } from 'motion/react';
 import Footer from '@/app/sections/Footer';
+import { nameToSlug } from '../../../data/products';
 
 type Variant = {
   name: string;
@@ -200,6 +201,9 @@ export default function ProductClient({ product, allProducts }: Props) {
                     ) : (
                       <span className="text-base lg:text-lg font-bold">{product.price.toLocaleString()} LE</span>
                     )}
+                    {isOutOfStock && product.customOutOfStockMessage && (
+                      <span className="bg-red-600 border border-red-500 shadow-md text-white px-2 py-0.5 text-xs font-bold uppercase tracking-widest rounded animate-pulse ml-2" dir="auto">{product.customOutOfStockMessage}</span>
+                    )}
                     {(product as any).showOutOfStockBadge && isOutOfStock && (
                       <span className="bg-gray-700 text-white px-1.5 py-0.5 text-xs font-medium rounded ml-2">OUT OF STOCK</span>
                     )}
@@ -277,7 +281,7 @@ export default function ProductClient({ product, allProducts }: Props) {
                   <div
                     key={relatedProduct._id}
                     className="group cursor-pointer"
-                    onClick={() => window.location.href = `/product/${relatedProduct._id}`}
+                    onClick={() => window.location.href = `/product/${nameToSlug(relatedProduct.name)}`}
                   >
                     <div className="aspect-square mb-2 lg:mb-3 overflow-hidden bg-gray-800 max-w-[140px] sm:max-w-[160px] lg:max-w-[180px] mx-auto">
                       {isVideoUrl(relatedProduct.mainImage) ? (

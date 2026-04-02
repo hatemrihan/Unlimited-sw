@@ -1,13 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
-  const adminAuth = request.cookies.get('adminAuthenticated');
+  const session = await getServerSession(authOptions);
   
-  if (adminAuth && adminAuth.value === 'true') {
-    return NextResponse.json({ authenticated: true });
-  } else {
-    return NextResponse.json({ authenticated: false });
+  if (session && session.user) {
+    return NextResponse.json(
+      { authenticated: true, role: session.user?.role ?? null },
+      { headers: { 'Cache-Control': 'no-store' } }
+    );
+  } 
+  
+  // Restore Native Cookie Fallback resolving `api/admin/auth` static passwords
+  const staticLegacyToken = request.cookies.get('adminAuthenticated')?.value;
+  const adminSecret = process.env.ADMIN_COOKIE_SECRET;
+  if (staticLegacyToken && adminSecret && staticLegacyToken === adminSecret) {
+    return NextResponse.json(
+      { authenticated: true, role: 'admin' },
+      { headers: { 'Cache-Control': 'no-store' } }
+    );
   }
+
+  // Final Guard Rejection
+  return NextResponse.json(
+    { authenticated: false, role: null },
+    { headers: { 'Cache-Control': 'no-store' } }
+  );
 }
 
 

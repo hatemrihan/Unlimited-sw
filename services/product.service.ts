@@ -6,6 +6,16 @@ import { cacheKeys } from '../lib/cache-keys';
 import { NotFoundError, DatabaseError } from '../lib/errors';
 import { CreateProductInput, UpdateProductInput } from '../lib/schemas/product.schema';
 import { Product } from '../models/product';
+import { getStaticActiveProducts, getStaticProductById } from '../data/products';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+interface AdminProductsResult {
+  products: Product[];
+  total: number;
+  pages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -45,7 +55,9 @@ export async function getActiveProducts(featured = false): Promise<Product[]> {
     apiCache.set(cacheKey, products, CACHE_TTL.PRODUCTS);
     return products;
   } catch (err) {
-    throw new DatabaseError(`Failed to fetch ${featured ? 'featured' : 'active'} products`);
+    // ── Static fallback when MongoDB is unreachable ──────────────────
+    console.warn('[product.service] MongoDB unavailable — serving static fallback products');
+    return getStaticActiveProducts(featured);
   }
 }
 
@@ -59,10 +71,17 @@ export async function getAdminProducts(
 ): Promise<{ products: Product[]; total: number; pages: number; hasNext: boolean; hasPrev: boolean }> {
   const cacheKey = cacheKeys.products.admin(page, limit, search);
 
-  const cached = apiCache.get<any>(cacheKey);
+  const cached = apiCache.get<AdminProductsResult>(cacheKey);
   if (cached) return cached;
 
-  const query = search ? { $text: { $search: search } } : {};
+  const query = search
+    ? {
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } },
+        ],
+      }
+    : {};
   const skip  = (page - 1) * limit;
 
   try {
@@ -82,7 +101,7 @@ export async function getAdminProducts(
     apiCache.set(cacheKey, result, CACHE_TTL.ADMIN);
     return result;
   } catch (err) {
-    throw new DatabaseError('Failed to fetch admin products');
+    throw new DatabaseError(`Failed to fetch admin products: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 
@@ -115,7 +134,7 @@ export async function createProduct(data: CreateProductInput): Promise<any> {
     return product;
   } catch (err) {
     await sess.abortTransaction();
-    throw new DatabaseError('Failed to create product');
+    throw new DatabaseError(`Failed to create product: ${err instanceof Error ? err.message : String(err)}`);
   } finally {
     await sess.endSession();
   }
@@ -133,7 +152,7 @@ export async function updateProduct(id: string, data: UpdateProductInput): Promi
     return updated;
   } catch (err) {
     if (err instanceof NotFoundError) throw err;
-    throw new DatabaseError('Failed to update product');
+    throw new DatabaseError(`Failed to update product: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 
@@ -148,7 +167,7 @@ export async function deleteProduct(id: string): Promise<void> {
     invalidateProductCache(id);
   } catch (err) {
     if (err instanceof NotFoundError) throw err;
-    throw new DatabaseError('Failed to delete product');
+    throw new DatabaseError(`Failed to delete product: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 
@@ -164,7 +183,7 @@ export async function toggleProductFeatured(id: string, isFeatured: boolean): Pr
     return updated;
   } catch (err) {
     if (err instanceof NotFoundError) throw err;
-    throw new DatabaseError('Failed to toggle featured status');
+    throw new DatabaseError(`Failed to toggle featured status: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 
@@ -185,6 +204,9 @@ export async function getProductById(id: string): Promise<any> {
     return product;
   } catch (err) {
     if (err instanceof NotFoundError) throw err;
-    throw new DatabaseError('Failed to fetch product');
+    // ── Static fallback when MongoDB is unreachable ──────────────────
+    const staticProduct = getStaticProductById(id);
+    if (staticProduct) return staticProduct;
+    throw new DatabaseError(`Failed to fetch product: ${err instanceof Error ? err.message : String(err)}`);
   }
 }

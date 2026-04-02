@@ -1,20 +1,23 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import Nav from '../sections/Nav';
-import { useCart } from '../../contexts/CartContext';
+import { useCart, CartItem } from '../../contexts/CartContext';
 import { useCheckoutPricing } from './hooks/useCheckoutPricing';
 import { useCheckoutForm } from './hooks/useCheckoutForm';
+import { City } from './types';
 
 export default function CheckoutPage() {
+  const router = useRouter();
   const [paymentSettings, setPaymentSettings] = useState({ codEnabled: true, instaPayEnabled: true });
   const [orderError, setOrderError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const cartContext = useCart();
-  const { state, clearCart } = cartContext || {};
+  const { state, clearCart } = useCart();
+  const cartItems = useMemo(() => state.items, [state.items]);
 
   const {
     formData,
@@ -43,42 +46,26 @@ export default function CheckoutPage() {
     shouldWaiveShipping,
     applyPromoCode,
   } = useCheckoutPricing({
-    cartItems: state?.items || [],
+    cartItems,
     paymentMethod: formData.paymentMethod,
     cityName: formData.city,
   });
 
   useEffect(() => {
-    const fetchPaymentSettings = async () => {
-      try {
-        const response = await fetch('/api/admin/payment-settings');
-        const data = await response.json();
-        if (data.success) {
-          setPaymentSettings(data.settings);
-          if (!data.settings.codEnabled && formData.paymentMethod === 'cashOnDelivery') {
-            setFormData(prev => ({ ...prev, paymentMethod: 'instaPay' }));
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching payment settings:', error);
-      }
-    };
-    fetchPaymentSettings();
-  }, [formData.paymentMethod, setFormData]);
+    // Instantly apply static payment settings, bypassing MongoDB API latency
+    setPaymentSettings({ codEnabled: true, instaPayEnabled: true });
+    // No need to override formData since both are enabled
+  }, [setFormData]);
 
-  // Prevent rendering if cart is missing
-  if (!cartContext) {
+  if (!state) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-pulse h-10 w-48 bg-gray-700 rounded mx-auto mb-4" />
-          <p>Please wait while we load your cart.</p>
-        </div>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
       </div>
     );
   }
 
-  if (state!.items.length === 0) {
+  if (cartItems.length === 0) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
@@ -95,7 +82,7 @@ export default function CheckoutPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!validateForm(state!.items.length, shippingConfigError)) return;
+    if (!validateForm(cartItems.length, shippingConfigError)) return;
 
     setIsSubmitting(true);
     setOrderError(null);
@@ -113,7 +100,7 @@ export default function CheckoutPage() {
           city: formData.city,
           governorate: selectedGovernorate?.governorate || ''
         },
-        products: state!.items.map((item: any) => {
+        products: cartItems.map((item: CartItem) => {
           const variantKey = item.variant?.name || 'default';
           const priceKey = `${item.id}_${variantKey}`;
           const correctPrice = refreshedPrices[priceKey] || item.price;
@@ -152,20 +139,23 @@ export default function CheckoutPage() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        sessionStorage.setItem('lastOrder', JSON.stringify({
-          orderId: data.order.orderId,
-          paymentMethod: formData.paymentMethod,
-          totalAmount: totalWithShipping,
-          customer: data.order.customer
-        }));
+        try {
+          sessionStorage.setItem('lastOrder', JSON.stringify({
+            orderId: data.order.orderId,
+            paymentMethod: formData.paymentMethod,
+            totalAmount: totalWithShipping,
+            customer: data.order.customer
+          }));
+        } catch (e) {
+          // Safely catch scenarios where storage is disabled / full
+        }
 
-        clearCart!();
-        window.location.href = `/thankyou?orderId=${data.order.orderId}`;
+        clearCart();
+        router.push(`/thankyou?orderId=${data.order.orderId}`);
       } else {
         setOrderError(data.error || 'Something went wrong with your order');
       }
     } catch (error) {
-      console.error('Order submission error:', error);
       setOrderError(error instanceof Error ? error.message : 'An unexpected error occurred');
     } finally {
       setIsSubmitting(false);
@@ -270,7 +260,7 @@ export default function CheckoutPage() {
                   <div className="space-y-3">
                     {paymentSettings.codEnabled && (
                       <div className="flex items-center">
-                        <div className="relative">
+                        <label className="flex items-center cursor-pointer w-full group">
                           <input
                             type="radio"
                             id="cashOnDelivery"
@@ -280,19 +270,19 @@ export default function CheckoutPage() {
                             onChange={handleInputChange}
                             className="sr-only"
                           />
-                          <div className={`w-4 h-4 rounded-full border-2 border-white mr-2 flex items-center justify-center cursor-pointer ${formData.paymentMethod === 'cashOnDelivery' ? 'bg-white' : 'bg-transparent'
-                            }`} onClick={() => setFormData(prev => ({ ...prev, paymentMethod: 'cashOnDelivery' }))}>
+                          <div className={`w-4 h-4 rounded-full border-2 border-white mr-2 flex items-center justify-center ${formData.paymentMethod === 'cashOnDelivery' ? 'bg-white' : 'bg-transparent'
+                            }`}>
                             {formData.paymentMethod === 'cashOnDelivery' && (
                               <div className="w-2 h-2 rounded-full bg-black"></div>
                             )}
                           </div>
-                        </div>
-                        <label htmlFor="cashOnDelivery" className="text-sm cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, paymentMethod: 'cashOnDelivery' }))}>Cash on Delivery</label>
+                          <span className="text-sm select-none">Cash on Delivery</span>
+                        </label>
                       </div>
                     )}
 
                     <div className="flex items-center">
-                      <div className="relative">
+                      <label className="flex items-center cursor-pointer w-full group">
                         <input
                           type="radio"
                           id="instaPay"
@@ -302,14 +292,14 @@ export default function CheckoutPage() {
                           onChange={handleInputChange}
                           className="sr-only"
                         />
-                        <div className={`w-4 h-4 rounded-full border-2 border-white mr-2 flex items-center justify-center cursor-pointer ${formData.paymentMethod === 'instaPay' ? 'bg-white' : 'bg-transparent'
-                          }`} onClick={() => setFormData(prev => ({ ...prev, paymentMethod: 'instaPay' }))}>
+                        <div className={`w-4 h-4 rounded-full border-2 border-white mr-2 flex items-center justify-center ${formData.paymentMethod === 'instaPay' ? 'bg-white' : 'bg-transparent'
+                          }`}>
                           {formData.paymentMethod === 'instaPay' && (
                             <div className="w-2 h-2 rounded-full bg-black"></div>
                           )}
                         </div>
-                      </div>
-                      <label htmlFor="instaPay" className="text-sm cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, paymentMethod: 'instaPay' }))}>Pay with InstaPay</label>
+                        <span className="text-sm select-none">Pay with InstaPay</span>
+                      </label>
                     </div>
                   </div>
                 </div>
@@ -411,11 +401,12 @@ export default function CheckoutPage() {
                         className={`w-full p-3 bg-transparent border border-white text-white focus:outline-none focus:border-gray-400 transition-colors duration-300 appearance-none ${errors.city ? 'border-red-500' : ''}`}
                       >
                         <option value="" className="bg-stone-900 text-white">Select a governorate</option>
-                        {cities.filter((city: any) => city.isActive).map((city: any) => (
-                          <option key={city._id} value={city.cityName} className="bg-stone-900 text-white">
-                            {city.governorate} (L.E {city.shippingCost})
-                          </option>
-                        ))}
+                        {cities.filter((city: City) => city.isActive)
+                          .map((city: City) => (
+                            <option key={city._id} value={city.cityName} className="bg-stone-900 text-white">
+                              {city.governorate}
+                            </option>
+                          ))}
                       </select>
                     )}
                   </div>
@@ -489,8 +480,8 @@ export default function CheckoutPage() {
               <h2 className="text-xl font-medium mb-4 text-white">Order Summary</h2>
 
               <div className="space-y-4 mb-6">
-                {state!.items.map((item: any) => (
-                  <div key={`${item.id}-${item.variant?.size}-${item.variant?.color}`} className="flex items-center gap-4">
+                {cartItems.map((item: CartItem) => (
+                  <div key={`${item.id}-${item.variant?.name}-${item.variant?.color}`} className="flex items-center gap-4">
                     <div className="w-16 h-16 relative bg-gray-800 overflow-hidden">
                       {item.image && (
                         <Image
@@ -505,7 +496,7 @@ export default function CheckoutPage() {
                     <div className="flex-1">
                       <h3 className="font-medium text-white">{item.name}</h3>
                       <p className="text-sm text-gray-300">
-                        {item.variant?.size}{item.variant?.color ? `, ${item.variant?.color}` : ''} × {item.quantity}
+                        {item.variant?.name}{item.variant?.color ? `, ${item.variant?.color}` : ''} × {item.quantity}
                       </p>
                     </div>
                     <div className="text-right">

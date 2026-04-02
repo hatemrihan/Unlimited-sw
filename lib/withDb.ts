@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from './mongodb';
 import { toStatusCode } from './errors';
 
-type RouteHandler = (req: NextRequest, ctx?: any) => Promise<NextResponse>;
+type RouteContext = { params: Record<string, string> | Promise<Record<string, string>> };
+type RouteHandler<C extends RouteContext | undefined = undefined> =
+  (req: NextRequest, ctx: C) => Promise<NextResponse>;
 
 /**
  * withDb — middleware wrapper that ensures the MongoDB connection is ready
@@ -12,8 +14,10 @@ type RouteHandler = (req: NextRequest, ctx?: any) => Promise<NextResponse>;
  * Usage:
  *   export const GET = withDb(async (req) => { ... });
  */
-export function withDb(handler: RouteHandler): RouteHandler {
-  return async (req: NextRequest, ctx?: any): Promise<NextResponse> => {
+export function withDb<C extends RouteContext | undefined = undefined>(
+  handler: RouteHandler<C>
+): RouteHandler<C> {
+  return async (req: NextRequest, ctx: C): Promise<NextResponse> => {
     try {
       await dbConnect();
     } catch (err) {
@@ -28,9 +32,11 @@ export function withDb(handler: RouteHandler): RouteHandler {
       return await handler(req, ctx);
     } catch (err: unknown) {
       const status = toStatusCode(err);
-      const message = err instanceof Error ? err.message : 'Internal server error';
-      console.error(`withDb: handler threw [${status}]`, message);
-      return NextResponse.json({ success: false, error: message }, { status });
+      const userMessage = (err as any).userMessage ?? 'Something went wrong. Please try again.';
+      const devMessage = err instanceof Error ? err.message : 'Internal server error';
+      
+      console.error(`withDb: handler threw [${status}]`, devMessage);
+      return NextResponse.json({ success: false, error: userMessage }, { status });
     }
   };
 }

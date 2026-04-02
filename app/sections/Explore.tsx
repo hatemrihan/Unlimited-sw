@@ -4,8 +4,8 @@ import React, { useState, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 // FULL QUALITY IMAGES - No compression or quality loss!
-import oneImage from '@/public/images/all-black/one-image.png';
-import twoImage from '@/public/images/all-black/two-image.png';
+import oneImage from '@/public/images/all-grayy/1763900966157-avnq5qjndt.png';
+import twoImage from '@/public/images/all-grayy/1763901202402-bdlfhcw2tbu.png';
 
 // 🔥 CACHE BUSTER - Change this number to force browser refresh: v2.0
 const COMPONENT_VERSION = '2.0';
@@ -20,7 +20,7 @@ const Explore = () => {
     const handleAddToCart = () => {
         setIsAddingToCart(true);
         // Navigate to specific product page
-        router.push('/product/68c10e561fd7ae728a98bde3');
+        router.push('/product/wall-mounted-pull-up-bar-wall-parallel-bar');
     };
 
     // Handle slider drag

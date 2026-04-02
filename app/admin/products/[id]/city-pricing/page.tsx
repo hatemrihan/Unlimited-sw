@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { toast } from 'sonner';
+import { fetchWithRetry } from '@/utils/fetchWithRetry';
 
 interface CityPricing {
   governorate: string;
@@ -17,6 +19,22 @@ interface ProductCityPricingData {
   cityPricing: CityPricing[];
 }
 
+const Spinner = ({ size = 'sm' }: { size?: 'sm' | 'xs' }) => (
+  <svg
+    className={`animate-spin ${size === 'xs' ? 'w-3 h-3' : 'w-6 h-6'}`}
+    fill="none"
+    viewBox="0 0 24 24"
+    aria-hidden="true"
+  >
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+    <path
+      className="opacity-75"
+      fill="currentColor"
+      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+    />
+  </svg>
+);
+
 const ProductCityPricingPage = () => {
   const router = useRouter();
   const params = useParams();
@@ -27,23 +45,18 @@ const ProductCityPricingPage = () => {
   const [data, setData] = useState<ProductCityPricingData | null>(null);
   const [cityPricing, setCityPricing] = useState<CityPricing[]>([]);
   
-  // Inline feedback states replacing native alerts
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
-  // Auto-clear success message
-  useEffect(() => {
-    if (success) {
-      const timer = setTimeout(() => setSuccess(null), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [success]);
-
-  // Fetch product city pricing data
-  const fetchData = async () => {
+  const fetchData = useCallback(async (signal?: AbortSignal) => {
     try {
       setError(null);
-      const response = await fetch(`/api/admin/products/${productId}/city-pricing`);
+      const response = await fetchWithRetry(
+        `/api/admin/products/${productId}/city-pricing`,
+        { signal }
+      );
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+      }
       const result = await response.json();
       
       if (result.success) {
@@ -53,27 +66,26 @@ const ProductCityPricingPage = () => {
         setError('Error: ' + result.error);
       }
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
       console.error('Error fetching city pricing:', err);
       setError('Failed to fetch city pricing data');
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    if (productId) {
-      fetchData();
-    }
   }, [productId]);
 
-  // Save changes
+  useEffect(() => {
+    if (!productId) return;
+    const controller = new AbortController();
+    fetchData(controller.signal);
+    return () => controller.abort();
+  }, [productId, fetchData]);
+
   const handleSave = async () => {
     setSaving(true);
-    setError(null);
-    setSuccess(null);
     
     try {
-      const response = await fetch(`/api/admin/products/${productId}/city-pricing`, {
+      const response = await fetchWithRetry(`/api/admin/products/${productId}/city-pricing`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -81,38 +93,49 @@ const ProductCityPricingPage = () => {
         body: JSON.stringify({ cityPricing }),
       });
       
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+      }
+      
       const result = await response.json();
       
       if (result.success) {
-        setSuccess('City pricing updated successfully!');
+        toast.success('City pricing updated successfully!');
         await fetchData();
       } else {
-        setError('Error: ' + result.error);
+        toast.error(result.error || 'Failed to save city pricing');
       }
     } catch (err) {
       console.error('Error saving city pricing:', err);
-      setError('Failed to save city pricing');
+      toast.error('Failed to save city pricing');
     } finally {
       setSaving(false);
     }
   };
 
-  // Apply base price to all cities
   const applyBasePriceToAll = () => {
     if (!data) return;
-    // Removed native confirm() — changes are safe because they must be explicitly saved
     setCityPricing(prev => prev.map(city => ({
       ...city,
       price: data.basePrice
     })));
   };
 
+  const updateGov = useCallback((governorate: string, field: keyof CityPricing, value: number | boolean) => {
+    setCityPricing(prev =>
+      prev.map(x => x.governorate === governorate ? { ...x, [field]: value } : x)
+    );
+  }, []);
+
   const govs = [...cityPricing].sort((a, b) => a.governorate.localeCompare(b.governorate));
 
   if (loading) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
+        <div className="flex flex-col items-center gap-4">
+          <Spinner size="sm" />
+          <p className="text-gray-400">Loading city pricing...</p>
+        </div>
       </div>
     );
   }
@@ -123,7 +146,7 @@ const ProductCityPricingPage = () => {
         <div className="text-center">
           <h2 className="text-2xl font-medium mb-4">Product not found</h2>
           <button
-            onClick={() => router.back()}
+            onClick={() => router.push('/admin')}
             className="bg-white text-black px-6 py-3 font-medium hover:bg-gray-200 transition-colors"
           >
             Go Back
@@ -136,46 +159,39 @@ const ProductCityPricingPage = () => {
   return (
     <div className="min-h-screen bg-black text-white p-4">
       <div className="max-w-7xl mx-auto">
-        {/* Inline Feedback Alerts */}
         {error && (
           <div className="bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded mb-6 flex justify-between">
             <span>{error}</span>
             <button onClick={() => setError(null)} className="text-red-200 hover:text-white">✕</button>
           </div>
         )}
-        {success && (
-          <div className="bg-green-900/50 border border-green-500 text-green-200 px-4 py-3 rounded mb-6 flex justify-between">
-            <span>{success}</span>
-            <button onClick={() => setSuccess(null)} className="text-green-200 hover:text-white">✕</button>
-          </div>
-        )}
 
-        {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => router.back()}
+            onClick={() => router.push('/admin')}
             className="flex items-center gap-2 text-gray-300 hover:text-white mb-4 transition-colors"
           >
             <span>←</span>
             <span>Back to Products</span>
           </button>
           
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h1 className="text-4xl font-bold mb-2">City Pricing Management</h1>
               <p className="text-xl text-gray-300 mb-1">Product: <span className="text-white font-medium">{data.productName}</span></p>
               <p className="text-gray-400">Base Price: <span className="text-white font-medium">{data.basePrice} LE</span></p>
             </div>
             
-            <div className="flex gap-4">
+            <div className="flex flex-wrap gap-4">
               <button
                 onClick={() => {
                   setLoading(true);
                   fetchData();
                 }}
                 disabled={loading}
-                className="bg-blue-600 text-white px-4 py-2 font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+                className="bg-blue-600 text-white px-4 py-2 font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
               >
+                {loading && <Spinner size="xs" />}
                 {loading ? 'Refreshing...' : 'Refresh Data'}
               </button>
               <button
@@ -187,15 +203,15 @@ const ProductCityPricingPage = () => {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="bg-white text-black px-6 py-3 font-medium hover:bg-gray-200 transition-colors disabled:opacity-50 min-w-[160px]"
+                className="bg-white text-black px-6 py-3 font-medium hover:bg-gray-200 transition-colors disabled:opacity-50 min-w-[160px] flex items-center justify-center gap-2"
               >
-                {saving ? 'Saving...' : success ? 'Saved!' : 'Save Changes'}
+                {saving && <Spinner size="xs" />}
+                {saving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>
         </div>
 
-        {/* Governorate Pricing Table */}
         <div className="bg-black border border-white/10 rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -215,23 +231,35 @@ const ProductCityPricingPage = () => {
                     <td className="px-4 py-3 font-medium text-gray-300">{gov.governorate}</td>
                     <td className="px-4 py-3">
                       <input type="number" value={gov.price} min="0"
-                        onChange={(e)=> setCityPricing(prev=>prev.map(x=>x.governorate===gov.governorate?{...x, price:Number(e.target.value)}:x))}
-                        className="w-20 p-2 bg-transparent border border-white/20 text-white text-center focus:outline-none focus:border-white"/>
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const num = val === '' ? 0 : Number(val);
+                          if (!Number.isNaN(num)) updateGov(gov.governorate, 'price', num);
+                        }}
+                        className="w-20 p-2 bg-transparent border border-white/20 text-white text-center focus:outline-none focus:border-white transition-colors" />
                     </td>
                     <td className="px-4 py-3">
                       <input type="number" value={gov.shippingCost} min="0"
-                        onChange={(e)=> setCityPricing(prev=>prev.map(x=>x.governorate===gov.governorate?{...x, shippingCost:Number(e.target.value)}:x))}
-                        className="w-24 p-2 bg-transparent border border-white/20 text-white text-center focus:outline-none focus:border-white"/>
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const num = val === '' ? 0 : Number(val);
+                          if (!Number.isNaN(num)) updateGov(gov.governorate, 'shippingCost', num);
+                        }}
+                        className="w-24 p-2 bg-transparent border border-white/20 text-white text-center focus:outline-none focus:border-white transition-colors" />
                     </td>
                     <td className="px-4 py-3">
                       <input type="number" value={gov.codFee} min="0"
-                        onChange={(e)=> setCityPricing(prev=>prev.map(x=>x.governorate===gov.governorate?{...x, codFee:Number(e.target.value)}:x))}
-                        className="w-24 p-2 bg-transparent border border-white/20 text-white text-center focus:outline-none focus:border-white"/>
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const num = val === '' ? 0 : Number(val);
+                          if (!Number.isNaN(num)) updateGov(gov.governorate, 'codFee', num);
+                        }}
+                        className="w-24 p-2 bg-transparent border border-white/20 text-white text-center focus:outline-none focus:border-white transition-colors" />
                     </td>
                     <td className="px-4 py-3 font-medium text-green-400">{gov.price + gov.shippingCost + gov.codFee} LE</td>
                     <td className="px-4 py-3">
-                      <button onClick={()=> setCityPricing(prev=>prev.map(x=>x.governorate===gov.governorate?{...x, isActive:!x.isActive}:x))}
-                        className={`px-3 py-1 rounded text-xs font-medium transition-colors ${gov.isActive?'bg-green-600 text-white hover:bg-green-700':'bg-gray-600 text-gray-300 hover:bg-gray-700'}`}>
+                      <button onClick={()=> updateGov(gov.governorate, 'isActive', !gov.isActive)}
+                        className={`px-3 py-1 rounded text-xs font-medium transition-colors ${gov.isActive ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-600 text-gray-300 hover:bg-gray-700'}`}>
                         {gov.isActive ? 'Active' : 'Inactive'}
                       </button>
                     </td>
@@ -242,25 +270,26 @@ const ProductCityPricingPage = () => {
           </div>
         </div>
 
-        {/* Summary */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-black border border-white/10 p-4 rounded-lg">
-            <h3 className="text-lg font-medium mb-2">Active Governorates</h3>
-            <p className="text-2xl font-bold text-green-400">
+            <h3 className="text-lg font-medium mb-2 text-gray-400">Active Governorates</h3>
+            <p className="text-3xl font-bold text-green-400">
               {cityPricing.filter(g => g.isActive).length}
             </p>
           </div>
           
           <div className="bg-black border border-white/10 p-4 rounded-lg">
-            <h3 className="text-lg font-medium mb-2">Average Price</h3>
-            <p className="text-2xl font-bold text-blue-400">
-              {Math.round(cityPricing.reduce((sum, g) => sum + g.price, 0) / cityPricing.length || 0)} LE
+            <h3 className="text-lg font-medium mb-2 text-gray-400">Average Price</h3>
+            <p className="text-3xl font-bold text-blue-400">
+              {cityPricing.length > 0 
+                ? Math.round(cityPricing.reduce((sum, g) => sum + g.price, 0) / cityPricing.length) 
+                : 0} LE
             </p>
           </div>
           
           <div className="bg-black border border-white/10 p-4 rounded-lg">
-            <h3 className="text-lg font-medium mb-2">Price Range</h3>
-            <p className="text-2xl font-bold text-purple-400">
+            <h3 className="text-lg font-medium mb-2 text-gray-400">Price Range</h3>
+            <p className="text-3xl font-bold text-purple-400">
               {cityPricing.length > 0 
                 ? `${Math.min(...cityPricing.map(g => g.price))} - ${Math.max(...cityPricing.map(g => g.price))}` 
                 : '0'} LE
@@ -268,17 +297,18 @@ const ProductCityPricingPage = () => {
           </div>
         </div>
 
-        {/* Instructions */}
-        <div className="mt-8 bg-gray-900 border border-white/10 p-6 rounded-lg">
-          <h3 className="text-lg font-medium mb-4">💡 How City Pricing Works</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300">
+        <div className="mt-8 bg-black/60 border border-white/10 p-6 rounded-lg shadow-sm">
+          <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+            <span className="text-xl">💡</span> How City Pricing Works
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-gray-300 bg-white/5 p-4 rounded-lg border border-white/5">
             <div>
-              <h4 className="font-medium text-white mb-2">For Online Payment:</h4>
-              <p>Customer pays: <strong>Product Price + Shipping Cost</strong></p>
+              <h4 className="font-medium text-white mb-2 pb-2 border-b border-white/10">For Online Payment</h4>
+              <p>Customer pays: <span className="block mt-2 text-base text-gray-100">Product Price + Shipping Cost</span></p>
             </div>
             <div>
-              <h4 className="font-medium text-white mb-2">For Cash on Delivery (COD):</h4>
-              <p>Customer pays: <strong>Product Price + Shipping Cost + COD Fee</strong></p>
+              <h4 className="font-medium text-white mb-2 pb-2 border-b border-white/10">For Cash on Delivery (COD)</h4>
+              <p>Customer pays: <span className="block mt-2 text-base text-green-400 font-medium">Product Price + Shipping Cost + COD Fee</span></p>
             </div>
           </div>
         </div>

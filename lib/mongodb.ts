@@ -37,7 +37,7 @@ async function dbConnect() {
     const opts = {
       bufferCommands: false,
       maxPoolSize: 10,
-      serverSelectionTimeoutMS: 10000, // Scaled up timeout for high traffic
+      serverSelectionTimeoutMS: 10000, // Time to wait for Atlas to respond on cold start
       socketTimeoutMS: 45000, 
       connectTimeoutMS: 10000,
       family: 4, // Use IPv4, skip trying IPv6
@@ -50,7 +50,7 @@ async function dbConnect() {
 
       // Add connection event listeners for production reliability
       mongoose.connection.on('connected', () => {
-        console.log('MongoDB re-connected');
+        if (process.env.NODE_ENV === 'development') console.log('MongoDB re-connected');
       });
 
       mongoose.connection.on('error', (err) => {
@@ -58,7 +58,7 @@ async function dbConnect() {
       });
 
       mongoose.connection.on('disconnected', () => {
-        console.warn('MongoDB disconnected');
+        if (process.env.NODE_ENV === 'development') console.warn('MongoDB disconnected');
       });
 
       return mongoose;

@@ -1,109 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../lib/mongodb';
 import Promo from '../../../models/promo';
+import { logger } from '../../../utils/logger';
 
 // POST - Create new promo code (admin) or validate promo code (frontend)
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    // Check if this is a validation request (has orderTotal) or creation request
-    if (body.orderTotal !== undefined) {
-      // This is a validation request from frontend
-      console.log('🎫 Validating promo code...');
-
-      const { code, orderTotal } = body;
-
-      if (!code || !code.trim()) {
-        return NextResponse.json(
-          { success: false, error: 'Promo code is required' },
-          { status: 400 }
-        );
-      }
-
-      await dbConnect();
-
-      const promoCode = await Promo.findOne({
-        code: code.toUpperCase().trim(),
-        isActive: true
-      });
-
-      if (!promoCode) {
-        return NextResponse.json(
-          { success: false, error: 'Invalid promo code' },
-          { status: 400 }
-        );
-      }
-
-      // Check if expired - Compare only dates, ignore time
-      // This means if expiry is Nov 21, it's valid for the ENTIRE day of Nov 21
-      if (promoCode.expiresAt) {
-        const today = new Date();
-        const expiryDate = new Date(promoCode.expiresAt);
-        
-        // Set both dates to midnight for fair comparison
-        today.setHours(0, 0, 0, 0);
-        expiryDate.setHours(0, 0, 0, 0);
-        
-        // If today's date is AFTER the expiry date, it's expired
-        if (today > expiryDate) {
-          return NextResponse.json(
-            { success: false, error: 'Promo code has expired' },
-            { status: 400 }
-          );
-        }
-      }
-
-      // Check usage limit
-      if (promoCode.usageLimit && promoCode.usedCount >= promoCode.usageLimit) {
-        return NextResponse.json(
-          { success: false, error: 'Promo code usage limit exceeded' },
-          { status: 400 }
-        );
-      }
-
-      // Check minimum order
-      if (promoCode.minimumOrder && orderTotal < promoCode.minimumOrder) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: `Minimum order of L.E ${promoCode.minimumOrder} required`
-          },
-          { status: 400 }
-        );
-      }
-
-      // Calculate discount
-      let discount = 0;
-      if (promoCode.discountType === 'percentage') {
-        discount = (orderTotal * promoCode.discountValue) / 100;
-        if (promoCode.maximumDiscount && discount > promoCode.maximumDiscount) {
-          discount = promoCode.maximumDiscount;
-        }
-      } else {
-        discount = promoCode.discountValue;
-      }
-
-      console.log('✅ Promo code validated:', {
-        code: promoCode.code,
-        discount: discount,
-        type: promoCode.discountType
-      });
-
-      return NextResponse.json({
-        success: true,
-        promo: {
-          code: promoCode.code,
-          discountType: promoCode.discountType,
-          discountValue: promoCode.discountValue,
-          discount: discount,
-          description: promoCode.description,
-          waiveShipping: promoCode.waiveShipping || false
-        }
-      });
-    } else {
-      // This is a creation request from admin
-      console.log('📝 Creating new promo code...');
+    // Pure Creation pipeline isolated from previous Validation loops
+    logger.info('📝 Creating new isolated promo code payload natively...');
 
       const { code, discount, type, minAmount, maxUses, isActive, validFrom, validUntil, description, waiveShipping } = body;
 
@@ -148,7 +54,7 @@ export async function POST(request: NextRequest) {
 
       await newPromoCode.save();
 
-      console.log('✅ Created promo code:', newPromoCode.code);
+      logger.info('✅ Mongoose created promo transaction:', newPromoCode.code);
 
       return NextResponse.json({
         success: true,
@@ -167,10 +73,9 @@ export async function POST(request: NextRequest) {
           description: newPromoCode.description
         }
       });
-    }
 
   } catch (error: unknown) {
-    console.error('❌ Promo code error:', error);
+    logger.error('❌ Promo code pipeline error:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to process promo code request' },
       { status: 500 }
@@ -181,7 +86,7 @@ export async function POST(request: NextRequest) {
 // GET - Fetch all promo codes (for admin)
 export async function GET(request: NextRequest) {
   try {
-    console.log('📋 Fetching promo codes for admin...');
+    logger.info('📋 Streaming promo matrix records for admin mapping...');
 
     await dbConnect();
 
@@ -189,7 +94,7 @@ export async function GET(request: NextRequest) {
       .sort({ createdAt: -1 })
       .limit(100);
 
-    console.log(`✅ Found ${promos.length} promo codes`);
+    logger.info(`✅ Found ${promos.length} promo blocks`);
 
     return NextResponse.json({
       success: true,
@@ -210,7 +115,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error: unknown) {
-    console.error('❌ Error fetching promo codes:', error);
+    logger.error('❌ Streaming fallback failure fetching promo loops:', error);
     return NextResponse.json(
       {
         success: false,

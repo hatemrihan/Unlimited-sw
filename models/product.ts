@@ -26,6 +26,7 @@ export interface Product {
   // Admin-controlled badges (only considered when stock === 0)
   showOutOfStockBadge?: boolean;
   showPreorderBadge?: boolean;
+  customOutOfStockMessage?: string;
 
   // Detailed product information (optional fields for admin control)
   detailedDescription?: string;  // Long detailed description
@@ -150,6 +151,10 @@ const ProductSchema = new mongoose.Schema({
   showPreorderBadge: {
     type: Boolean,
     default: false,
+  },
+  customOutOfStockMessage: {
+    type: String,
+    default: '',
   },
 
   // Detailed product information (optional fields for admin control)

@@ -20,6 +20,8 @@ const CityPricingSchema = new mongoose.Schema({
     required: true,
     trim: true,
     unique: true,
+    // Normalize to lowercase before saving to prevent duplicates
+    set: (v: string) => v.toLowerCase().trim(),
   },
   
   // Governorate name

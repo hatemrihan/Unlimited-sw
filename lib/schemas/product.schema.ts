@@ -46,6 +46,7 @@ export const createProductSchema = z.object({
   faqs:                z.array(faqSchema).default([]),
   showOutOfStockBadge: z.boolean().default(false),
   showPreorderBadge:   z.boolean().default(false),
+  customOutOfStockMessage: z.string().optional().default(''),
   cityPricing:         z.array(cityPricingSchema).default([]),
 });
 

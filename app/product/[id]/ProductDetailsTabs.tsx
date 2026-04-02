@@ -34,11 +34,11 @@ const ProductDetailsTabs: React.FC<ProductDetailsTabsProps> = ({ product }) => {
       id: 'faqs',
       label: 'FAQS',
       content: product.faqs && product.faqs.length > 0 ? (
-        <div className="space-y-2">
+        <div className="space-y-2 w-full text-center">
           {product.faqs.map((faq, index) => (
-            <div key={index} className="border-b border-gray-600 pb-2 last:border-b-0">
-              <h4 className="font-medium text-[#b3b3b3] mb-1 text-xs">{faq.question}</h4>
-              <p className="text-[#b3b3b3]/70 text-xs leading-relaxed">{faq.answer}</p>
+            <div key={index} className="border-b border-gray-600 pb-2 last:border-b-0 flex flex-col items-center text-center">
+              <h4 className="font-medium text-[#b3b3b3] mb-1 text-xs text-center">{faq.question}</h4>
+              <p className="text-[#b3b3b3]/70 text-xs leading-relaxed text-center">{faq.answer}</p>
             </div>
           ))}
         </div>
@@ -83,9 +83,9 @@ const ProductDetailsTabs: React.FC<ProductDetailsTabsProps> = ({ product }) => {
                   ease: "easeInOut",
                   opacity: { duration: 0.1 }
                 }}
-                className="overflow-hidden text-center flex items-center"
+                className="overflow-hidden flex flex-col items-center justify-center w-full"
               >
-                <div className="py-3 text-center text-[#b3b3b3] text-xs leading-relaxed">
+                <div className="py-3 text-center text-[#b3b3b3] text-xs leading-relaxed w-full flex flex-col items-center justify-center">
                   {typeof tab.content === 'string' ? (
                     <div className="whitespace-pre-line text-center">{tab.content}</div>
                   ) : (

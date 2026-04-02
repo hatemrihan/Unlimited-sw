@@ -5,47 +5,63 @@ import { useEffect, useState } from "react";
 
 interface ProtectedAdminRouteProps {
   children: React.ReactNode;
+  role?: 'admin' | 'manager' | 'viewer'; // RBAC enhancement
 }
 
-export default function ProtectedAdminRoute({ children }: ProtectedAdminRouteProps) {
+export default function ProtectedAdminRoute({ children, role = 'admin' }: ProtectedAdminRouteProps) {
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     // Check if user is authenticated
     const checkAuth = async () => {
       try {
-        const response = await fetch('/api/admin/check-auth');
+        const response = await fetch('/api/admin/check-auth', { 
+          signal: controller.signal 
+        });
         const data = await response.json();
         
-        if (data.authenticated) {
-          setIsAuthenticated(true);
+        const roleHierarchy = ['viewer', 'manager', 'admin'];
+
+        // Strict RBAC top-down inheritance logic 
+        if (
+          data.authenticated &&
+          roleHierarchy.indexOf(data.role) >= roleHierarchy.indexOf(role)
+        ) {
+          setIsAuthorized(true);
         } else {
           router.push('/admin/login');
         }
-      } catch (error) {
-        router.push('/admin/login');
+      } catch (error: any) {
+        if (error.name !== 'AbortError') {
+          router.push('/admin/login');
+        }
       } finally {
-        setIsChecking(false);
+        if (!controller.signal.aborted) {
+          setIsChecking(false);
+        }
       }
     };
 
     checkAuth();
-  }, [router]);
+
+    return () => {
+      controller.abort();
+    };
+  }, [router, role]);
 
   if (isChecking) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-white mt-4">Verifying authentication...</p>
-        </div>
+      <div className="flex h-[80vh] items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
       </div>
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthorized) {
     return null; // Will redirect to login
   }
 

@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 
-interface CartItem {
+export interface CartItem {
   id: string;
   name: string;
   nameArabic?: string;
@@ -22,18 +22,21 @@ interface CartState {
   itemCount: number;
 }
 
+const variantsMatch = (a?: CartItem['variant'], b?: CartItem['variant']) =>
+  a?.name === b?.name && a?.color === b?.color;
+
 type CartAction =
   | { type: 'ADD_ITEM'; payload: CartItem }
-  | { type: 'REMOVE_ITEM'; payload: { id: string; variant?: any } }
-  | { type: 'UPDATE_QUANTITY'; payload: { id: string; variant?: any; quantity: number; maxStock?: number } }
+  | { type: 'REMOVE_ITEM'; payload: { id: string; variant?: CartItem['variant'] } }
+  | { type: 'UPDATE_QUANTITY'; payload: { id: string; variant?: CartItem['variant']; quantity: number; maxStock?: number } }
   | { type: 'CLEAR_CART' }
   | { type: 'LOAD_CART'; payload: CartItem[] };
 
 const CartContext = createContext<{
   state: CartState;
   addItem: (item: Omit<CartItem, 'quantity'>, quantityToAdd?: number, maxStock?: number) => void;
-  removeItem: (id: string, variant?: any) => void;
-  updateQuantity: (id: string, variant: any, quantity: number, maxStock?: number) => void;
+  removeItem: (id: string, variant?: CartItem['variant']) => void;
+  updateQuantity: (id: string, variant: CartItem['variant'], quantity: number, maxStock?: number) => void;
   clearCart: () => void;
 } | null>(null);
 
@@ -42,8 +45,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
   switch (action.type) {
     case 'ADD_ITEM': {
       const existingItemIndex = state.items.findIndex(item =>
-        item.id === action.payload.id &&
-        JSON.stringify(item.variant) === JSON.stringify(action.payload.variant)
+        item.id === action.payload.id && variantsMatch(item.variant, action.payload.variant)
       );
 
       let newItems;
@@ -55,7 +57,6 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 
         // Check if adding would exceed stock
         if (action.payload.stock !== undefined && newQuantity > action.payload.stock) {
-          console.log(`Cannot add more items. Stock limit: ${action.payload.stock}, Current: ${existingItem.quantity}, Trying to add: ${quantityToAdd}`);
           return state; // Don't add if it would exceed stock
         }
 
@@ -68,7 +69,6 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
         // Add new item with stock validation
         const quantityToAdd = action.payload.quantity || 1;
         if (action.payload.stock !== undefined && quantityToAdd > action.payload.stock) {
-          console.log(`Cannot add item. Stock limit: ${action.payload.stock}, Trying to add: ${quantityToAdd}`);
           return state; // Don't add if it would exceed stock
         }
 
@@ -83,8 +83,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
     
     case 'REMOVE_ITEM': {
       const newItems = state.items.filter(item => 
-        !(item.id === action.payload.id && 
-          JSON.stringify(item.variant) === JSON.stringify(action.payload.variant))
+        !(item.id === action.payload.id && variantsMatch(item.variant, action.payload.variant))
       );
       const total = newItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
       const itemCount = newItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -94,8 +93,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
     
     case 'UPDATE_QUANTITY': {
       const newItems = state.items.map(item => {
-        const isMatch = item.id === action.payload.id && 
-                       JSON.stringify(item.variant) === JSON.stringify(action.payload.variant);
+        const isMatch = item.id === action.payload.id && variantsMatch(item.variant, action.payload.variant);
         
         if (isMatch) {
           const newQuantity = action.payload.maxStock !== undefined
@@ -149,7 +147,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         dispatch({ type: 'LOAD_CART', payload: items });
       }
     } catch (error) {
-      console.error('Error loading cart from localStorage:', error);
+      // Failed to load from localStorage, fallback to empty cart
     }
   }, []);
 
@@ -158,7 +156,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       localStorage.setItem('cart', JSON.stringify(state.items));
     } catch (error) {
-      console.error('Error saving cart to localStorage:', error);
+      // Failed to save to localStorage, silent failure acceptable
     }
   }, [state.items]);
 
@@ -167,11 +165,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     dispatch({ type: 'ADD_ITEM', payload: { ...item, quantity: quantityToAdd, stock: item.stock || maxStock } });
   };
 
-  const removeItem = (id: string, variant?: any) => {
+  const removeItem = (id: string, variant?: CartItem['variant']) => {
     dispatch({ type: 'REMOVE_ITEM', payload: { id, variant } });
   };
 
-  const updateQuantity = (id: string, variant: any, quantity: number, maxStock?: number) => {
+  const updateQuantity = (id: string, variant: CartItem['variant'], quantity: number, maxStock?: number) => {
     dispatch({ type: 'UPDATE_QUANTITY', payload: { id, variant, quantity, maxStock } });
   };
 

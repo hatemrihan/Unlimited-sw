@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+'use client';
+
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  ColumnDef,
   ColumnFiltersState,
   flexRender,
   getCoreRowModel,
@@ -10,21 +11,11 @@ import {
   SortingState,
   useReactTable,
   VisibilityState,
+  PaginationState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ChevronDown, MoreHorizontal, Download, ExternalLink, Eye } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { ChevronDown, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -34,7 +25,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -44,614 +34,63 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-interface OrderProduct {
-  productId: string;
-  name: string;
-  image: string;
-  price: number;
-  quantity: number;
-  size?: string;
-  color?: string;
-  promoCode?: string;
-}
-
-interface Customer {
-  name: string;
-  email: string;
-  phone: string;
-  address: string;
-}
-
-interface Order {
-  _id: string;
-  orderId: string;
-  customer: Customer;
-  products: OrderProduct[];
-  totalAmount: number;
-  subtotal: number;
-  shippingCost: number;
-  paymentMethod: 'cashOnDelivery' | 'instaPay';
-  status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
-  orderDate: string;
-  createdAt: string;
-  transactionScreenshot?: string;
-  promoCode?: string;
-  discountAmount?: number;
-  notes?: string;
-
-}
+import { useOrders, Order } from '@/hooks/useOrders';
+import { exportOrdersAsCSV, exportOrdersAsExcel, exportOrdersAsJSON, exportOrdersAsPDF } from '@/utils/exportOrders';
+import { getOrderColumns } from '@/components/orders/OrderColumns';
+import ProtectedAdminRoute from '@/components/auth/protected-admin-route';
+import { useDebounce } from '@/hooks/useDebounce';
+import { logger } from '@/utils/logger';
 
 const Orders = () => {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loadingOrders, setLoadingOrders] = useState<boolean>(false);
+  const { orders, loadingOrders, totalPages, fetchOrders, deleteOrder } = useOrders();
+
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
   const [globalFilter, setGlobalFilter] = useState("");
+  const debouncedGlobalFilter = useDebounce(globalFilter, 300);
+  const [{ pageIndex, pageSize }, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 50,
+  });
 
   // State for delete confirmation dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
-  // Use ref to store order ID for delete - refs persist through re-renders
-  const orderToDeleteRef = React.useRef<string | null>(null);
-
-  // Function to export orders as CSV
-  const exportOrdersAsCSV = () => {
-    const selectedRows = table.getFilteredSelectedRowModel().rows;
-    const rowsToExport = selectedRows.length > 0 ? selectedRows : table.getFilteredRowModel().rows;
-
-    const csvData = [
-      // CSV Headers - Shipping Company Format
-      ['Customer', 'Order ID', 'Email', 'Phone', 'Shipping Address', 'Products', 'Colors', 'Discount', 'Promo Code', 'Payment Method', 'Total'],
-      // CSV Rows
-      ...rowsToExport.map(row => {
-        const order = row.original;
-        const products = order.products.map(p => `${p.name}${p.size ? ` (${p.size})` : ''} x${p.quantity}`).join('; ');
-        const colors = order.products.map(p => p.color || 'N/A').join('; ');
-        const promoCode = order.promoCode || 'N/A'; return [
-          order.customer.name,
-          order.orderId,
-          order.customer.email,
-          order.customer.phone,
-          order.customer.address,
-          products,
-          colors,
-          promoCode,
-          order.paymentMethod === 'cashOnDelivery' ? 'COD' : 'InstaPay',
-          `${order.totalAmount} L.E`
-        ];
-      })
-    ];
-
-    const csvContent = csvData.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `shipping_orders_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  // Function to export orders as JSON (Shipping Company Format)
-  const exportOrdersAsJSON = () => {
-    const selectedRows = table.getFilteredSelectedRowModel().rows;
-    const rowsToExport = selectedRows.length > 0 ? selectedRows : table.getFilteredRowModel().rows;
-
-    const jsonData = rowsToExport.map(row => {
-      const order = row.original;
-      const products = order.products.map(p => ({
-        name: p.name,
-        size: p.size || null,
-        color: p.color || null,
-        quantity: p.quantity,
-        price: p.price
-      }));
-
-      return {
-        customer: order.customer.name,
-        orderId: order.orderId,
-        email: order.customer.email,
-        phone: order.customer.phone,
-        shippingAddress: order.customer.address,
-        products: products,
-        promoCode: order.promoCode || 'N/A',
-        paymentMethod: order.paymentMethod === 'cashOnDelivery' ? 'COD' : 'InstaPay',
-        total: `${order.totalAmount} L.E`
-      };
-    });
-
-    const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `shipping_orders_${new Date().toISOString().split('T')[0]}.json`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  // Function to export orders as Excel
-  const exportOrdersAsExcel = async () => {
-    const selectedRows = table.getFilteredSelectedRowModel().rows;
-    const rowsToExport = selectedRows.length > 0 ? selectedRows : table.getFilteredRowModel().rows;
-
-    // Import xlsx dynamically to avoid SSR issues
-    const XLSX = await import('xlsx');
-
-    const excelData = rowsToExport.map(row => {
-      const order = row.original;
-      const products = order.products.map(p => `${p.name}${p.size ? ` (${p.size})` : ''} x${p.quantity}`).join('; ');
-      const colors = order.products.map(p => p.color || 'N/A').join('; ');
-      const promoCode = order.products.map(p => p.promoCode || 'N/A').join('; ');
-      return {
-        'Customer': order.customer.name,
-        'Order ID': order.orderId,
-        'Email': order.customer.email,
-        'Phone': order.customer.phone,
-        'Shipping Address': order.customer.address,
-        'Products': products,
-        'Colors': colors,
-        'Discount': promoCode,
-        'Payment Method': order.paymentMethod === 'cashOnDelivery' ? 'COD' : 'InstaPay',
-        'Total': `${order.totalAmount} L.E`
-      };
-    });
-
-    const worksheet = XLSX.utils.json_to_sheet(excelData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Orders');
-
-    // Auto-size columns (ensure full address visibility)
-    const cols = [
-      { wch: Math.max(12, ...excelData.map(r => String(r['Customer']).length)) },
-      { wch: 20 }, // Order ID
-      { wch: Math.max(24, ...excelData.map(r => String(r['Email']).length)) },
-      { wch: 16 }, // Phone
-      { wch: Math.min(120, Math.max(50, ...excelData.map(r => String(r['Shipping Address']).length))) },
-      { wch: Math.max(40, ...excelData.map(r => String(r['Products']).length)) },
-      { wch: 12 }, // Discount
-      { wch: 12 }, // Promo Code
-      { wch: 12 }, // Payment
-      { wch: 12 }, // Total
-    ];
-    (worksheet as any)['!cols'] = cols;
-
-    XLSX.writeFile(workbook, `shipping_orders_${new Date().toISOString().split('T')[0]}.xlsx`);
-  };
-
-  // Function to export orders as PDF
-  const exportOrdersAsPDF = async () => {
-    const selectedRows = table.getFilteredSelectedRowModel().rows;
-    const rowsToExport = selectedRows.length > 0 ? selectedRows : table.getFilteredRowModel().rows;
-
-    // Import jsPDF dynamically to avoid SSR issues
-    const jsPDF = (await import('jspdf')).default;
-    const autoTable = (await import('jspdf-autotable')).default;
-
-    const doc = new jsPDF();
-
-    // Add title
-    doc.setFontSize(18);
-    doc.text('Shipping Orders Report', 14, 22);
-    doc.setFontSize(12);
-    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
-
-    // Prepare data for table
-    const tableData = rowsToExport.map(row => {
-      const order = row.original;
-      const products = order.products.map(p => `${p.name}${p.size ? ` (${p.size})` : ''}${p.color ? ` - ${p.color}` : ''} x${p.quantity}`).join('; ');
-      return [
-        order.customer.name,
-        order.orderId,
-        order.customer.email,
-        order.customer.phone,
-        order.customer.address, // full address
-        order.paymentMethod === 'cashOnDelivery' ? 'COD' : 'InstaPay',
-        order.promoCode || 'N/A',
-        `${order.totalAmount} L.E`
-      ];
-    });
-
-    autoTable(doc, {
-      head: [['Customer', 'Order ID', 'Email', 'Phone', 'Address', 'Payment', 'Promo Code', 'Total']],
-      body: tableData,
-      startY: 40,
-      styles: {
-        fontSize: 8,
-        cellPadding: 2,
-      },
-      headStyles: {
-        fillColor: [0, 0, 0],
-        textColor: [255, 255, 255],
-        fontStyle: 'bold',
-      },
-      alternateRowStyles: {
-        fillColor: [245, 245, 245],
-      },
-      columnStyles: {
-        4: { cellWidth: 100 }, // Address wider
-        5: { cellWidth: 60 },  // Payment
-        6: { cellWidth: 20 },  // Total
-      } as any,
-    });
-
-    doc.save(`shipping_orders_${new Date().toISOString().split('T')[0]}.pdf`);
-  };
-
-  // Function to fetch all orders
-  const fetchOrders = async () => {
-    try {
-      setLoadingOrders(true);
-      const response = await fetch('/api/orders');
-      if (response.ok) {
-        const data = await response.json();
-        setOrders(data.orders || []);
-      } else {
-        console.error('Failed to fetch orders');
-      }
-    } catch (error) {
-      console.error('Error fetching orders:', error);
-    } finally {
-      setLoadingOrders(false);
-    }
-  };
-
-  // Function to update order status
-  const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
-    try {
-      const response = await fetch(`/api/orders/${orderId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (response.ok) {
-        // Update the order in the local state
-        setOrders(orders.map(order =>
-          order._id === orderId
-            ? { ...order, status: newStatus as Order['status'] }
-            : order
-        ));
-        alert(`Order status updated to ${newStatus}`);
-      } else {
-        alert('Failed to update order status');
-      }
-    } catch (error) {
-      console.error('Error updating order status:', error);
-      alert('Error updating order status');
-    }
-  };
-
-  // Function to delete order
-  const handleDeleteOrder = async (orderId: string) => {
-    try {
-      console.log('🗑️ Attempting to delete order:', orderId);
-      const response = await fetch(`/api/orders/${orderId}`, {
-        method: 'DELETE',
-      });
-
-      const data = await response.json();
-      console.log('🗑️ Delete response:', data);
-
-      if (response.ok && data.success) {
-        // Remove the order from the local state
-        setOrders(orders.filter(order => order._id !== orderId));
-        setDeleteDialogOpen(false);
-        setOrderToDelete(null);
-        alert('Order deleted successfully');
-      } else {
-        alert(`Failed to delete order: ${data.error || 'Unknown error'}`);
-      }
-    } catch (error) {
-      console.error('Error deleting order:', error);
-      alert('Error deleting order');
-    }
-  };
-
-  // Function to open delete confirmation dialog
-  const openDeleteDialog = (order: Order) => {
-    orderToDeleteRef.current = order._id; // Store ID in ref for reliable access
+  const openDeleteDialog = useCallback((order: Order) => {
     setOrderToDelete(order);
     setDeleteDialogOpen(true);
-  };
+  }, []);
 
-  // Define table columns
-  const columns: ColumnDef<Order>[] = [
-    {
-      id: "select",
-      header: ({ table }) => (
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value: boolean) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value: boolean) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    },
-    {
-      accessorKey: "customer.name",
-      header: ({ column }) => {
-        return (
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="text-gray-900 hover:bg-white/10"
-          >
-            Customer
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          </Button>
-        )
-      },
-      cell: ({ row }) => (
-        <div className="font-medium text-gray-900">{row.original.customer.name}</div>
-      ),
-    },
-    {
-      accessorKey: "orderId",
-      header: "Order ID",
-      cell: ({ row }) => (
-        <div className="font-mono text-gray-900">{row.getValue("orderId")}</div>
-      ),
-    },
-    {
-      accessorKey: "customer.email",
-      header: "Email",
-      cell: ({ row }) => (
-        <div className="text-gray-900">{row.original.customer.email}</div>
-      ),
-    },
-    {
-      accessorKey: "customer.phone",
-      header: "Phone",
-      cell: ({ row }) => (
-        <div className="text-gray-900">{row.original.customer.phone}</div>
-      ),
-    },
-    {
-      accessorKey: "customer.address",
-      header: "Shipping Address",
-      cell: ({ row }) => (
-        <div className="text-gray-900">
-          <div className="text-sm max-w-md whitespace-normal break-words" title={row.original.customer.address}>
-            {row.original.customer.address}
-          </div>
-        </div>
-      ),
-    },
-    {
-      accessorKey: "products",
-      header: "Products",
-      cell: ({ row }) => {
-        const products = row.original.products;
-        return (
-          <div className="text-gray-900">
-            <div className="text-sm font-medium">{products.length} item(s)</div>
-            <div className="text-xs text-gray-300 max-w-sm">
-              {products.map((product, index) => (
-                <div key={index} className="whitespace-normal break-words">
-                  <div className="font-medium">{product.name}</div>
-                  <div className="text-xs text-gray-400">
-                    {product.size && <span className="mr-2">Size: {product.size}</span>}
-                    <span className="font-semibold">Qty: {product.quantity}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      },
-    },
-    {
-      accessorKey: "color",
-      header: "Color",
-      cell: ({ row }) => {
-        const products = row.original.products;
-        return (
-          <div className="text-gray-900">
-            {products.map((product, index) => (
-              <div key={index} className="mb-1">
-                {product.color ? (
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-blue-500 to-blue-600 text-gray-900 shadow-sm">
-                    🎨 {product.color.toUpperCase()}
-                  </span>
-                ) : (
-                  <span className="text-gray-500 text-xs">-</span>
-                )}
-              </div>
-            ))}
-          </div>
-        );
-      },
-    },
+  // Memoize columns to prevent exhaustive re-renders
+  const columns = useMemo(() => getOrderColumns(openDeleteDialog), [openDeleteDialog]);
 
-    {
-      accessorKey: "paymentMethod",
-      header: "Payment",
-      cell: ({ row }) => {
-        const method = row.getValue("paymentMethod") as string;
-        return (
-          <div className="text-gray-900">
-            <span className={`inline-flex px-2 py-1 text-xs rounded ${method === 'instaPay' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
-              }`}>
-              {method === 'instaPay' ? 'InstaPay' : 'Cash on Delivery'}
-            </span>
-          </div>
-        );
-      },
-    },
-    {
-      accessorKey: "promoCode",
-      header: "Promo Code",
-      cell: ({ row }) => {
-        const order = row.original;
-        return (
-          <div className="text-gray-900">
-            {order.promoCode ? (
-              <div>
-                <span className="inline-flex px-2 py-1 text-xs rounded bg-yellow-100 text-yellow-800 font-medium">
-                  {order.promoCode}
-                </span>
-                {order.discountAmount && (
+  // Load persistence — SSR guard required (localStorage is browser-only)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const savedState = localStorage.getItem('orders-table-state');
+    if (savedState) {
+      try {
+        const parsed = JSON.parse(savedState);
+        if (parsed.sorting) setSorting(parsed.sorting);
+        if (parsed.columnVisibility) setColumnVisibility(parsed.columnVisibility);
+      } catch (e) {
+        logger.warn('Failed to parse table state', e);
+      }
+    }
+  }, []);
 
-                  <div className="text-xs text-green-400 mt-1">
-                    -L.E {order.discountAmount}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <span className="text-gray-400 text-xs">No promo</span>
-            )}
-          </div>
-        );
-      },
-    },
-    {
-      accessorKey: "transactionScreenshot",
-      header: "Receipt",
-      cell: ({ row }) => {
-        const order = row.original;
-        if (order.paymentMethod === 'instaPay' && order.transactionScreenshot) {
-          return (
-            <div className="text-gray-900">
-              <div className="flex items-center gap-2">
-                <a
-                  href={order.transactionScreenshot}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 text-sm transition-colors duration-150"
-                >
-                  <Eye className="w-3 h-3" />
-                  View Receipt
-                </a>
-
-              </div>
-            </div>
-          );
-        }
-        return (
-          <div className="text-gray-400 text-sm">
-            {order.paymentMethod === 'instaPay' ? 'No receipt uploaded' : 'N/A'}
-          </div>
-        );
-      },
-    },
-
-    {
-      accessorKey: "totalAmount",
-      header: () => <div className="text-right text-gray-900">Total</div>,
-      cell: ({ row }) => {
-        const amount = parseFloat(row.getValue("totalAmount"));
-        return (
-          <div className="text-right font-medium text-gray-900">
-            L.E {amount.toLocaleString()}
-          </div>
-        );
-      },
-    },
-    {
-      accessorKey: "orderDate",
-      header: "Order Date",
-      cell: ({ row }) => {
-        const date = new Date(row.getValue("orderDate"));
-        return (
-          <div className="text-gray-900 text-sm">
-            {date.toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric'
-            })}
-          </div>
-        );
-      },
-    },
-    {
-      id: "actions",
-      enableHiding: false,
-      cell: ({ row }) => {
-        const order = row.original;
-
-        return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0 text-gray-900 hover:bg-white/10">
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel className="text-gray-900">Actions</DropdownMenuLabel>
-              <DropdownMenuItem
-                onClick={() => navigator.clipboard.writeText(order.orderId)}
-                className="text-gray-900 hover:bg-white/10"
-              >
-                Copy Order ID
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => navigator.clipboard.writeText(order.customer.email)}
-                className="text-gray-900 hover:bg-white/10"
-              >
-                Copy Customer Email
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => navigator.clipboard.writeText(order.customer.phone)}
-                className="text-gray-900 hover:bg-white/10"
-              >
-                Copy Customer Phone
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => navigator.clipboard.writeText(order.customer.address)}
-                className="text-gray-900 hover:bg-white/10"
-              >
-                Copy Shipping Address
-              </DropdownMenuItem>
-
-              {order.transactionScreenshot && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => window.open(order.transactionScreenshot, '_blank')}
-                    className="text-gray-900 hover:bg-white/10"
-                  >
-                    View Payment Screenshot
-                  </DropdownMenuItem>
-                </>
-              )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => {
-                  if (window.confirm(`Are you sure you want to delete the order for "${order.customer.name}"? This action cannot be undone.`)) {
-                    handleDeleteOrder(order._id);
-                  }
-                }}
-                className="text-red-400 hover:bg-red-900/20"
-              >
-                Delete Order
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        );
-      },
-    },
-  ];
+  // Save persistence — skip on initial mount defaults to avoid overwriting saved state
+  const isMountedRef = React.useRef(false);
+  useEffect(() => {
+    if (!isMountedRef.current) { isMountedRef.current = true; return; }
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('orders-table-state', JSON.stringify({ sorting, columnVisibility }));
+  }, [sorting, columnVisibility]);
 
   // Initialize table
   const table = useReactTable({
@@ -667,203 +106,250 @@ const Orders = () => {
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     globalFilterFn: 'includesString',
+    manualPagination: true,
+    pageCount: totalPages,
+    onPaginationChange: setPagination,
     state: {
       sorting,
       columnFilters,
       columnVisibility,
       rowSelection,
-      globalFilter,
+      globalFilter: debouncedGlobalFilter,
+      pagination: { pageIndex, pageSize },
     },
   });
 
   useEffect(() => {
-    fetchOrders();
-  }, []);
+    const controller = new AbortController();
+    fetchOrders(controller.signal, pageIndex + 1, pageSize);
+    return () => controller.abort();
+  }, [fetchOrders, pageIndex, pageSize]);
 
+  const handleExport = async (exportFn: (orders: Order[]) => void | Promise<void>) => {
+    try {
+      setIsExporting(true);
+      const selectedRows = table.getFilteredSelectedRowModel().rows;
+      const rowsToExport = selectedRows.length > 0 ? selectedRows : table.getFilteredRowModel().rows;
+      await exportFn(rowsToExport.map(r => r.original));
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Remove nested ProtectedAdminRoute — parent AdminDashboard already wraps with it
   return (
-    <div className="bg-white text-gray-900 min-h-screen p-6">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-xl sm:text-2xl md:text-3xl tracking-tight font-bold text-gray-900 mb-1">Orders Management</h1>
-        <p className="text-gray-500 text-sm">Manage and track all customer orders</p>
-      </div>
-
-      {/* Table Controls */}
-      <div className="flex items-center py-4 gap-4">
-        <Input
-          placeholder="Filter by customer name, order ID, or email..."
-          value={globalFilter ?? ""}
-          onChange={(event) => setGlobalFilter(event.target.value)}
-          className="max-w-sm"
-        />
-
-        {/* Export Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="text-gray-700 border-gray-300 hover:bg-gray-100">
-              <Download className="mr-2 h-4 w-4" />
-              Export As
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="bg-white border-gray-200">
-            <DropdownMenuLabel className="text-gray-900">Export Options</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={exportOrdersAsCSV}
-              className="text-gray-700 hover:bg-gray-100"
-            >
-              Export as CSV
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={exportOrdersAsExcel}
-              className="text-gray-700 hover:bg-gray-100"
-            >
-              Export as Excel
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={exportOrdersAsPDF}
-              className="text-gray-700 hover:bg-gray-100"
-            >
-              Export as PDF
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={exportOrdersAsJSON}
-              className="text-gray-700 hover:bg-gray-100"
-            >
-              Export as JSON
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-gray-400 text-xs">
-              {table.getFilteredSelectedRowModel().rows.length > 0
-                ? `Export ${table.getFilteredSelectedRowModel().rows.length} selected rows`
-                : `Export all ${table.getFilteredRowModel().rows.length} rows`
-              }
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto text-gray-700 border-gray-300 hover:bg-gray-100">
-              Columns <ChevronDown className="ml-2 h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => {
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={column.id}
-                    className="capitalize text-gray-700 hover:bg-gray-100"
-                    checked={column.getIsVisible()}
-                    onCheckedChange={(value) =>
-                      column.toggleVisibility(!!value)
-                    }
-                  >
-                    {column.id}
-                  </DropdownMenuCheckboxItem>
-                )
-              })}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      {/* Data Table */}
-      {loadingOrders ? (
-        <div className="bg-white border border-gray-200 rounded-lg p-8">
-          <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600"></div>
-            <span className="ml-3 text-gray-600">Loading orders...</span>
-          </div>
+    <div className="bg-white text-gray-900 min-h-screen p-6 relative">
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-xl sm:text-2xl md:text-3xl tracking-tight font-bold text-gray-900 mb-1">Orders Management</h1>
+          <p className="text-gray-500 text-sm">Manage and track all customer orders</p>
         </div>
-      ) : (
-        <div className="overflow-hidden rounded-md border border-gray-200 bg-white">
-          <Table>
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
+
+        {/* Table Controls */}
+        <div className="flex flex-col sm:flex-row items-center py-4 gap-4">
+          <Input
+            placeholder="Filter by customer name, order ID, or email..."
+            value={globalFilter ?? ""}
+            onChange={(event) => setGlobalFilter(event.target.value)}
+            className="w-full sm:max-w-sm border-gray-200"
+          />
+
+          <div className="flex items-center gap-2 sm:ml-auto w-full sm:w-auto">
+            {/* Export Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" disabled={isExporting} className="flex-1 sm:flex-none text-gray-700 bg-white border-gray-300 hover:bg-gray-50 font-medium tracking-wide">
+                  <Download className="mr-2 h-4 w-4" />
+                  {isExporting ? 'Exporting...' : 'Export As'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-white border-gray-200 shadow-xl rounded-lg">
+                <DropdownMenuLabel className="text-gray-900 font-bold px-3 py-2">Export Options</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => handleExport(exportOrdersAsCSV)} className="text-gray-700 hover:bg-gray-50 hover:text-gray-900 cursor-pointer px-3 py-2 rounded-sm transition-colors">
+                  Export as CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport(exportOrdersAsExcel)} className="text-gray-700 hover:bg-gray-50 hover:text-gray-900 cursor-pointer px-3 py-2 rounded-sm transition-colors">
+                  Export as Excel
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport(exportOrdersAsPDF)} className="text-gray-700 hover:bg-gray-50 hover:text-gray-900 cursor-pointer px-3 py-2 rounded-sm transition-colors">
+                  Export as PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport(exportOrdersAsJSON)} className="text-gray-700 hover:bg-gray-50 hover:text-gray-900 cursor-pointer px-3 py-2 rounded-sm transition-colors">
+                  Export as JSON
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-gray-100 my-1" />
+                <DropdownMenuItem className="text-gray-400 font-medium text-xs italic pointer-events-none px-3 py-2">
+                  {table.getFilteredSelectedRowModel().rows.length > 0
+                    ? `Exporting ${table.getFilteredSelectedRowModel().rows.length} selected lines`
+                    : `Exporting all ${table.getFilteredRowModel().rows.length} lines`
+                  }
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* View Config Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="flex-1 sm:flex-none text-gray-700 bg-white border-gray-300 hover:bg-gray-50 font-medium tracking-wide">
+                  Columns <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-white shadow-xl border-gray-200 rounded-lg p-1">
+                {table
+                  .getAllColumns()
+                  .filter((column) => column.getCanHide())
+                  .map((column) => {
                     return (
-                      <TableHead key={header.id}>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                      </TableHead>
+                      <DropdownMenuCheckboxItem
+                        key={column.id}
+                        className="capitalize text-gray-700 hover:bg-gray-50 hover:text-gray-900 cursor-pointer rounded-sm py-2 px-3"
+                        checked={column.getIsVisible()}
+                        onCheckedChange={(value) =>
+                          column.toggleVisibility(!!value)
+                        }
+                      >
+                        {column.id}
+                      </DropdownMenuCheckboxItem>
                     )
                   })}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center text-gray-600"
-                  >
-                    <div className="text-center">
-                      <div className="text-gray-400 text-6xl mb-4">📦</div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No Orders Found</h3>
-                      <p className="text-gray-500">
-                        {globalFilter ? 'Try adjusting your search criteria.' : 'Orders will appear here once customers start placing them.'}
-                      </p>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
-      )}
 
-      {/* Pagination */}
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="text-gray-600 flex-1 text-sm">
-          {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {table.getFilteredRowModel().rows.length} row(s) selected.
+        {/* Data Table */}
+        {loadingOrders ? (
+          <div className="bg-white border border-gray-200 rounded-lg p-16 shadow-sm">
+            <div className="flex flex-col items-center justify-center space-y-4">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900 border-t-2 border-l-2 border-transparent"></div>
+              <span className="text-gray-500 font-medium animate-pulse tracking-wide">Loading secure order index...</span>
+            </div>
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+            <Table>
+              <TableHeader>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id} className="bg-gray-50 hover:bg-gray-50 border-b border-gray-200">
+                    {headerGroup.headers.map((header) => {
+                      return (
+                        <TableHead key={header.id} className="text-gray-600 font-semibold tracking-wide py-4">
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                        </TableHead>
+                      )
+                    })}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              <TableBody>
+                {table.getRowModel().rows?.length ? (
+                  table.getRowModel().rows.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      data-state={row.getIsSelected() && "selected"}
+                      className="border-b border-gray-100 hover:bg-gray-50 transition-colors duration-200"
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id} className="py-4">
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={columns.length}
+                      className="h-32 text-center text-gray-500 font-medium tracking-wide"
+                    >
+                      No orders found matching your search.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        <div className="flex items-center justify-between gap-2 py-4 px-2">
+          <div className="text-sm font-medium text-gray-500">
+            Page {table.getState().pagination.pageIndex + 1} of {Math.max(1, table.getPageCount())}
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+              className="border-gray-300 text-gray-700 hover:bg-gray-50"
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+              className="border-gray-300 text-gray-700 hover:bg-gray-50"
+            >
+              Next
+            </Button>
+          </div>
         </div>
-        <div className="space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-            className="text-gray-700 border-gray-300 hover:bg-gray-100"
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-            className="text-gray-700 border-gray-300 hover:bg-gray-100"
-          >
-            Next
-          </Button>
-        </div>
+
+        {/* Delete Confirmation Modal */}
+        {deleteDialogOpen && orderToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 animate-in zoom-in-95 duration-200">
+              <h3 className="text-xl font-bold text-gray-900 mb-3 tracking-tight">Delete Order</h3>
+              <p className="text-gray-600 text-sm mb-8 leading-relaxed">
+                Are you sure you want to completely erase the order for <span className="font-bold text-gray-900">"{orderToDelete.customer.name}"</span>? This action is permanent and cannot be undone.
+              </p>
+              <div className="flex justify-end gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setDeleteDialogOpen(false);
+                    setOrderToDelete(null);
+                  }}
+                  className="text-gray-700 bg-white border-gray-300 hover:bg-gray-50 focus:bg-gray-50 font-semibold tracking-wide py-2 px-5 h-auto transition-colors"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  disabled={isDeleting}
+                  onClick={async () => {
+                    setIsDeleting(true);
+                    try {
+                      const success = await deleteOrder(orderToDelete._id);
+                      if (success) {
+                        setDeleteDialogOpen(false);
+                        setOrderToDelete(null);
+                      }
+                    } finally {
+                      // Always reset — prevents button staying stuck on network error
+                      setIsDeleting(false);
+                    }
+                  }}
+                  className="bg-red-600 hover:bg-red-700 text-white font-semibold tracking-wide py-2 px-5 h-auto shadow-sm transition-all focus:ring-4 focus:ring-red-100"
+                >
+                  {isDeleting ? 'Erasing...' : 'Delete Immediately'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-    </div>
   );
 };
 

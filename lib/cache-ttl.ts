@@ -9,4 +9,6 @@ export const CACHE_TTL = {
   PRODUCT_DETAIL: 600_000,
   /** Admin dashboard list — 5 seconds (near real-time for admin) */
   ADMIN: 5_000,
+  /** 10 minutes — cities change rarely */
+  CITIES: 600_000,
 } as const;

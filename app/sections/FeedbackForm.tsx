@@ -26,20 +26,10 @@ const FeedbackForm = () => {
   const [loadingReviews, setLoadingReviews] = useState(true);
 
   useEffect(() => {
-    const fetchReviews = async () => {
-      try {
-        const response = await fetch('/api/feedback');
-        if (response.ok) {
-          const data = await response.json();
-          setReviews(data.feedback || []);
-        }
-      } catch (error) {
-        console.error('Error fetching reviews:', error);
-      } finally {
-        setLoadingReviews(false);
-      }
-    };
-    fetchReviews();
+    // DATABASE MAINTENANCE BYPASS:
+    // Instantly return without attempting to connect to Mongo for reviews
+    setLoadingReviews(false);
+    setReviews([]);
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -304,7 +294,7 @@ const FeedbackForm = () => {
           >
             {/* Reviews Grid - 3 columns on desktop, stacked on mobile */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
-              {reviews.slice(0, 6).map((review, index) => {
+              {reviews.map((review, index) => {
                 const name = extractName(review);
                 const message = cleanMessage(review.message);
                 if (!name) return null; // Skip reviews without a name

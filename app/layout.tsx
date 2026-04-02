@@ -1,15 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { cn } from "../lib/utils";
 import { CartProvider } from "../contexts/CartContext";
 import SessionWrapper from "../components/SessionWrapper";
+import { Toaster } from 'sonner';
 
-// Import cache warmer to pre-load data on server start
-if (typeof window === 'undefined') {
-  import('../lib/cache-warmer').then(({ warmCache }) => {
-    warmCache().catch(console.error);
-  });
-}
 
 
 export const metadata: Metadata = {
@@ -88,11 +83,11 @@ export const metadata: Metadata = {
     ],
     apple: '/apple-icon.png',
   },
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-  },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
 };
 
 export default function RootLayout({
@@ -103,7 +98,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
         <meta name="theme-color" content="#000000" />
       </head>
       <body
@@ -112,6 +106,7 @@ export default function RootLayout({
         <SessionWrapper>
           <CartProvider>
             {children}
+            <Toaster position="top-right" />
           </CartProvider>
         </SessionWrapper>
       </body>

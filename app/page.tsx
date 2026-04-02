@@ -1,6 +1,6 @@
+import { getStaticActiveProducts } from '../data/products';
 import Nav from "./sections/Nav";
 import Products from "./sections/Products";
-import MovingWords from "./sections/MovingWords";
 import Hero from "./sections/Hero";
 import FeedbackFormLazy from "./sections/FeedbackFormLazy";
 import Footer from "./sections/Footer";
@@ -16,7 +16,8 @@ export const metadata = {
     "calisthenics equipment Egypt",
     "pull-up bars Egypt",
     "resistance bands Egypt",
-    "gymnastic rings Egypt"
+    "gymnastic rings Egypt",
+    "معدات كاليستنكس في مصر",
   ],
   openGraph: {
     title: "Unlimited SW | Calisthenics Equipment Egypt",
@@ -46,13 +47,13 @@ export const metadata = {
 
 export default async function Home() {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || "https://unlimited-sw.com";
+
+  // Fetch products server-side — zero waterfall, instant render (first page only)
+  let initialProducts = [];
+  let initialHasMore = false;
   
-  // Fetch products server-side — zero waterfall, instant render
-  const res = await fetch(`${baseUrl}/api/products`, {
-    next: { revalidate: 1800 } // matches your 30min cache
-  });
-  const data = await res.json();
-  const initialProducts = data.products ?? [];
+  // Instant Fallback Mode replacing the actual fetch call
+  initialProducts = getStaticActiveProducts(false) as any;
 
   const structuredData = {
     "@context": "https://schema.org",
@@ -137,10 +138,9 @@ export default async function Home() {
       <Hero />
       <MovingWordsTwo />
       {/* <CounterDown /> */}
-      <Products initialProducts={initialProducts} />
+      <Products initialProducts={initialProducts} initialHasMore={initialHasMore} />
       {/* <FeaturedProducts /> */}
       <Explore />
-      <MovingWords />
       {/* <Intro /> */}
       <FeedbackFormLazy />
       <Footer />

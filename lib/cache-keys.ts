@@ -9,4 +9,7 @@ export const cacheKeys = {
     detail:   (id: string)                               => `product:detail:${id}`                 as const,
     admin:    (page: number, limit: number, search: string) => `products:admin:${page}-${limit}-${search}` as const,
   },
+  cities: {
+    all: () => 'cities:all' as const,
+  },
 } as const;

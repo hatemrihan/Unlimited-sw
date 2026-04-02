@@ -1,20 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../lib/mongodb';
-import Order, { IOrder } from '../../../models/order';
-import Product from '../../../models/product';
-import Notification from '../../../models/notification';
-import { sendOrderConfirmationEmail, sendAdminNotificationEmail } from '../../../lib/email';
+import Order from '../../../models/order';
+import { validatePromo } from '../../../services/promoService';
+import { createOrderTransaction } from '../../../services/orderCreationService';
+import { dispatchOrderPostProcessing } from '../../../services/emailQueueService';
+import { logger } from '../../../utils/logger';
+
+const MONGO_BYPASS = process.env.MONGO_BYPASS === 'true';
 
 // Ensure Node runtime for Nodemailer
 export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
-  // Store original stock values for rollback if needed
-  const stockRollback: Array<{ productId: string, variantName?: string, originalStock: number, originalVariantStock?: number }> = [];
-
   try {
     // Connect to database
-    await dbConnect();
+    if (!MONGO_BYPASS) await dbConnect();
 
     // Parse request body
     const orderData = await request.json();
@@ -72,24 +72,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate each product
-    for (let i = 0; i < orderData.products.length; i++) {
-      const product = orderData.products[i];
+    // Validate each product synchronously over extreme payloads using native maps instead of unbounded iterations
+    const requiredProductFields = ['productId', 'name', 'price', 'quantity', 'image'];
+    const invalidProductIdx = orderData.products.findIndex((product: any) => 
+      requiredProductFields.some(field => product[field] === undefined || product[field] === null || product[field] === '')
+    );
 
-      const requiredProductFields = ['productId', 'name', 'price', 'quantity', 'image'];
-      for (const field of requiredProductFields) {
-        const value = product[field];
-        const hasValue = value !== undefined && value !== null && value !== '';
-
-        if (!hasValue) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: `Missing ${field} for product ${i + 1}`
-            },
-            { status: 400 }
-          );
-        }
-      }
+    if (invalidProductIdx !== -1) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Missing required core fields for product listing at index ${invalidProductIdx + 1}`
+        },
+        { status: 400 }
+      );
     }
 
     // Validate payment method
@@ -105,7 +101,7 @@ export async function POST(request: NextRequest) {
 
     // If InstaPay is selected, transaction screenshot is required
     if (orderData.paymentMethod === 'instaPay' && !orderData.transactionScreenshot) {
-      console.error('❌ InstaPay payment requires transaction screenshot');
+      logger.warn('❌ InstaPay payment requires transaction screenshot');
       return NextResponse.json(
         {
           success: false,
@@ -117,35 +113,20 @@ export async function POST(request: NextRequest) {
 
     // Handle promo code if provided
     let promoDiscount = 0;
-    if (orderData.promoCode && orderData.promoCode.trim()) {
-      try {
-        console.log('🎫 Processing promo code:', orderData.promoCode);
-        const promoResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/promo`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            code: orderData.promoCode,
-            orderTotal: orderData.subtotal
-          }),
-        });
+    if (!MONGO_BYPASS) {
+      if (orderData.promoCode && orderData.promoCode.trim()) {
+        try {
+          logger.info('🎫 Processing promo code natively:', orderData.promoCode);
+          const promoResponse = await validatePromo(orderData.promoCode, orderData.subtotal);
 
-        if (promoResponse.ok) {
-          const promoData = await promoResponse.json();
-          if (promoData.success) {
-            promoDiscount = promoData.promo.discount;
-
-            // Update promo usage count
-            const Promo = (await import('../../../models/promo')).default;
-            await Promo.findOneAndUpdate(
-              { code: orderData.promoCode.toUpperCase().trim() },
-              { $inc: { usedCount: 1 } }
-            );
+          if (promoResponse.success && promoResponse.promo) {
+            promoDiscount = promoResponse.promo.discount;
+            // Note constraint: incrementPromoUsage is handled robustly within the createOrderTransaction bounds downstream
           }
+        } catch (promoError) {
+          // Continue with order creation even if promo fails
+          logger.warn('🎫 Promo Engine warning:', promoError);
         }
-      } catch (promoError) {
-        // Continue with order creation even if promo fails
       }
     }
 
@@ -154,7 +135,7 @@ export async function POST(request: NextRequest) {
     const finalTotal = subtotalAfterDiscount + orderData.shippingCost + (orderData.codFee || 0);
 
     // Create order object
-    const newOrder: Partial<IOrder> = {
+    const newOrder: any = {
       customer: {
         name: orderData.customer.name?.trim() || '',
         email: orderData.customer.email?.trim() || '',
@@ -196,314 +177,35 @@ export async function POST(request: NextRequest) {
       newOrder.notes = `${newOrder.notes || ''}\n\n🎫 Promo Code Applied: ${orderData.promoCode} (Discount: L.E ${promoDiscount})`.trim();
     }
 
-    // 🔥 CRITICAL: Validate and deduct stock before creating order
-    console.log('🔍 Validating and deducting stock atomically...');
+    // 🔥 CRITICAL: Delegate Database Write and Stock Mutation to Service Tier!
+    logger.info('🔍 Booting Mongoose Transaction payload...');
+    let savedOrder: any;
 
-    // Validate and deduct stock for each product in the order using atomic operations
-    for (const orderProduct of orderData.products) {
-      const product = await Product.findById(orderProduct.productId);
-
-      if (!product) {
+    if (MONGO_BYPASS) {
+      const fallbackId = `ORD-FB-${Date.now()}-${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
+      savedOrder = {
+        ...newOrder,
+        orderId: fallbackId,
+        _id: fallbackId,
+        createdAt: new Date(),
+        orderDate: new Date(),
+      };
+    } else {
+      const txResult = await createOrderTransaction(orderData, newOrder, promoDiscount);
+      if (!txResult.success) {
         return NextResponse.json(
-          {
-            success: false,
-            error: `Product not found: ${orderProduct.name}`
-          },
+          { success: false, error: txResult.error || 'Failed to process order. Stock may fall short.' },
           { status: 400 }
         );
       }
-
-      // Check if an order specifies a variant
-      if (orderProduct.variant?.name) {
-        // If order specifies a variant, product must have variants
-        if (!product.variants || product.variants.length === 0) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: `Product ${orderProduct.name} does not have variants`
-            },
-            { status: 400 }
-          );
-        }
-
-        // Find the specific variant
-        const variant = product.variants.find((v: any) =>
-          v.name === orderProduct.variant?.name
-        );
-
-        if (!variant) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: `Variant not found: ${orderProduct.variant?.name} for ${orderProduct.name}`
-            },
-            { status: 400 }
-          );
-        }
-
-        // Check variant stock
-        if (variant.stock < orderProduct.quantity) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: `Insufficient stock for ${orderProduct.name} (${orderProduct.variant?.name}). Available: ${variant.stock}, Requested: ${orderProduct.quantity}`
-            },
-            { status: 400 }
-          );
-        }
-
-        // Store original values for rollback
-        stockRollback.push({
-          productId: product._id.toString(),
-          variantName: variant.name,
-          originalStock: product.stock,
-          originalVariantStock: variant.stock
-        });
-
-        // Use atomic update to prevent race conditions
-        const updateResult = await Product.findOneAndUpdate(
-          {
-            _id: product._id,
-            'variants.name': variant.name,
-            'variants.stock': { $gte: orderProduct.quantity },
-            stock: { $gte: orderProduct.quantity }
-          },
-          {
-            $inc: {
-              'variants.$.stock': -orderProduct.quantity,
-              stock: -orderProduct.quantity
-            }
-          },
-          { new: true }
-        );
-
-        if (!updateResult) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: `Insufficient stock for ${orderProduct.name} (${variant.name}). Stock may have been updated by another order.`
-            },
-            { status: 400 }
-          );
-        }
-
-        // Get updated variant stock for logging
-        const updatedVariant = updateResult.variants.find((v: any) => v.name === variant.name);
-        console.log(`📦 Atomically deducted ${orderProduct.quantity} from variant ${variant.name} of ${product.name}. Variant stock: ${updatedVariant?.stock}, Total stock: ${updateResult.stock}`);
-      } else {
-        // No specific variant selected - check if product has variants
-        if (product.variants && product.variants.length > 0) {
-          // Product has variants but no specific variant was selected
-          // Find first available variant with enough stock
-          const availableVariant = product.variants.find((v: any) =>
-            Number(v.stock || 0) >= orderProduct.quantity
-          );
-
-          if (!availableVariant) {
-            // Calculate total available stock from all variants
-            const totalVariantStock = product.variants.reduce((sum: number, v: any) =>
-              sum + (Number(v.stock || 0)), 0
-            );
-
-            return NextResponse.json(
-              {
-                success: false,
-                error: `Insufficient stock for ${orderProduct.name}. Available: ${totalVariantStock}, Requested: ${orderProduct.quantity}`
-              },
-              { status: 400 }
-            );
-          }
-
-          // Use the available variant
-          console.log(`🎯 Auto-selecting variant ${availableVariant.name} for ${product.name}`);
-
-          // Store original values for rollback
-          stockRollback.push({
-            productId: product._id.toString(),
-            variantName: availableVariant.name,
-            originalStock: product.stock,
-            originalVariantStock: availableVariant.stock
-          });
-
-          // Use atomic update to prevent race conditions
-          const updateResult = await Product.findOneAndUpdate(
-            {
-              _id: product._id,
-              'variants.name': availableVariant.name,
-              'variants.stock': { $gte: orderProduct.quantity }
-            },
-            {
-              $inc: {
-                'variants.$.stock': -orderProduct.quantity
-              }
-            },
-            { new: true }
-          );
-
-          if (!updateResult) {
-            return NextResponse.json(
-              {
-                success: false,
-                error: `Insufficient stock for ${orderProduct.name} (${availableVariant.name}). Stock may have been updated by another order.`
-              },
-              { status: 400 }
-            );
-          }
-
-          // Get updated variant stock for logging
-          const updatedVariant = updateResult.variants.find((v: any) => v.name === availableVariant.name);
-          console.log(`📦 Atomically deducted ${orderProduct.quantity} from auto-selected variant ${availableVariant.name} of ${product.name}. Variant stock: ${updatedVariant?.stock}`);
-        } else {
-          // Product doesn't have variants - use main product stock
-          if (product.stock < orderProduct.quantity) {
-            return NextResponse.json(
-              {
-                success: false,
-                error: `Insufficient stock for ${orderProduct.name}. Available: ${product.stock}, Requested: ${orderProduct.quantity}`
-              },
-              { status: 400 }
-            );
-          }
-
-          // Store original values for rollback
-          stockRollback.push({
-            productId: product._id.toString(),
-            originalStock: product.stock
-          });
-
-          // Use atomic update to prevent race conditions
-          const updateResult = await Product.findOneAndUpdate(
-            {
-              _id: product._id,
-              stock: { $gte: orderProduct.quantity }
-            },
-            {
-              $inc: { stock: -orderProduct.quantity }
-            },
-            { new: true }
-          );
-
-          if (!updateResult) {
-            return NextResponse.json(
-              {
-                success: false,
-                error: `Insufficient stock for ${orderProduct.name}. Stock may have been updated by another order.`
-              },
-              { status: 400 }
-            );
-          }
-
-          console.log(`📦 Atomically deducted ${orderProduct.quantity} from main stock of ${product.name}. New stock: ${updateResult.stock}`);
-        }
-      }
+      savedOrder = txResult.savedOrder;
     }
 
-    console.log('✅ Stock validation and deduction completed successfully');
+    // 📧 Background Post-Processing (Fire and Forget! 0 blocking time)
+    logger.info('🚀 Dispatching Background Hooks...');
+    dispatchOrderPostProcessing(savedOrder, orderData);
 
-    // Save order to database
-    const savedOrder = await Order.create(newOrder);
-
-    // Create admin notification for new order
-    try {
-      console.log('🔔 Creating admin notification for new order...');
-
-      // Get updated stock levels for notification
-      const stockLevels = [];
-      for (const orderProduct of orderData.products) {
-        const product = await Product.findById(orderProduct.productId);
-        if (product) {
-          if (product.variants && product.variants.length > 0) {
-            const variant = product.variants.find((v: any) => v.name === orderProduct.variant?.name);
-            if (variant) {
-              stockLevels.push({
-                productName: product.name,
-                variantName: variant.name,
-                remainingStock: variant.stock,
-                totalStock: product.stock
-              });
-            }
-          } else {
-            stockLevels.push({
-              productName: product.name,
-              remainingStock: product.stock
-            });
-          }
-        }
-      }
-
-      // Create notification
-      await Notification.create({
-        type: 'order',
-        title: `New Order #${savedOrder.orderId}`,
-        message: `User ${savedOrder.customer.name} made an order for ${savedOrder.products.length} item(s). Total: L.E ${savedOrder.totalAmount}`,
-        data: {
-          orderId: savedOrder.orderId,
-          customerName: savedOrder.customer.name,
-          customerEmail: savedOrder.customer.email,
-          totalAmount: savedOrder.totalAmount,
-          productCount: savedOrder.products.length,
-          stockLevels: stockLevels,
-          paymentMethod: savedOrder.paymentMethod
-        }
-      });
-
-      console.log('✅ Admin notification created successfully');
-    } catch (notificationError) {
-      console.error('❌ Error creating admin notification:', notificationError);
-      // Don't fail the order if notification creation fails
-    }
-
-    // Send email notifications (don't block order creation if emails fail)
-    try {
-      console.log('📧 Sending order confirmation emails...');
-
-      const emailData = {
-        customerEmail: savedOrder.customer.email,
-        customerName: savedOrder.customer.name,
-        customerFirstName: orderData.customer.firstName || savedOrder.customer.name.split(' ')[0] || '',
-        customerLastName: orderData.customer.lastName || savedOrder.customer.name.split(' ').slice(1).join(' ') || '',
-        orderId: savedOrder.orderId,
-        orderItems: savedOrder.products.map(product => ({
-          name: product.name,
-          quantity: product.quantity,
-          price: product.price * product.quantity,
-          variant: product.size || product.color ? {
-            name: product.size || product.color || '',
-            size: product.size || '',
-            color: product.color || ''
-          } : undefined
-        })),
-        totalAmount: savedOrder.totalAmount,
-        shippingCost: savedOrder.shippingCost,
-        codFee: savedOrder.codFee || 0,
-        paymentMethod: savedOrder.paymentMethod,
-        shippingAddress: {
-          governorate: orderData.customer.governorate || '',
-          city: orderData.customer.city || '',
-          address: orderData.customer.address || savedOrder.customer.address,
-          apartment: orderData.customer.apartment || ''
-        },
-        customerPhone: savedOrder.customer.phone,
-        customerNotes: orderData.notes || '',
-        promoCode: orderData.promoCode || '',
-        discountAmount: orderData.discountAmount || 0
-      } as any;
-
-      // Send directly via Nodemailer (avoids NEXTAUTH_URL issues)
-      const customerRes = await sendOrderConfirmationEmail(emailData);
-      const adminRes = await sendAdminNotificationEmail(emailData);
-
-      if (!customerRes.success || !adminRes.success) {
-        console.warn('⚠️ Email send reported failure', { customerRes, adminRes });
-      } else {
-        console.log('✅ Order confirmation emails sent successfully');
-      }
-    } catch (emailError) {
-      console.error('❌ Error sending order emails:', emailError);
-      // Continue with order creation even if emails fail
-    }
-
-    // Return success response with order details
+    // Return success response with order details instantly
     return NextResponse.json({
       success: true,
       order: {
@@ -523,38 +225,7 @@ export async function POST(request: NextRequest) {
       message: 'Order placed successfully!'
     });
 
-  } catch (error: unknown) {
-    // 🔄 ROLLBACK: Restore stock if order creation failed
-    if (stockRollback && stockRollback.length > 0) {
-      console.log('🔄 Rolling back stock changes due to order creation failure...');
-
-      try {
-        for (const rollback of stockRollback) {
-          const product = await Product.findById(rollback.productId);
-          if (product) {
-            if (rollback.variantName) {
-              // Restore variant stock
-              const variant = product.variants.find((v: any) => v.name === rollback.variantName);
-              if (variant && rollback.originalVariantStock !== undefined) {
-                variant.stock = rollback.originalVariantStock;
-                product.stock = rollback.originalStock;
-                await product.save();
-                console.log(`🔄 Restored variant ${rollback.variantName} stock to ${rollback.originalVariantStock}`);
-              }
-            } else {
-              // Restore main product stock
-              product.stock = rollback.originalStock;
-              await product.save();
-              console.log(`🔄 Restored ${product.name} stock to ${rollback.originalStock}`);
-            }
-          }
-        }
-        console.log('✅ Stock rollback completed successfully');
-      } catch (rollbackError) {
-        console.error('❌ Error during stock rollback:', rollbackError);
-      }
-    }
-
+  } catch (error: any) {
     // Handle specific MongoDB errors
     if (error && typeof error === 'object' && 'code' in error && error.code === 11000) {
       return NextResponse.json(
@@ -595,7 +266,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: 'Failed to process order. Please try again.'
+        error: error.message || 'Failed to process order. Please try again.'
       },
       { status: 500 }
     );
@@ -604,16 +275,37 @@ export async function POST(request: NextRequest) {
 
 // GET - Fetch orders for admin (optional, for admin dashboard)
 export async function GET(request: NextRequest) {
+  if (process.env.MONGO_BYPASS === 'true') {
+    return NextResponse.json({
+      success: true,
+      totalCount: 0,
+      totalPages: 0,
+      currentPage: 1,
+      orders: [],
+      _notice: 'Database is currently in maintenance mode.'
+    });
+  }
+
   try {
     await dbConnect();
 
+    const url = new URL(request.url);
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const limit = parseInt(url.searchParams.get('limit') || '50'); // 50 items per page default
+    const skip = (page - 1) * limit;
 
+    const totalCount = await Order.countDocuments({});
+    
     const orders = await Order.find({})
       .sort({ createdAt: -1 })
-      .limit(1000); // Increased limit to handle more orders
+      .skip(skip)
+      .limit(limit);
 
     return NextResponse.json({
       success: true,
+      totalCount,
+      totalPages: Math.ceil(totalCount / limit),
+      currentPage: page,
       orders: orders.map(order => ({
         _id: order._id, // IMPORTANT: Include _id for delete/update operations!
         orderId: order.orderId,

@@ -69,7 +69,7 @@ export async function GET() {
       isShownPublic: true
     })
       .sort({ createdAt: -1 })
-      .limit(20)
+      .limit(200)
       .select('message rating createdAt name');
 
     return NextResponse.json({ feedback });

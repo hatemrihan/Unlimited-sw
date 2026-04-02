@@ -1,182 +1,47 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import FileUpload from '../../../../components/FileUpload';
+import ProtectedAdminRoute from '@/components/auth/protected-admin-route';
+import SidebarNav from '../../sections/SideBarNav';
+import { useSession } from 'next-auth/react';
+import { getNavItems } from '@/utils/navItems';
+import { calculateFinalPrice } from '@/utils/pricing';
 
-interface Product {
-  _id?: string;
-  name: string;
-  price: number;
-  originalPrice?: number;
-  discount?: number;
-  mainImage: string;
-  images: string[];
-  videos?: string[];
-  description: string;
-  promoCode?: string;
-  variants: Array<{
-    name: string;
-    stock: number;
-    price?: number;
-    images?: string[];
-  }>;
-  stock: number;
-  isActive: boolean;
-  isFeatured: boolean;
-  order: number;
-  detailedDescription?: string;
-  specifications?: string;
-  shippingInfo?: string;
-  faqs: Array<{
-    question: string;
-    answer: string;
-  }>;
-  showOutOfStockBadge?: boolean;
-  showPreorderBadge?: boolean;
-}
+import { useProduct } from '@/hooks/useProduct';
 
 const EditProductPage = () => {
   const router = useRouter();
   const params = useParams();
   const productId = params.id as string;
+  const { data: session } = useSession();
+  const navItems = useMemo(() => getNavItems(router), [router]);
 
-  const [loading, setLoading] = useState<boolean>(true);
-  const [savingProduct, setSavingProduct] = useState<boolean>(false);
-  const [product, setProduct] = useState<Partial<Product>>({
-    name: '',
-    price: 0,
-    originalPrice: 0,
-    discount: 0,
-    mainImage: '',
-    images: [],
-    videos: [],
-    description: '',
-    promoCode: '',
-    variants: [{ name: '', stock: 0, price: 0, images: [] }],
-    stock: 0,
-    isActive: true,
-    isFeatured: false,
-    order: 0,
-    detailedDescription: '',
-    specifications: '',
-    shippingInfo: '',
-    faqs: [{ question: '', answer: '' }],
-    showOutOfStockBadge: false,
-    showPreorderBadge: false
-  });
+  const { 
+    product, loading, savingProduct, updateProduct: handleUpdateProduct,
+    updateField, updateVariant, addVariant, removeVariant, updateFaq, addFaq, removeFaq
+  } = useProduct(productId);
 
-  // Fetch product data
-  useEffect(() => {
-    const fetchProduct = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(`/api/admin/products/${productId}`);
-
-        if (response.ok) {
-          const data = await response.json();
-          setProduct(data.product);
-        } else {
-          alert('Failed to load product data');
-          router.back();
-        }
-      } catch (error) {
-        console.error('Error fetching product:', error);
-        alert('Error loading product data');
-        router.back();
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (productId) {
-      fetchProduct();
-    }
-  }, [productId, router]);
-
-  // Function to update product
-  const handleUpdateProduct = async () => {
-    setSavingProduct(true);
-
-    try {
-      console.log('🛍️ Updating product:', product);
-
-      // Validate required fields
-      if (!product.name || !product.mainImage || !product.description) {
-        alert('Please fill in all required fields (Name, Main Image, Description)');
-        return;
-      }
-
-      // Validate variants
-      if (!product.variants || product.variants.length === 0) {
-        alert('Please add at least one equipment variant');
-        return;
-      }
-
-      // ✅ CORRECT PRICING CALCULATION
-      // Calculate final price from originalPrice and discount
-      if (product.discount && product.discount > 0 && product.originalPrice) {
-        // Calculate discounted price from original price
-        const discountedPrice = Math.round((product.originalPrice) * (1 - product.discount / 100));
-        product.price = discountedPrice;
-        console.log(`📊 Calculated price: ${product.originalPrice} * (1 - ${product.discount}%) = ${discountedPrice}`);
-      } else {
-        // No discount - final price equals original price
-        product.price = product.originalPrice || 0;
-      }
-
-      const response = await fetch(`/api/admin/products/${productId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(product),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('✅ Product updated successfully:', result);
-
-        // Redirect back to products page
-        router.back();
-
-        alert('Product updated successfully!');
-      } else {
-        const errorData = await response.json();
-        alert('Failed to update product: ' + (errorData.error || 'Unknown error'));
-      }
-    } catch (error) {
-      console.error('❌ Error updating product:', error);
-      alert('Error updating product: ' + (error as Error).message);
-    } finally {
-      setSavingProduct(false);
-    }
-  };
-
-  // Loading state
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 text-gray-900 p-2 md:p-4">
-        <div className="w-full">
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 mx-auto mb-4"></div>
-              <p className="text-gray-500">Loading product data...</p>
-            </div>
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="max-w-7xl mx-auto flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 mx-auto mb-4"></div>
+            <p className="text-gray-500">Loading product data...</p>
           </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 p-2 md:p-4">
-      <div className="w-full">
+    return (
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center gap-4 mb-3">
             <button
-              onClick={() => router.back()}
+              onClick={() => router.push('/admin#products')}
               className="flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors text-sm"
             >
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -206,7 +71,7 @@ const EditProductPage = () => {
                   <input
                     type="text"
                     value={product.name || ''}
-                    onChange={(e) => setProduct({ ...product, name: e.target.value })}
+                    onChange={(e) => updateField("name", e.target.value)}
                     className="w-full p-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-gray-400 focus:outline-none text-sm"
                     placeholder="Enter product name"
                   />
@@ -217,7 +82,7 @@ const EditProductPage = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Product Description *</label>
                   <textarea
                     value={product.description || ''}
-                    onChange={(e) => setProduct({ ...product, description: e.target.value })}
+                    onChange={(e) => updateField("description", e.target.value)}
                     className="w-full p-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-gray-400 focus:outline-none text-sm"
                     placeholder="Enter product description"
                     rows={3}
@@ -231,7 +96,7 @@ const EditProductPage = () => {
                 <p className="text-xs text-gray-500 mb-2">Add different sizes/colors for your equipment</p>
 
                 {product.variants?.map((variant, index) => (
-                  <div key={index} className="bg-gray-50 p-3 rounded-lg mb-3 border border-gray-200">
+                  <div key={variant.id} className="bg-gray-50 p-3 rounded-lg mb-3 border border-gray-200">
                     <div className="space-y-3">
                       {/* First Row: Variant Name and Size */}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -241,9 +106,7 @@ const EditProductPage = () => {
                             type="text"
                             value={variant.name}
                             onChange={(e) => {
-                              const newVariants = [...(product.variants || [])];
-                              newVariants[index] = { ...variant, name: e.target.value };
-                              setProduct({ ...product, variants: newVariants });
+                              updateVariant(index, { ...variant, name: e.target.value });
                             }}
                             className="w-full p-2 bg-white border border-gray-200 rounded text-gray-900 text-sm focus:border-gray-400 focus:outline-none"
                             placeholder="e.g., Black, Gray, Premium"
@@ -257,9 +120,7 @@ const EditProductPage = () => {
                               type="number"
                               value={variant.stock}
                               onChange={(e) => {
-                                const newVariants = [...(product.variants || [])];
-                                newVariants[index] = { ...variant, stock: parseInt(e.target.value) || 0 };
-                                setProduct({ ...product, variants: newVariants });
+                                updateVariant(index, { ...variant, stock: parseInt(e.target.value) || 0 });
                               }}
                               className="flex-1 p-2 bg-white border border-gray-200 rounded text-gray-900 text-sm focus:border-gray-400 focus:outline-none"
                               placeholder="10"
@@ -270,10 +131,7 @@ const EditProductPage = () => {
                             {(product.variants?.length || 0) > 1 && (
                               <button
                                 type="button"
-                                onClick={() => {
-                                  const newVariants = product.variants?.filter((_, i) => i !== index) || [];
-                                  setProduct({ ...product, variants: newVariants });
-                                }}
+                                onClick={() => removeVariant(index)}
                                 className="text-red-400 hover:text-red-300 p-1 flex-shrink-0"
                               >
                                 ✕
@@ -296,7 +154,7 @@ const EditProductPage = () => {
                         {variant.images && variant.images.length > 0 && (
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2">
                             {variant.images.map((img, imgIndex) => (
-                              <div key={imgIndex} className="relative">
+                              <div key={img} className="relative">
                                 <img
                                   src={img}
                                   alt={`Variant ${variant.name} ${imgIndex + 1}`}
@@ -305,10 +163,8 @@ const EditProductPage = () => {
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    const newVariants = [...(product.variants || [])];
                                     const newImages = variant.images?.filter((_, i) => i !== imgIndex) || [];
-                                    newVariants[index] = { ...variant, images: newImages };
-                                    setProduct({ ...product, variants: newVariants });
+                                    updateVariant(index, { ...variant, images: newImages });
                                   }}
                                   className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center hover:bg-red-600"
                                 >
@@ -324,10 +180,11 @@ const EditProductPage = () => {
                           label={`Add Media for ${variant.name || 'Variant'}`}
                           accept="image/*,video/*"
                           onUpload={(url, isVideo = false) => {
-                            const newVariants = [...(product.variants || [])];
-                            const currentImages = variant.images || [];
-                            newVariants[index] = { ...variant, images: [...currentImages, url] };
-                            setProduct({ ...product, variants: newVariants });
+                            if (isVideo) {
+                              updateVariant(index, { ...variant, videos: [...(variant.videos || []), url] });
+                            } else {
+                              updateVariant(index, { ...variant, images: [...(variant.images || []), url] });
+                            }
                           }}
                           className="w-full"
                         />
@@ -339,13 +196,7 @@ const EditProductPage = () => {
                 {/* Add Variant Button */}
                 <button
                   type="button"
-                  onClick={() => {
-                    const currentVariants = product.variants || [];
-                    setProduct({
-                      ...product,
-                      variants: [...currentVariants, { name: '', stock: 0, price: 0, images: [] }]
-                    });
-                  }}
+                  onClick={addVariant}
                   className="w-full p-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-gray-400 hover:text-gray-700 text-sm transition-colors duration-300"
                 >
                   + Add Another Variant
@@ -356,20 +207,16 @@ const EditProductPage = () => {
               <div>
                 <h3 className="text-base font-semibold text-gray-900 mb-3">Pricing And Stock</h3>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Original Price (L.E) *</label>
-                    <input
-                      type="number"
-                      value={product.originalPrice || ''}
-                      onChange={(e) => setProduct({ ...product, originalPrice: parseFloat(e.target.value) || 0 })}
-                      className="w-full p-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-gray-400 focus:outline-none text-sm"
-                      placeholder="1000"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Enter the original price before discount</p>
-                  </div>
-
-
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Original Price (L.E) *</label>
+                  <input
+                    type="number"
+                    value={product.originalPrice || ''}
+                    onChange={(e) => updateField("originalPrice", parseFloat(e.target.value) || 0)}
+                    className="w-full p-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-gray-400 focus:outline-none text-sm"
+                    placeholder="1000"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Enter the original price before discount</p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
@@ -378,7 +225,7 @@ const EditProductPage = () => {
                     <input
                       type="number"
                       value={product.discount || ''}
-                      onChange={(e) => setProduct({ ...product, discount: parseFloat(e.target.value) || 0 })}
+                      onChange={(e) => updateField("discount", parseFloat(e.target.value) || 0)}
                       className="w-full p-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-gray-400 focus:outline-none text-sm"
                       placeholder="0"
                       min="0"
@@ -392,7 +239,7 @@ const EditProductPage = () => {
                     <input
                       type="text"
                       value={product.promoCode || ''}
-                      onChange={(e) => setProduct({ ...product, promoCode: e.target.value })}
+                      onChange={(e) => updateField("promoCode", e.target.value)}
                       className="w-full p-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-gray-400 focus:outline-none text-sm"
                       placeholder="SAVE10"
                     />
@@ -405,10 +252,7 @@ const EditProductPage = () => {
                     <h4 className="text-sm font-medium text-gray-700 mb-2">Price Preview:</h4>
                     <div className="flex items-center gap-2">
                       <span className="text-gray-900 font-bold text-lg">
-                        {product.discount && product.discount > 0
-                          ? Math.round((product.originalPrice || 0) * (1 - product.discount / 100)).toLocaleString()
-                          : (product.originalPrice || 0).toLocaleString()
-                        } L.E
+                        {calculateFinalPrice(product.originalPrice || 0, product.discount).toLocaleString()} L.E
                       </span>
                       {product.discount && product.discount > 0 && (
                         <span className="text-gray-400 line-through text-sm">
@@ -437,20 +281,16 @@ const EditProductPage = () => {
                     label="Product Media (Images & Videos)"
                     currentUrl=""
                     onUpload={(url, isVideo = false) => {
-                      console.log('🎥 Product media uploaded:', { url, isVideo });
-
                       // If no main image is set and this is an image, set as main
                       if (!product.mainImage && !isVideo) {
-                        setProduct({ ...product, mainImage: url });
+                        updateField("mainImage", url);
                       } else {
                         if (isVideo) {
                           const newVideos = [...(product.videos || []), url];
-                          console.log('🎬 Adding to videos array:', newVideos);
-                          setProduct({ ...product, videos: newVideos });
+                          updateField("videos", newVideos);
                         } else {
                           const newImages = [...(product.images || []), url];
-                          console.log('📷 Adding to images array:', newImages);
-                          setProduct({ ...product, images: newImages });
+                          updateField("images", newImages);
                         }
                       }
                     }}
@@ -466,7 +306,7 @@ const EditProductPage = () => {
                         <div className="relative group">
                           <img src={product.mainImage} alt="Main product image" className="w-full h-16 object-cover rounded" />
                           <button
-                            onClick={() => setProduct({ ...product, mainImage: '' })}
+                            onClick={() => updateField("mainImage", '')}
                             className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100"
                           >
                             ×
@@ -477,12 +317,12 @@ const EditProductPage = () => {
 
                       {/* Show additional images */}
                       {product.images?.map((img, index) => (
-                        <div key={`img-${index}`} className="relative group">
+                        <div key={img} className="relative group">
                           <img src={img} alt="Product image" className="w-full h-16 object-cover rounded" />
                           <button
                             onClick={() => {
                               const newImages = product.images?.filter((_, i) => i !== index) || [];
-                              setProduct({ ...product, images: newImages });
+                              updateField("images", newImages);
                             }}
                             className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100"
                           >
@@ -494,12 +334,12 @@ const EditProductPage = () => {
 
                       {/* Show videos */}
                       {product.videos?.map((video, index) => (
-                        <div key={`vid-${index}`} className="relative group">
+                        <div key={video} className="relative group">
                           <video src={video} className="w-full h-16 object-cover rounded" muted />
                           <button
                             onClick={() => {
                               const newVideos = product.videos?.filter((_, i) => i !== index) || [];
-                              setProduct({ ...product, videos: newVideos });
+                              updateField("videos", newVideos);
                             }}
                             className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100"
                           >
@@ -523,7 +363,7 @@ const EditProductPage = () => {
                       type="checkbox"
                       id="isFeatured"
                       checked={product.isFeatured || false}
-                      onChange={(e) => setProduct({ ...product, isFeatured: e.target.checked })}
+                      onChange={(e) => updateField("isFeatured", e.target.checked)}
                       className="mr-2 h-4 w-4"
                     />
                     <label htmlFor="isFeatured" className="text-sm text-gray-700">
@@ -539,7 +379,7 @@ const EditProductPage = () => {
                       type="checkbox"
                       id="isActive"
                       checked={product.isActive || false}
-                      onChange={(e) => setProduct({ ...product, isActive: e.target.checked })}
+                      onChange={(e) => updateField("isActive", e.target.checked)}
                       className="mr-2 h-4 w-4"
                     />
                     <label htmlFor="isActive" className="text-sm text-gray-700">
@@ -550,28 +390,43 @@ const EditProductPage = () => {
               </div>
 
               {/* Admin Badges (only effective when stock is 0) */}
-              <div className="space-y-3 lg:space-y-4">
-                <div className="bg-gray-50 border border-gray-200 text-gray-900 px-3 py-2 text-xs font-medium rounded-lg">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-2">Badges (shown only when stock is 0)</h4>
-                  <div className="flex items-center gap-4">
-                    <label className="flex items-center gap-2">
+              <div className="space-y-3 lg:space-y-4 mb-6">
+                <div className="bg-gray-50 border border-gray-200 text-gray-900 px-3 py-3 text-xs font-medium rounded-lg">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Badges (shown only when stock is 0)</h4>
+                  
+                  <div className="flex items-center gap-6 mb-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={product.showOutOfStockBadge || false}
-                        onChange={(e) => setProduct({ ...product, showOutOfStockBadge: e.target.checked })}
-                        className="mr-1 h-4 w-4"
+                        onChange={(e) => updateField("showOutOfStockBadge", e.target.checked)}
+                        className="mr-1 h-4 w-4 rounded text-gray-900"
                       />
-                      <span className="text-gray-700">OUT OF STOCK</span>
+                      <span className="text-gray-700 text-sm">OUT OF STOCK</span>
                     </label>
-                    <label className="flex items-center gap-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={product.showPreorderBadge || false}
-                        onChange={(e) => setProduct({ ...product, showPreorderBadge: e.target.checked })}
-                        className="mr-1 h-4 w-4"
+                        onChange={(e) => updateField("showPreorderBadge", e.target.checked)}
+                        className="mr-1 h-4 w-4 rounded text-gray-900"
                       />
-                      <span className="text-gray-700">PREORDER</span>
+                      <span className="text-gray-700 text-sm">PREORDER</span>
                     </label>
+                  </div>
+
+                  <div className="pt-3 border-t border-gray-200">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Custom Badge Message (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={product.customOutOfStockMessage || ''}
+                      onChange={(e) => updateField("customOutOfStockMessage", e.target.value)}
+                      className="w-full p-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-gray-400 focus:outline-none text-sm"
+                      placeholder="e.g. نعود خلال ٧ أيام (Restocking in 7 Days)"
+                    />
+                    <p className="text-xs text-gray-500 mt-1 font-normal">If set, this pulsating badge overrides the standard out of stock checkboxes.</p>
                   </div>
                 </div>
               </div>
@@ -585,7 +440,7 @@ const EditProductPage = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Detailed Description</label>
                   <textarea
                     value={product.detailedDescription || ''}
-                    onChange={(e) => setProduct({ ...product, detailedDescription: e.target.value })}
+                    onChange={(e) => updateField("detailedDescription", e.target.value)}
                     className="w-full p-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-gray-400 focus:outline-none text-sm"
                     rows={4}
                     placeholder="Enter detailed product description..."
@@ -597,7 +452,7 @@ const EditProductPage = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Specifications</label>
                   <textarea
                     value={product.specifications || ''}
-                    onChange={(e) => setProduct({ ...product, specifications: e.target.value })}
+                    onChange={(e) => updateField("specifications", e.target.value)}
                     className="w-full p-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-gray-400 focus:outline-none text-sm"
                     rows={4}
                     placeholder="Enter product specifications and technical details..."
@@ -609,7 +464,7 @@ const EditProductPage = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Shipping Information</label>
                   <textarea
                     value={product.shippingInfo || ''}
-                    onChange={(e) => setProduct({ ...product, shippingInfo: e.target.value })}
+                    onChange={(e) => updateField("shippingInfo", e.target.value)}
                     className="w-full p-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-gray-400 focus:outline-none text-sm"
                     rows={3}
                     placeholder="Enter shipping information and delivery details..."
@@ -621,7 +476,7 @@ const EditProductPage = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Frequently Asked Questions</label>
                   <div className="space-y-3">
                     {product.faqs?.map((faq, index) => (
-                      <div key={index} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
+                      <div key={faq.id} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
                         <div className="grid grid-cols-1 gap-3">
                           <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">Question</label>
@@ -629,9 +484,7 @@ const EditProductPage = () => {
                               type="text"
                               value={faq.question}
                               onChange={(e) => {
-                                const newFaqs = [...(product.faqs || [])];
-                                newFaqs[index] = { ...faq, question: e.target.value };
-                                setProduct({ ...product, faqs: newFaqs });
+                                updateFaq(index, { ...faq, question: e.target.value });
                               }}
                               className="w-full p-2 bg-white border border-gray-200 rounded text-gray-900 text-sm focus:border-gray-400 focus:outline-none"
                               placeholder="Enter question..."
@@ -642,9 +495,7 @@ const EditProductPage = () => {
                             <textarea
                               value={faq.answer}
                               onChange={(e) => {
-                                const newFaqs = [...(product.faqs || [])];
-                                newFaqs[index] = { ...faq, answer: e.target.value };
-                                setProduct({ ...product, faqs: newFaqs });
+                                updateFaq(index, { ...faq, answer: e.target.value });
                               }}
                               className="w-full p-2 bg-white border border-gray-200 rounded text-gray-900 text-sm focus:border-gray-400 focus:outline-none"
                               rows={2}
@@ -654,10 +505,7 @@ const EditProductPage = () => {
                         </div>
                         <button
                           type="button"
-                          onClick={() => {
-                            const newFaqs = product.faqs?.filter((_, i) => i !== index) || [];
-                            setProduct({ ...product, faqs: newFaqs });
-                          }}
+                          onClick={() => removeFaq(index)}
                           className="mt-2 text-red-500 hover:text-red-600 text-sm"
                         >
                           Remove FAQ
@@ -666,10 +514,7 @@ const EditProductPage = () => {
                     ))}
                     <button
                       type="button"
-                      onClick={() => {
-                        const newFaqs = [...(product.faqs || []), { question: '', answer: '' }];
-                        setProduct({ ...product, faqs: newFaqs });
-                      }}
+                      onClick={addFaq}
                       className="text-blue-600 hover:text-blue-700 text-sm"
                     >
                       + Add FAQ
@@ -682,7 +527,7 @@ const EditProductPage = () => {
               <div className="flex flex-col sm:flex-row gap-3 pt-4 lg:pt-6">
                 <button
                   type="button"
-                  onClick={() => router.back()}
+                  onClick={() => router.push('/admin#products')}
                   className="flex-1 bg-white text-gray-900 px-5 py-2 rounded-lg font-medium border border-gray-300 hover:bg-gray-50 transition-all duration-300 text-sm"
                 >
                   Cancel
@@ -698,9 +543,34 @@ const EditProductPage = () => {
               </div>
             </div>
           </div>
-        </div>
+            </div>
+          </div>
+    );
+  };
+
+  return (
+    <ProtectedAdminRoute>
+      <div className="flex min-h-screen flex-col relative bg-gray-50">
+        <SidebarNav
+          logo="/images/Logo-image.png"
+          logoAlt="Alkady Logo"
+          items={navItems}
+          activeHref={'/admin#products'}
+          className="custom-nav"
+          ease="power2.easeOut"
+          baseColor="#000000"
+          pillColor="#ffffff"
+          hoveredPillTextColor="#ffffff"
+          pillTextColor="#000000"
+          onMobileMenuClick={() => { }}
+          userName={session?.user?.name || "Admin"}
+          onVisitStore={() => { if (typeof window !== 'undefined') window.open('/', '_blank'); }}
+        />
+        <main className="flex-1 p-3 md:p-6 lg:p-8 pb-20 lg:pb-8 overflow-x-hidden relative z-10 md:ml-64">
+          {renderContent()}
+        </main>
       </div>
-    </div>
+    </ProtectedAdminRoute>
   );
 };
 

@@ -160,10 +160,19 @@ export const invalidateProductCache = (productId?: string) => {
   }
 };
 
+export const invalidateCitiesCache = () => {
+  apiCache.delete('cities:all');
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🗑️ Cities cache invalidated');
+  }
+};
+
 export const invalidateAllCaches = () => {
   productCache.clear();
   apiCache.clear();
-  console.log('🗑️ All caches cleared');
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🗑️ All caches cleared');
+  }
 };
 
 

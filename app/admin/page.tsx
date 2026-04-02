@@ -77,9 +77,10 @@ const AdminDashboard = () => {
       setLoadingStats(true);
 
       // Fetch all data in parallel
+      // Fetch all data in parallel with optimal payload targeting
       const [productsResponse, ordersResponse, promoCodesResponse] = await Promise.all([
-        fetch('/api/admin/products'),
-        fetch('/api/orders'),
+        fetch('/api/admin/products?limit=10'), // Minimal surface, maps totalCount natively
+        fetch('/api/orders?limit=1000'),       // Expanded slice resolving Monthly Sales Area Charts
         fetch('/api/promo')
       ]);
 
@@ -92,7 +93,8 @@ const AdminDashboard = () => {
       // Get products count
       if (productsResponse.ok) {
         const productsData = await productsResponse.json();
-        stats.products = productsData.products?.length || 0;
+        // Resolve scalable Database Count bypassing hard pagination limits securely
+        stats.products = productsData.pagination?.total || productsData.products?.length || 0;
 
         // Get recent products
         const recentProductsData = productsData.products?.slice(0, 5).map((product: any) => {
@@ -128,7 +130,8 @@ const AdminDashboard = () => {
       // Get orders count and chart data
       if (ordersResponse.ok) {
         const ordersData = await ordersResponse.json();
-        stats.orders = ordersData.orders?.length || 0;
+        // Bind straight into Mongoose generic indexing limits natively
+        stats.orders = ordersData.totalCount || ordersData.orders?.length || 0;
 
         // Process orders for chart data (last 7 days)
         const orders = ordersData.orders || [];

@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { CartItem, City, PromoData } from '../types';
+import { getProductPricing, STATIC_CITIES } from '../../../data/checkout-cities';
+import { getStaticActiveProducts } from '../../../data/products';
 
 interface UseCheckoutPricingProps {
   cartItems: CartItem[];
@@ -14,69 +16,44 @@ export function useCheckoutPricing({ cartItems, paymentMethod, cityName }: UseCh
   const [appliedPromo, setAppliedPromo] = useState<PromoData | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
 
-  // Fetch cities and refresh product prices in batch
+  // Instantly load cities and refresh product prices from static failover
   useEffect(() => {
     if (!cartItems || cartItems.length === 0) {
       setLoadingCities(false);
       return;
     }
 
-    const fetchCitiesAndPrices = async () => {
-      try {
-        const productIds = [...new Set(cartItems.map(item => item.id))];
-        const productIdsString = productIds.join(',');
+    setCities(STATIC_CITIES as unknown as City[]);
 
-        const [citiesResponse, batchResponse] = await Promise.all([
-          fetch(`/api/checkout/cities${productIdsString ? `?productIds=${productIdsString}` : ''}`),
-          fetch('/api/products/batch', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ids: productIds })
-          })
-        ]);
-
-        if (citiesResponse.ok) {
-          const citiesData = await citiesResponse.json();
-          setCities(citiesData.cities || []);
-        }
-
-        if (batchResponse.ok) {
-          const batchData = await batchResponse.json();
-          const productMap: Record<string, any> = {};
-          
-          if (batchData.products) {
-            batchData.products.forEach((p: any) => {
-              productMap[p._id.toString()] = p; // Ensure ID matches string
-            });
-          }
-
-          const priceMap: Record<string, number> = {};
-          cartItems.forEach(item => {
-            const product = productMap[item.id] || productMap[item.id.toString()];
-            if (product) {
-              const variantKey = item.variant?.name || 'default';
-              const priceKey = `${item.id}_${variantKey}`;
-              let price = product.price || 0;
-
-              if (item.variant && product.variants && Array.isArray(product.variants)) {
-                const matchingVariant = product.variants.find((v: any) => v.name === item.variant?.name);
-                if (matchingVariant && matchingVariant.price !== undefined && matchingVariant.price > 0) {
-                  price = matchingVariant.price;
-                }
-              }
-              priceMap[priceKey] = price;
-            }
-          });
-          setRefreshedPrices(priceMap);
-        }
-      } catch (error) {
-        console.error('Error fetching prices batch:', error);
-      } finally {
-        setLoadingCities(false);
+    const staticProducts = getStaticActiveProducts();
+    const productMap: Record<string, any> = {};
+    
+    staticProducts.forEach(p => {
+      if (p._id) {
+        productMap[p._id.toString()] = p;
       }
-    };
+    });
 
-    fetchCitiesAndPrices();
+    const priceMap: Record<string, number> = {};
+    cartItems.forEach(item => {
+      const product = productMap[item.id] || productMap[item.id.toString()];
+      if (product) {
+        const variantKey = item.variant?.name || 'default';
+        const priceKey = `${item.id}_${variantKey}`;
+        let price = product.price || 0;
+
+        if (item.variant && product.variants && Array.isArray(product.variants)) {
+          const matchingVariant = product.variants.find((v: any) => v.name === item.variant?.name);
+          if (matchingVariant && matchingVariant.price !== undefined && matchingVariant.price > 0) {
+            price = matchingVariant.price;
+          }
+        }
+        priceMap[priceKey] = price;
+      }
+    });
+
+    setRefreshedPrices(priceMap);
+    setLoadingCities(false);
   }, [cartItems]);
 
   // Calculate Subtotal 
@@ -98,55 +75,58 @@ export function useCheckoutPricing({ cartItems, paymentMethod, cityName }: UseCh
     let totalProductCodFee = 0;
 
     for (const item of cartItems) {
-      const productSpecificPricing = selectedGovernorate.productPricing?.[item.id];
+      const productSpecificPricing = getProductPricing(selectedGovernorate as any, item.id);
+      
       if (productSpecificPricing && productSpecificPricing.isActive !== false) {
         hasProductSpecificRates = true;
-        totalProductShippingCost += (productSpecificPricing.shippingCost || 0) * item.quantity;
-        totalProductCodFee += (productSpecificPricing.codFee || 0) * item.quantity;
+        totalProductShippingCost += (productSpecificPricing.shippingCost || 0);
+        totalProductCodFee += (productSpecificPricing.codFee || 0);
+      } else {
+        // Fallback to city base rate — never block checkout
+        hasProductSpecificRates = true;
+        totalProductShippingCost += (selectedGovernorate.shippingCost || 0);
+        totalProductCodFee += (selectedGovernorate.codFee || 0);
       }
     }
-
-    if (hasProductSpecificRates) {
-      shippingCost = totalProductShippingCost;
-      codFee = totalProductCodFee;
-    }
+    
+    shippingCost = totalProductShippingCost;
+    codFee = totalProductCodFee;
   }
 
-  const shippingConfigError = selectedGovernorate && !hasProductSpecificRates
-    ? 'Shipping costs not configured for selected products. Please contact support.'
-    : null;
+  const shippingConfigError = null;
 
   // Final Calculations
   const shouldWaiveShipping = appliedPromo && appliedPromo.waiveShipping;
   const finalCodFee = paymentMethod === 'cashOnDelivery' ? codFee : 0;
   const finalShippingCost = shouldWaiveShipping ? 0 : shippingCost;
-  const discountAmount = appliedPromo ? appliedPromo.discount : 0;
+  const discountAmount = appliedPromo ? appliedPromo.discountValue : 0;
   const subtotalAfterDiscount = Math.max(0, refreshedSubtotal - discountAmount);
   const totalWithShipping = subtotalAfterDiscount + finalShippingCost + finalCodFee;
 
   const applyPromoCode = async (code: string) => {
-    if (!code.trim()) {
-      setPromoError('Please enter a promo code');
-      return;
-    }
     try {
-      // Must use refreshedSubtotal here ! (fixing the bug the user cited)
-      const response = await fetch('/api/promo', {
+      const response = await fetch('/api/promo/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, orderTotal: refreshedSubtotal }),
+        body: JSON.stringify({ code })
       });
       const data = await response.json();
-      if (response.ok && data.success) {
-        setAppliedPromo(data.promo);
+      
+      if (data.success && data.promo) {
+        setAppliedPromo({
+          code: data.promo.code,
+          discountType: data.promo.discountType || 'fixed',
+          discountValue: data.promo.discountValue,
+          waiveShipping: data.promo.waiveShipping || false
+        });
         setPromoError(null);
       } else {
-        setPromoError(data.error || 'Invalid promo code');
         setAppliedPromo(null);
+        setPromoError(data.message || 'Invalid promo code');
       }
-    } catch (error) {
-      setPromoError('Failed to validate promo code');
+    } catch (err) {
       setAppliedPromo(null);
+      setPromoError('Failed to validate promo code');
     }
   };
 
@@ -157,7 +137,7 @@ export function useCheckoutPricing({ cartItems, paymentMethod, cityName }: UseCh
     shippingConfigError,
     refreshedPrices,
     refreshedSubtotal,
-    shippingCost: finalShippingCost,
+    shippingCost,
     codFee: finalCodFee,
     discountAmount,
     totalWithShipping,

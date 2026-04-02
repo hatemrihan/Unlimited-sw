@@ -94,7 +94,7 @@ export function useCheckoutForm() {
     }
 
     // Egyptian Phone RegEx validation
-    const phoneRegex = /^01[0-2,5]\d{8}$/;
+    const phoneRegex = /^01[0125]\d{8}$/;
     if (!formData.phone.trim()) {
       newErrors.phone = 'Phone number is required';
     } else if (!phoneRegex.test(formData.phone)) {
@@ -108,12 +108,14 @@ export function useCheckoutForm() {
       newErrors.transactionScreenshot = 'Transaction screenshot is required for InstaPay';
     }
 
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return false;
+
     if (cartItemCount === 0 || shippingConfigError) {
       return false;
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return true;
   };
 
   return {
