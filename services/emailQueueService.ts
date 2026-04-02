@@ -9,7 +9,7 @@ import { logger } from '../utils/logger';
  * guaranteeing rapid API resolutions for customers.
  */
 export function dispatchOrderPostProcessing(savedOrder: any, orderData: any) {
-  processAsyncRoutines(savedOrder, orderData).catch(err => {
+  return processAsyncRoutines(savedOrder, orderData).catch(err => {
     logger.error("❌ Isolated background queue failed safely:", err);
   });
 }

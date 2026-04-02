@@ -203,7 +203,12 @@ export async function POST(request: NextRequest) {
 
     // 📧 Background Post-Processing (Fire and Forget! 0 blocking time)
     logger.info('🚀 Dispatching Background Hooks...');
-    dispatchOrderPostProcessing(savedOrder, orderData);
+    if (MONGO_BYPASS) {
+      // In bypass mode, await emails directly — serverless kills fire-and-forget too fast
+      await dispatchOrderPostProcessing(savedOrder, orderData);
+    } else {
+      dispatchOrderPostProcessing(savedOrder, orderData);
+    }
 
     // Return success response with order details instantly
     return NextResponse.json({
