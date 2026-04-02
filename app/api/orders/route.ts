@@ -203,7 +203,9 @@ export async function POST(request: NextRequest) {
 
     // 📧 Background Post-Processing (Fire and Forget! 0 blocking time)
     logger.info('🚀 Dispatching Background Hooks...');
-    dispatchOrderPostProcessing(savedOrder, orderData);
+    // Must await — Netlify serverless kills fire-and-forget promises instantly after response
+    // Safe: MONGO_BYPASS guards skip all DB calls, so this only waits for Brevo SMTP (~2-3s)
+    await dispatchOrderPostProcessing(savedOrder, orderData);
 
     // Return success response with order details instantly
     return NextResponse.json({
