@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import { getStaticActiveProducts } from '../data/products';
 
 export interface CartItem {
   id: string;
@@ -138,13 +139,48 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     itemCount: 0
   });
 
-  // Load cart from localStorage on mount
+  // Load cart from localStorage on mount — always sanitize prices against live product data
   useEffect(() => {
     try {
       const savedCart = localStorage.getItem('cart');
       if (savedCart) {
-        const items = JSON.parse(savedCart);
-        dispatch({ type: 'LOAD_CART', payload: items });
+        const items: CartItem[] = JSON.parse(savedCart);
+
+        // Build a live price map from the authoritative static product list
+        const liveProducts = getStaticActiveProducts();
+        const livePriceMap: Record<string, number> = {};
+        liveProducts.forEach(p => {
+          if (p._id) {
+            livePriceMap[p._id.toString()] = p.price;
+            // Also index variant prices
+            if (p.variants && Array.isArray(p.variants)) {
+              p.variants.forEach((v: any) => {
+                if (v.price && v.price > 0) {
+                  livePriceMap[`${p._id}_${v.name}`] = v.price;
+                }
+              });
+            }
+          }
+        });
+
+        // Overwrite any stale prices from localStorage with the live price
+        const sanitizedItems = items.map(item => {
+          const variantKey = item.variant?.name;
+          const liveVariantPrice = variantKey ? livePriceMap[`${item.id}_${variantKey}`] : undefined;
+          const liveBasePrice = livePriceMap[item.id];
+          const freshPrice = liveVariantPrice ?? liveBasePrice;
+
+          if (freshPrice !== undefined && freshPrice !== item.price) {
+            console.warn(`[Cart] Stale price detected for ${item.name}: was ${item.price}, updated to ${freshPrice}`);
+          }
+
+          return {
+            ...item,
+            price: freshPrice ?? item.price, // Always use live price if available
+          };
+        });
+
+        dispatch({ type: 'LOAD_CART', payload: sanitizedItems });
       }
     } catch (error) {
       // Failed to load from localStorage, fallback to empty cart
