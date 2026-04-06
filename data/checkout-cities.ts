@@ -37,10 +37,10 @@ export const STATIC_CITIES: StaticCity[] = [
     codFee: 0,
     isActive: true,
     productPricing: {
-      [P1]: { price: 4999, shippingCost: 285, codFee: 0, isActive: true },
-      [P2]: { price: 3550, shippingCost: 225, codFee: 0, isActive: true },
-      [P3]: { price: 1580, shippingCost: 155, codFee: 0, isActive: true },
-      [P4]: { price: 1599, shippingCost: 155, codFee: 0, isActive: true },
+      [P1]: { price: 4999, shippingCost: 285, codFee: 50, isActive: true },
+      [P2]: { price: 3550, shippingCost: 225, codFee: 50, isActive: true },
+      [P3]: { price: 1580, shippingCost: 155, codFee: 30, isActive: true },
+      [P4]: { price: 1599, shippingCost: 155, codFee: 30, isActive: true },
     },
   },
   {
@@ -51,10 +51,10 @@ export const STATIC_CITIES: StaticCity[] = [
     codFee: 0,
     isActive: true,
     productPricing: {
-      [P1]: { price: 4999, shippingCost: 285, codFee: 0, isActive: true },
-      [P2]: { price: 3550, shippingCost: 225, codFee: 0, isActive: true },
-      [P3]: { price: 1580, shippingCost: 155, codFee: 0, isActive: true },
-      [P4]: { price: 1599, shippingCost: 155, codFee: 0, isActive: true },
+      [P1]: { price: 4999, shippingCost: 285, codFee: 50, isActive: true },
+      [P2]: { price: 3550, shippingCost: 225, codFee: 50, isActive: true },
+      [P3]: { price: 1580, shippingCost: 155, codFee: 30, isActive: true },
+      [P4]: { price: 1599, shippingCost: 155, codFee: 30, isActive: true },
     },
   },
   {
@@ -65,10 +65,10 @@ export const STATIC_CITIES: StaticCity[] = [
     codFee: 0,
     isActive: true,
     productPricing: {
-      [P1]: { price: 4999, shippingCost: 285, codFee: 0, isActive: true },
-      [P2]: { price: 3550, shippingCost: 225, codFee: 0, isActive: true },
-      [P3]: { price: 1580, shippingCost: 155, codFee: 0, isActive: true },
-      [P4]: { price: 1599, shippingCost: 155, codFee: 0, isActive: true },
+      [P1]: { price: 4999, shippingCost: 285, codFee: 50, isActive: true },
+      [P2]: { price: 3550, shippingCost: 225, codFee: 50, isActive: true },
+      [P3]: { price: 1580, shippingCost: 155, codFee: 30, isActive: true },
+      [P4]: { price: 1599, shippingCost: 155, codFee: 30, isActive: true },
     },
   },
   {
@@ -79,10 +79,10 @@ export const STATIC_CITIES: StaticCity[] = [
     codFee: 0,
     isActive: true,
     productPricing: {
-      [P1]: { price: 4999, shippingCost: 339, codFee: 0, isActive: true },
-      [P2]: { price: 3550, shippingCost: 267, codFee: 0, isActive: true },
-      [P3]: { price: 1580, shippingCost: 173, codFee: 0, isActive: true },
-      [P4]: { price: 1599, shippingCost: 173, codFee: 0, isActive: true },
+      [P1]: { price: 4999, shippingCost: 339, codFee: 50, isActive: true },
+      [P2]: { price: 3550, shippingCost: 267, codFee: 50, isActive: true },
+      [P3]: { price: 1580, shippingCost: 173, codFee: 30, isActive: true },
+      [P4]: { price: 1599, shippingCost: 173, codFee: 30, isActive: true },
     },
   },
   {
@@ -93,10 +93,10 @@ export const STATIC_CITIES: StaticCity[] = [
     codFee: 0,
     isActive: true,
     productPricing: {
-      [P1]: { price: 4999, shippingCost: 339, codFee: 0, isActive: true },
-      [P2]: { price: 3550, shippingCost: 267, codFee: 0, isActive: true },
-      [P3]: { price: 1580, shippingCost: 173, codFee: 0, isActive: true },
-      [P4]: { price: 1599, shippingCost: 173, codFee: 0, isActive: true },
+      [P1]: { price: 4999, shippingCost: 339, codFee: 50, isActive: true },
+      [P2]: { price: 3550, shippingCost: 267, codFee: 50, isActive: true },
+      [P3]: { price: 1580, shippingCost: 173, codFee: 30, isActive: true },
+      [P4]: { price: 1599, shippingCost: 173, codFee: 30, isActive: true },
     },
   },
   {
@@ -107,10 +107,10 @@ export const STATIC_CITIES: StaticCity[] = [
     codFee: 0,
     isActive: true,
     productPricing: {
-      [P1]: { price: 4999, shippingCost: 339, codFee: 0, isActive: true },
-      [P2]: { price: 3550, shippingCost: 267, codFee: 0, isActive: true },
-      [P3]: { price: 1580, shippingCost: 173, codFee: 0, isActive: true },
-      [P4]: { price: 1599, shippingCost: 173, codFee: 0, isActive: true },
+      [P1]: { price: 4999, shippingCost: 339, codFee: 50, isActive: true },
+      [P2]: { price: 3550, shippingCost: 267, codFee: 50, isActive: true },
+      [P3]: { price: 1580, shippingCost: 173, codFee: 30, isActive: true },
+      [P4]: { price: 1599, shippingCost: 173, codFee: 30, isActive: true },
     },
   },
   {
@@ -121,10 +121,10 @@ export const STATIC_CITIES: StaticCity[] = [
     codFee: 0,
     isActive: true,
     productPricing: {
-      [P1]: { price: 4999, shippingCost: 339, codFee: 0, isActive: true },
-      [P2]: { price: 3550, shippingCost: 267, codFee: 0, isActive: true },
-      [P3]: { price: 1580, shippingCost: 173, codFee: 0, isActive: true },
-      [P4]: { price: 1599, shippingCost: 173, codFee: 0, isActive: true },
+      [P1]: { price: 4999, shippingCost: 339, codFee: 50, isActive: true },
+      [P2]: { price: 3550, shippingCost: 267, codFee: 50, isActive: true },
+      [P3]: { price: 1580, shippingCost: 173, codFee: 30, isActive: true },
+      [P4]: { price: 1599, shippingCost: 173, codFee: 30, isActive: true },
     },
   },
   {
@@ -135,10 +135,10 @@ export const STATIC_CITIES: StaticCity[] = [
     codFee: 0,
     isActive: true,
     productPricing: {
-      [P1]: { price: 4999, shippingCost: 339, codFee: 0, isActive: true },
-      [P2]: { price: 3550, shippingCost: 267, codFee: 0, isActive: true },
-      [P3]: { price: 1580, shippingCost: 173, codFee: 0, isActive: true },
-      [P4]: { price: 1599, shippingCost: 173, codFee: 0, isActive: true },
+      [P1]: { price: 4999, shippingCost: 339, codFee: 50, isActive: true },
+      [P2]: { price: 3550, shippingCost: 267, codFee: 50, isActive: true },
+      [P3]: { price: 1580, shippingCost: 173, codFee: 30, isActive: true },
+      [P4]: { price: 1599, shippingCost: 173, codFee: 30, isActive: true },
     },
   },
   {
@@ -149,10 +149,10 @@ export const STATIC_CITIES: StaticCity[] = [
     codFee: 0,
     isActive: true,
     productPricing: {
-      [P1]: { price: 4999, shippingCost: 339, codFee: 0, isActive: true },
-      [P2]: { price: 3550, shippingCost: 267, codFee: 0, isActive: true },
-      [P3]: { price: 1580, shippingCost: 173, codFee: 0, isActive: true },
-      [P4]: { price: 1599, shippingCost: 173, codFee: 0, isActive: true },
+      [P1]: { price: 4999, shippingCost: 339, codFee: 50, isActive: true },
+      [P2]: { price: 3550, shippingCost: 267, codFee: 50, isActive: true },
+      [P3]: { price: 1580, shippingCost: 173, codFee: 30, isActive: true },
+      [P4]: { price: 1599, shippingCost: 173, codFee: 30, isActive: true },
     },
   },
   {
@@ -163,10 +163,10 @@ export const STATIC_CITIES: StaticCity[] = [
     codFee: 0,
     isActive: true,
     productPricing: {
-      [P1]: { price: 4999, shippingCost: 339, codFee: 0, isActive: true },
-      [P2]: { price: 3550, shippingCost: 267, codFee: 0, isActive: true },
-      [P3]: { price: 1580, shippingCost: 173, codFee: 0, isActive: true },
-      [P4]: { price: 1599, shippingCost: 173, codFee: 0, isActive: true },
+      [P1]: { price: 4999, shippingCost: 339, codFee: 50, isActive: true },
+      [P2]: { price: 3550, shippingCost: 267, codFee: 50, isActive: true },
+      [P3]: { price: 1580, shippingCost: 173, codFee: 30, isActive: true },
+      [P4]: { price: 1599, shippingCost: 173, codFee: 30, isActive: true },
     },
   },
   {
@@ -177,10 +177,10 @@ export const STATIC_CITIES: StaticCity[] = [
     codFee: 0,
     isActive: true,
     productPricing: {
-      [P1]: { price: 4999, shippingCost: 339, codFee: 0, isActive: true },
-      [P2]: { price: 3550, shippingCost: 267, codFee: 0, isActive: true },
-      [P3]: { price: 1580, shippingCost: 173, codFee: 0, isActive: true },
-      [P4]: { price: 1599, shippingCost: 173, codFee: 0, isActive: true },
+      [P1]: { price: 4999, shippingCost: 339, codFee: 50, isActive: true },
+      [P2]: { price: 3550, shippingCost: 267, codFee: 50, isActive: true },
+      [P3]: { price: 1580, shippingCost: 173, codFee: 30, isActive: true },
+      [P4]: { price: 1599, shippingCost: 173, codFee: 30, isActive: true },
     },
   },
   {
@@ -191,10 +191,10 @@ export const STATIC_CITIES: StaticCity[] = [
     codFee: 0,
     isActive: true,
     productPricing: {
-      [P1]: { price: 4999, shippingCost: 339, codFee: 0, isActive: true },
-      [P2]: { price: 3550, shippingCost: 267, codFee: 0, isActive: true },
-      [P3]: { price: 1580, shippingCost: 173, codFee: 0, isActive: true },
-      [P4]: { price: 1599, shippingCost: 173, codFee: 0, isActive: true },
+      [P1]: { price: 4999, shippingCost: 339, codFee: 50, isActive: true },
+      [P2]: { price: 3550, shippingCost: 267, codFee: 50, isActive: true },
+      [P3]: { price: 1580, shippingCost: 173, codFee: 30, isActive: true },
+      [P4]: { price: 1599, shippingCost: 173, codFee: 30, isActive: true },
     },
   },
   {
@@ -205,10 +205,10 @@ export const STATIC_CITIES: StaticCity[] = [
     codFee: 0,
     isActive: true,
     productPricing: {
-      [P1]: { price: 4999, shippingCost: 339, codFee: 0, isActive: true },
-      [P2]: { price: 3550, shippingCost: 267, codFee: 0, isActive: true },
-      [P3]: { price: 1580, shippingCost: 173, codFee: 0, isActive: true },
-      [P4]: { price: 1599, shippingCost: 173, codFee: 0, isActive: true },
+      [P1]: { price: 4999, shippingCost: 339, codFee: 50, isActive: true },
+      [P2]: { price: 3550, shippingCost: 267, codFee: 50, isActive: true },
+      [P3]: { price: 1580, shippingCost: 173, codFee: 30, isActive: true },
+      [P4]: { price: 1599, shippingCost: 173, codFee: 30, isActive: true },
     },
   },
   {
@@ -219,10 +219,10 @@ export const STATIC_CITIES: StaticCity[] = [
     codFee: 0,
     isActive: true,
     productPricing: {
-      [P1]: { price: 4999, shippingCost: 339, codFee: 0, isActive: true },
-      [P2]: { price: 3550, shippingCost: 267, codFee: 0, isActive: true },
-      [P3]: { price: 1580, shippingCost: 173, codFee: 0, isActive: true },
-      [P4]: { price: 1599, shippingCost: 173, codFee: 0, isActive: true },
+      [P1]: { price: 4999, shippingCost: 339, codFee: 50, isActive: true },
+      [P2]: { price: 3550, shippingCost: 267, codFee: 50, isActive: true },
+      [P3]: { price: 1580, shippingCost: 173, codFee: 30, isActive: true },
+      [P4]: { price: 1599, shippingCost: 173, codFee: 30, isActive: true },
     },
   },
   {
@@ -233,10 +233,10 @@ export const STATIC_CITIES: StaticCity[] = [
     codFee: 0,
     isActive: true,
     productPricing: {
-      [P1]: { price: 4999, shippingCost: 420, codFee: 0, isActive: true },
-      [P2]: { price: 3550, shippingCost: 330, codFee: 0, isActive: true },
-      [P3]: { price: 1580, shippingCost: 200, codFee: 0, isActive: true },
-      [P4]: { price: 1599, shippingCost: 200, codFee: 0, isActive: true },
+      [P1]: { price: 4999, shippingCost: 420, codFee: 50, isActive: true },
+      [P2]: { price: 3550, shippingCost: 330, codFee: 50, isActive: true },
+      [P3]: { price: 1580, shippingCost: 200, codFee: 30, isActive: true },
+      [P4]: { price: 1599, shippingCost: 200, codFee: 30, isActive: true },
     },
   },
   {
@@ -247,10 +247,10 @@ export const STATIC_CITIES: StaticCity[] = [
     codFee: 0,
     isActive: true,
     productPricing: {
-      [P1]: { price: 4999, shippingCost: 420, codFee: 0, isActive: true },
-      [P2]: { price: 3550, shippingCost: 330, codFee: 0, isActive: true },
-      [P3]: { price: 1580, shippingCost: 200, codFee: 0, isActive: true },
-      [P4]: { price: 1599, shippingCost: 200, codFee: 0, isActive: true },
+      [P1]: { price: 4999, shippingCost: 420, codFee: 50, isActive: true },
+      [P2]: { price: 3550, shippingCost: 330, codFee: 50, isActive: true },
+      [P3]: { price: 1580, shippingCost: 200, codFee: 30, isActive: true },
+      [P4]: { price: 1599, shippingCost: 200, codFee: 30, isActive: true },
     },
   },
   {
@@ -261,10 +261,10 @@ export const STATIC_CITIES: StaticCity[] = [
     codFee: 0,
     isActive: true,
     productPricing: {
-      [P1]: { price: 4999, shippingCost: 420, codFee: 0, isActive: true },
-      [P2]: { price: 3550, shippingCost: 330, codFee: 0, isActive: true },
-      [P3]: { price: 1580, shippingCost: 200, codFee: 0, isActive: true },
-      [P4]: { price: 1599, shippingCost: 200, codFee: 0, isActive: true },
+      [P1]: { price: 4999, shippingCost: 420, codFee: 50, isActive: true },
+      [P2]: { price: 3550, shippingCost: 330, codFee: 50, isActive: true },
+      [P3]: { price: 1580, shippingCost: 200, codFee: 30, isActive: true },
+      [P4]: { price: 1599, shippingCost: 200, codFee: 30, isActive: true },
     },
   },
   {
@@ -275,10 +275,10 @@ export const STATIC_CITIES: StaticCity[] = [
     codFee: 0,
     isActive: true,
     productPricing: {
-      [P1]: { price: 4999, shippingCost: 420, codFee: 0, isActive: true },
-      [P2]: { price: 3550, shippingCost: 330, codFee: 0, isActive: true },
-      [P3]: { price: 1580, shippingCost: 200, codFee: 0, isActive: true },
-      [P4]: { price: 1599, shippingCost: 200, codFee: 0, isActive: true },
+      [P1]: { price: 4999, shippingCost: 420, codFee: 50, isActive: true },
+      [P2]: { price: 3550, shippingCost: 330, codFee: 50, isActive: true },
+      [P3]: { price: 1580, shippingCost: 200, codFee: 30, isActive: true },
+      [P4]: { price: 1599, shippingCost: 200, codFee: 30, isActive: true },
     },
   },
   {
@@ -289,10 +289,10 @@ export const STATIC_CITIES: StaticCity[] = [
     codFee: 0,
     isActive: true,
     productPricing: {
-      [P1]: { price: 4999, shippingCost: 420, codFee: 0, isActive: true },
-      [P2]: { price: 3550, shippingCost: 330, codFee: 0, isActive: true },
-      [P3]: { price: 1580, shippingCost: 200, codFee: 0, isActive: true },
-      [P4]: { price: 1599, shippingCost: 200, codFee: 0, isActive: true },
+      [P1]: { price: 4999, shippingCost: 420, codFee: 50, isActive: true },
+      [P2]: { price: 3550, shippingCost: 330, codFee: 50, isActive: true },
+      [P3]: { price: 1580, shippingCost: 200, codFee: 30, isActive: true },
+      [P4]: { price: 1599, shippingCost: 200, codFee: 30, isActive: true },
     },
   },
   {
@@ -303,10 +303,10 @@ export const STATIC_CITIES: StaticCity[] = [
     codFee: 0,
     isActive: true,
     productPricing: {
-      [P1]: { price: 4999, shippingCost: 420, codFee: 0, isActive: true },
-      [P2]: { price: 3550, shippingCost: 330, codFee: 0, isActive: true },
-      [P3]: { price: 1580, shippingCost: 200, codFee: 0, isActive: true },
-      [P4]: { price: 1599, shippingCost: 200, codFee: 0, isActive: true },
+      [P1]: { price: 4999, shippingCost: 420, codFee: 50, isActive: true },
+      [P2]: { price: 3550, shippingCost: 330, codFee: 50, isActive: true },
+      [P3]: { price: 1580, shippingCost: 200, codFee: 30, isActive: true },
+      [P4]: { price: 1599, shippingCost: 200, codFee: 30, isActive: true },
     },
   },
   {
@@ -317,10 +317,10 @@ export const STATIC_CITIES: StaticCity[] = [
     codFee: 0,
     isActive: true,
     productPricing: {
-      [P1]: { price: 4999, shippingCost: 420, codFee: 0, isActive: true },
-      [P2]: { price: 3550, shippingCost: 330, codFee: 0, isActive: true },
-      [P3]: { price: 1580, shippingCost: 200, codFee: 0, isActive: true },
-      [P4]: { price: 1599, shippingCost: 200, codFee: 0, isActive: true },
+      [P1]: { price: 4999, shippingCost: 420, codFee: 50, isActive: true },
+      [P2]: { price: 3550, shippingCost: 330, codFee: 50, isActive: true },
+      [P3]: { price: 1580, shippingCost: 200, codFee: 30, isActive: true },
+      [P4]: { price: 1599, shippingCost: 200, codFee: 30, isActive: true },
     },
   },
   {
@@ -331,10 +331,10 @@ export const STATIC_CITIES: StaticCity[] = [
     codFee: 0,
     isActive: true,
     productPricing: {
-      [P1]: { price: 4999, shippingCost: 420, codFee: 0, isActive: true },
-      [P2]: { price: 3550, shippingCost: 330, codFee: 0, isActive: true },
-      [P3]: { price: 1580, shippingCost: 200, codFee: 0, isActive: true },
-      [P4]: { price: 1599, shippingCost: 200, codFee: 0, isActive: true },
+      [P1]: { price: 4999, shippingCost: 420, codFee: 50, isActive: true },
+      [P2]: { price: 3550, shippingCost: 330, codFee: 50, isActive: true },
+      [P3]: { price: 1580, shippingCost: 200, codFee: 30, isActive: true },
+      [P4]: { price: 1599, shippingCost: 200, codFee: 30, isActive: true },
     },
   },
   {
@@ -345,10 +345,10 @@ export const STATIC_CITIES: StaticCity[] = [
     codFee: 0,
     isActive: true,
     productPricing: {
-      [P1]: { price: 4999, shippingCost: 420, codFee: 0, isActive: true },
-      [P2]: { price: 3550, shippingCost: 330, codFee: 0, isActive: true },
-      [P3]: { price: 1580, shippingCost: 200, codFee: 0, isActive: true },
-      [P4]: { price: 1599, shippingCost: 200, codFee: 0, isActive: true },
+      [P1]: { price: 4999, shippingCost: 420, codFee: 50, isActive: true },
+      [P2]: { price: 3550, shippingCost: 330, codFee: 50, isActive: true },
+      [P3]: { price: 1580, shippingCost: 200, codFee: 30, isActive: true },
+      [P4]: { price: 1599, shippingCost: 200, codFee: 30, isActive: true },
     },
   },
   {
@@ -359,10 +359,10 @@ export const STATIC_CITIES: StaticCity[] = [
     codFee: 0,
     isActive: true,
     productPricing: {
-      [P1]: { price: 4999, shippingCost: 474, codFee: 0, isActive: true },
-      [P2]: { price: 3550, shippingCost: 372, codFee: 0, isActive: true },
-      [P3]: { price: 1580, shippingCost: 218, codFee: 0, isActive: true },
-      [P4]: { price: 1599, shippingCost: 218, codFee: 0, isActive: true },
+      [P1]: { price: 4999, shippingCost: 474, codFee: 50, isActive: true },
+      [P2]: { price: 3550, shippingCost: 372, codFee: 50, isActive: true },
+      [P3]: { price: 1580, shippingCost: 218, codFee: 30, isActive: true },
+      [P4]: { price: 1599, shippingCost: 218, codFee: 30, isActive: true },
     },
   },
   {
@@ -373,10 +373,10 @@ export const STATIC_CITIES: StaticCity[] = [
     codFee: 0,
     isActive: true,
     productPricing: {
-      [P1]: { price: 4999, shippingCost: 474, codFee: 0, isActive: true },
-      [P2]: { price: 3550, shippingCost: 372, codFee: 0, isActive: true },
-      [P3]: { price: 1580, shippingCost: 218, codFee: 0, isActive: true },
-      [P4]: { price: 1599, shippingCost: 218, codFee: 0, isActive: true },
+      [P1]: { price: 4999, shippingCost: 474, codFee: 50, isActive: true },
+      [P2]: { price: 3550, shippingCost: 372, codFee: 50, isActive: true },
+      [P3]: { price: 1580, shippingCost: 218, codFee: 30, isActive: true },
+      [P4]: { price: 1599, shippingCost: 218, codFee: 30, isActive: true },
     },
   },
   {
@@ -387,10 +387,10 @@ export const STATIC_CITIES: StaticCity[] = [
     codFee: 0,
     isActive: true,
     productPricing: {
-      [P1]: { price: 4999, shippingCost: 474, codFee: 0, isActive: true },
-      [P2]: { price: 3550, shippingCost: 372, codFee: 0, isActive: true },
-      [P3]: { price: 1580, shippingCost: 218, codFee: 0, isActive: true },
-      [P4]: { price: 1599, shippingCost: 218, codFee: 0, isActive: true },
+      [P1]: { price: 4999, shippingCost: 474, codFee: 50, isActive: true },
+      [P2]: { price: 3550, shippingCost: 372, codFee: 50, isActive: true },
+      [P3]: { price: 1580, shippingCost: 218, codFee: 30, isActive: true },
+      [P4]: { price: 1599, shippingCost: 218, codFee: 30, isActive: true },
     },
   },
   {
@@ -401,10 +401,10 @@ export const STATIC_CITIES: StaticCity[] = [
     codFee: 0,
     isActive: true,
     productPricing: {
-      [P1]: { price: 4999, shippingCost: 474, codFee: 0, isActive: true },
-      [P2]: { price: 3550, shippingCost: 372, codFee: 0, isActive: true },
-      [P3]: { price: 1580, shippingCost: 218, codFee: 0, isActive: true },
-      [P4]: { price: 1599, shippingCost: 218, codFee: 0, isActive: true },
+      [P1]: { price: 4999, shippingCost: 474, codFee: 50, isActive: true },
+      [P2]: { price: 3550, shippingCost: 372, codFee: 50, isActive: true },
+      [P3]: { price: 1580, shippingCost: 218, codFee: 30, isActive: true },
+      [P4]: { price: 1599, shippingCost: 218, codFee: 30, isActive: true },
     },
   },
 ];

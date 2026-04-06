@@ -528,10 +528,10 @@ export default function CheckoutPage() {
                     }
                   </span>
                 </div>
-                {formData.paymentMethod === 'cashOnDelivery' && Math.floor(refreshedSubtotal / 1000) * 10 > 0 && (
+                {formData.paymentMethod === 'cashOnDelivery' && codFee > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-white">COD Fee</span>
-                    <span className="text-white">L.E {Math.floor(refreshedSubtotal / 1000) * 10}</span>
+                    <span className="text-white">Cash on Delivery Fee</span>
+                    <span className="text-white">L.E {codFee}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-medium text-lg pt-2 border-t border-gray-600">
