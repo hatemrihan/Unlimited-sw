@@ -71,26 +71,36 @@ export function useCheckoutPricing({ cartItems, paymentMethod, cityName }: UseCh
   let hasProductSpecificRates = false;
 
   if (selectedGovernorate) {
-    let totalProductShippingCost = 0;
-    let totalProductCodFee = 0;
+    let maxProductShippingCost = 0;
+    let maxProductCodFee = 0;
 
     for (const item of cartItems) {
       const productSpecificPricing = getProductPricing(selectedGovernorate as any, item.id);
       
+      let currentItemShipping = 0;
+      let currentItemCodFee = 0;
+
       if (productSpecificPricing && productSpecificPricing.isActive !== false) {
         hasProductSpecificRates = true;
-        totalProductShippingCost += (productSpecificPricing.shippingCost || 0);
-        totalProductCodFee += (productSpecificPricing.codFee || 0);
+        currentItemShipping = productSpecificPricing.shippingCost || 0;
+        currentItemCodFee = productSpecificPricing.codFee || 0;
       } else {
         // Fallback to city base rate — never block checkout
         hasProductSpecificRates = true;
-        totalProductShippingCost += (selectedGovernorate.shippingCost || 0);
-        totalProductCodFee += (selectedGovernorate.codFee || 0);
+        currentItemShipping = selectedGovernorate.shippingCost || 0;
+        currentItemCodFee = selectedGovernorate.codFee || 0;
+      }
+
+      if (currentItemShipping > maxProductShippingCost) {
+        maxProductShippingCost = currentItemShipping;
+      }
+      if (currentItemCodFee > maxProductCodFee) {
+        maxProductCodFee = currentItemCodFee;
       }
     }
     
-    shippingCost = totalProductShippingCost;
-    codFee = totalProductCodFee;
+    shippingCost = maxProductShippingCost;
+    codFee = maxProductCodFee;
   }
 
   const shippingConfigError = null;
