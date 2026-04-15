@@ -150,13 +150,17 @@ export const invalidateProductCache = (productId?: string) => {
     productCache.delete(`product:detail:${productId}`);
   }
   
-  // Invalidate related caches
-  apiCache.delete('products:all');
-  apiCache.delete('products:featured');
-  apiCache.delete('products:admin');
+  // 🔥 CRITICAL: Invalidate ALL paginated list caches
+  // Since keys are like 'products:all:1:6', we must clear the entire API cache or 
+  // wipe everything starting with 'products:'
+  for (const key of (apiCache as any).cache.keys()) {
+    if (key.startsWith('products:')) {
+      apiCache.delete(key);
+    }
+  }
   
   if (process.env.NODE_ENV === 'development') {
-    console.log('🗑️ Product cache invalidated');
+    console.log('🗑️ Products list and detail cache invalidated');
   }
 };
 

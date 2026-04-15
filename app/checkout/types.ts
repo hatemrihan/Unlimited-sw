@@ -7,7 +7,7 @@ export interface City {
   shippingCost: number;
   codFee: number;
   isActive: boolean;
-  productPricing?: Record<string, { shippingCost: number; codFee: number; isActive: boolean }>;
+  productPricing?: Record<string, { price: number; shippingCost: number; codFee: number; isActive: boolean }>;
 }
 
 export interface CheckoutFormData {

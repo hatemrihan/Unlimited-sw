@@ -1,4 +1,3 @@
-import { getStaticActiveProducts } from '../data/products';
 import Nav from "./sections/Nav";
 import Products from "./sections/Products";
 import Hero from "./sections/Hero";
@@ -45,14 +44,26 @@ export const metadata = {
 };
 
 export default async function Home() {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || "https://unlimited-sw.com";
+  const baseUrl = process.env.NODE_ENV === 'development' 
+    ? 'http://localhost:3000' 
+    : (process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || "https://unlimited-sw.com");
 
   // Fetch products server-side — zero waterfall, instant render (first page only)
   let initialProducts = [];
-  const initialHasMore = false;
+  let initialHasMore = false;
 
-  // Instant Fallback Mode replacing the actual fetch call
-  initialProducts = getStaticActiveProducts(false) as any;
+  try {
+    const res = await fetch(`${baseUrl}/api/products?page=1&limit=6`, {
+      next: { revalidate: 1800 } // matches your 30min cache
+    });
+    const data = await res.json();
+    if (data.success && data.products) {
+      initialProducts = data.products;
+      initialHasMore = data.hasMore;
+    }
+  } catch (error) {
+    console.error('Failed to fetch initial products:', error);
+  }
 
   const structuredData = {
     "@context": "https://schema.org",

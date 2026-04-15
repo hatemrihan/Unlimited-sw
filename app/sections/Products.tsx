@@ -6,6 +6,7 @@ import { useCart } from '../../contexts/CartContext';
 import { nameToSlug } from '../../data/products';
 import Image from "next/image";
 import Link from "next/link";
+// import { STATIC_PRODUCTS } from '../../data/products'; // Keeping for future reference as requested
 
 const Products = ({ 
   initialProducts = [], 
@@ -26,9 +27,34 @@ const Products = ({
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
 
   const isMounted = React.useRef(true);
+  
+  // Client-side fetch if server-side initialProducts is empty
   React.useEffect(() => {
+    isMounted.current = true;
+    
+    const fetchOnMount = async () => {
+      if (initialProducts.length === 0) {
+        setIsLoadingMore(true);
+        try {
+          const res = await fetch('/api/products?page=1&limit=6');
+          if (res.ok) {
+            const data = await res.json();
+            if (isMounted.current && data.products) {
+              setProducts(data.products);
+              setHasMore(data.hasMore);
+            }
+          }
+        } catch (err) {
+          console.error("Mount fetch failed:", err);
+        } finally {
+          if (isMounted.current) setIsLoadingMore(false);
+        }
+      }
+    };
+
+    fetchOnMount();
     return () => { isMounted.current = false; };
-  }, []);
+  }, [initialProducts]);
 
   // Load more function
   const loadMore = async () => {
@@ -124,7 +150,7 @@ const Products = ({
                 return (
                 <article key={product._id} className="h-full">
                   <Link
-                    href={`/product/${nameToSlug(product.name)}`}
+                    href={`/product/${product._id}`}
                     className="group flex flex-col h-full"
                   >
                     {/* Product Image */}

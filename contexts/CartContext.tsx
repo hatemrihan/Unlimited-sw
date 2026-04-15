@@ -1,7 +1,6 @@
 "use client";
 
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { getStaticActiveProducts } from '../data/products';
 
 export interface CartItem {
   id: string;
@@ -139,52 +138,76 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     itemCount: 0
   });
 
-  // Load cart from localStorage on mount — always sanitize prices against live product data
+  // Load cart from localStorage on mount — always sanitize prices and migrate IDs
   useEffect(() => {
-    try {
-      const savedCart = localStorage.getItem('cart');
-      if (savedCart) {
-        const items: CartItem[] = JSON.parse(savedCart);
+    const loadCartSafe = async () => {
+      try {
+        const savedCart = localStorage.getItem('cart');
+        if (savedCart) {
+          const items: CartItem[] = JSON.parse(savedCart);
 
-        // Build a live price map from the authoritative static product list
-        const liveProducts = getStaticActiveProducts();
-        const livePriceMap: Record<string, number> = {};
-        liveProducts.forEach(p => {
-          if (p._id) {
-            livePriceMap[p._id.toString()] = p.price;
-            // Also index variant prices
-            if (p.variants && Array.isArray(p.variants)) {
-              p.variants.forEach((v: any) => {
-                if (v.price && v.price > 0) {
-                  livePriceMap[`${p._id}_${v.name}`] = v.price;
-                }
-              });
+          // Fetch the live dynamic product list from MongoDB
+          const response = await fetch('/api/products');
+          const data = await response.json();
+          if (!data.success || !data.products) {
+            dispatch({ type: 'LOAD_CART', payload: items });
+            return;
+          }
+          
+          const liveProducts = data.products;
+
+          // Build a live price map and migration mapping
+          const livePriceMap: Record<string, number> = {};
+          liveProducts.forEach((p: any) => {
+            if (p._id) {
+              livePriceMap[p._id.toString()] = p.price;
+              if (p.variants && Array.isArray(p.variants)) {
+                p.variants.forEach((v: any) => {
+                  if (v.price && v.price > 0) {
+                    livePriceMap[`${p._id}_${v.name}`] = v.price;
+                  }
+                });
+              }
             }
-          }
-        });
+          });
 
-        // Overwrite any stale prices from localStorage with the live price
-        const sanitizedItems = items.map(item => {
-          const variantKey = item.variant?.name;
-          const liveVariantPrice = variantKey ? livePriceMap[`${item.id}_${variantKey}`] : undefined;
-          const liveBasePrice = livePriceMap[item.id];
-          const freshPrice = liveVariantPrice ?? liveBasePrice;
+          // Overwrite stale prices and auto-migrate legacy static IDs to Mongo ObjectIds
+          const sanitizedItems = items.map(item => {
+            let actualId = item.id;
+            
+            // Auto-Migrator: if cart item has a static ID, find the MongoDB _id via name matching
+            if (actualId.startsWith('static-')) {
+              const matchingLiveProduct = liveProducts.find((lp: any) => lp.name === item.name);
+              if (matchingLiveProduct && matchingLiveProduct._id) {
+                console.log(`[Cart Migrator] Upgraded legacy ID for ${item.name} -> ${matchingLiveProduct._id}`);
+                actualId = matchingLiveProduct._id.toString();
+              }
+            }
 
-          if (freshPrice !== undefined && freshPrice !== item.price) {
-            console.warn(`[Cart] Stale price detected for ${item.name}: was ${item.price}, updated to ${freshPrice}`);
-          }
+            const variantKey = item.variant?.name;
+            const liveVariantPrice = variantKey ? livePriceMap[`${actualId}_${variantKey}`] : undefined;
+            const liveBasePrice = livePriceMap[actualId];
+            const freshPrice = liveVariantPrice ?? liveBasePrice;
 
-          return {
-            ...item,
-            price: freshPrice ?? item.price, // Always use live price if available
-          };
-        });
+            if (freshPrice !== undefined && freshPrice !== item.price) {
+              console.warn(`[Cart] Stale price detected for ${item.name}: was ${item.price}, updated to ${freshPrice}`);
+            }
 
-        dispatch({ type: 'LOAD_CART', payload: sanitizedItems });
+            return {
+              ...item,
+              id: actualId, // Auto-migrated ID injected safely
+              price: freshPrice ?? item.price,
+            };
+          });
+
+          dispatch({ type: 'LOAD_CART', payload: sanitizedItems });
+        }
+      } catch (error) {
+        // Failed to load from localStorage or API
       }
-    } catch (error) {
-      // Failed to load from localStorage, fallback to empty cart
-    }
+    };
+    
+    loadCartSafe();
   }, []);
 
   // Save cart to localStorage whenever state changes

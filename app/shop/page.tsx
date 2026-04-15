@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Nav from '../sections/Nav';
 import Footer from '../sections/Footer';
 import { useCart } from '../../contexts/CartContext';
-import { nameToSlug, getStaticActiveProducts } from '../../data/products';
+import { nameToSlug } from '../../data/products';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -71,7 +71,7 @@ const ProductCard = ({ product, onAddToCart, index }: ProductCardProps) => {
 
   return (
     <article className="group relative flex flex-col h-full">
-      <Link href={`/product/${nameToSlug(product.name)}`} className="block">
+      <Link href={`/product/${product._id}`} className="block">
         <div className="relative aspect-[3/4] w-full overflow-hidden bg-gray-800 mb-3 max-w-[180px] mx-auto">
           {product.mainImage ? (
             <Image
@@ -118,7 +118,7 @@ const ProductCard = ({ product, onAddToCart, index }: ProductCardProps) => {
       </Link>
 
       <div className="text-center flex flex-col flex-grow mt-2">
-        <Link href={`/product/${nameToSlug(product.name)}`}>
+        <Link href={`/product/${product._id}`}>
           <h3 className="text-sm font-light text-[#b3b3b3] mb-1 hover:underline line-clamp-2">
             {product.name}
           </h3>
@@ -172,11 +172,15 @@ export default function Shop() {
     const load = async () => {
       try {
         setLoading(true);
-        // Instant Fallback Mode (bypassing slow API route timeout)
-        const combined = getStaticActiveProducts() as unknown as Product[];
-        setProducts(combined);
+        const response = await fetch('/api/products');
+        const data = await response.json();
+        if (data.success && data.products) {
+          setProducts(data.products);
+        } else {
+          setError('Failed to load products');
+        }
       } catch (err) {
-        setError('Failed to load products');
+        setError('Network error loading products');
       } finally {
         setLoading(false);
       }

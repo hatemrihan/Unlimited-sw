@@ -21,35 +21,30 @@ export const GET = withDb(async (request: NextRequest, ctx?: any) => {
   const { id: productId } = await ctx.params;
   
   // Get product with city pricing
-    const product = await Product.findById(productId).select('name price cityPricing');
-    if (!product) {
-      return NextResponse.json(
-        { success: false, error: 'Product not found' },
-        { status: 404 }
-      );
-    }
-    
-    // Get all available cities
-    const allCities = await CityPricing.find({ isActive: true }).sort({ governorate: 1, cityName: 1 });
+  const product = await Product.findById(productId).select('name price cityPricing');
+  if (!product) {
+    return NextResponse.json(
+      { success: false, error: 'Product not found' },
+      { status: 404 }
+    );
+  }
+  
+  // Get all available governorates (which are saved in CityPricing collection)
+  const allGovernorates = await CityPricing.find({ isActive: true }).sort({ governorate: 1 });
 
-    // Aggregate by governorate (one row per governorate)
-    const govMap: Record<string, any> = {};
-    for (const city of allCities) {
-      const govName = city.governorate;
-      if (!govMap[govName]) {
-        // find an existing product price/isActive for this governorate
-        const existingGovPricing = (product.cityPricing || []).find((cp: any) => cp.governorate === govName);
-        govMap[govName] = {
-          governorate: govName,
-          price: existingGovPricing?.price ?? product.price ?? 0,
-          isActive: existingGovPricing?.isActive !== false,
-          // Use product-specific shipping costs if available, otherwise fall back to global defaults
-          shippingCost: existingGovPricing?.shippingCost ?? city.shippingCost,
-          codFee: existingGovPricing?.codFee ?? city.codFee,
-        };
-      }
-    }
-  const cityPricingData = Object.values(govMap);
+  // For each global governorate, map it to the product's specific override, or fall back to default
+  const cityPricingData = allGovernorates.map(gov => {
+    const govName = gov.governorate;
+    const existingGovPricing = (product.cityPricing || []).find((cp: any) => cp.governorate === govName);
+    
+    return {
+      governorate: govName,
+      price: existingGovPricing?.price ?? product.price ?? 0,
+      isActive: existingGovPricing?.isActive !== false,
+      shippingCost: existingGovPricing?.shippingCost ?? gov.shippingCost,
+      codFee: existingGovPricing?.codFee ?? gov.codFee,
+    };
+  });
   
   return NextResponse.json({
     success: true,
@@ -87,41 +82,15 @@ export const PUT = withDb(async (request: NextRequest, ctx?: any) => {
     }
     
     // FIXED: Product-specific city pricing logic
-    // For each governorate:
-    // 1) Set product-specific price and isActive status
-    // 2) Build product.cityPricing entries for all cities in that governorate
-    // 3) DO NOT modify global CityPricing collection (that's for defaults only)
-    const productCityPricing: any[] = [];
-
-    // Pre-fetch all needed cities to avoid N+1 queries in the loop
-    const allGovNames = cityPricing.map((gp: any) => gp.governorate);
-    const allGovCities = await CityPricing.find({ governorate: { $in: allGovNames } });
-
-    for (const gp of cityPricing) {
-      const govName = gp.governorate;
-      const price = Number(gp.price) || 0;
-      const shippingCost = Number(gp.shippingCost) || 0;
-      const codFee = Number(gp.codFee) || 0;
-      const isActive = gp.isActive !== false;
-
-      // Store product-specific pricing including shipping costs and COD fees
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`📦 Setting product-specific pricing for ${govName}: price=${price}, shipping=${shippingCost}, cod=${codFee}, active=${isActive}`);
-      }
-
-      // Filter from pre-fetched cities (O(n) in memory is way faster than DB query)
-      const govCities = allGovCities.filter(c => c.governorate === govName);
-      for (const city of govCities) {
-        productCityPricing.push({
-          cityName: city.cityName,
-          governorate: govName,
-          price,
-          shippingCost,
-          codFee,
-          isActive,
-        });
-      }
-    }
+    // We map every incoming governorate to exactly 1 saved pricing object.
+    const productCityPricing = cityPricing.map((gp: any) => ({
+      cityName: gp.governorate, // For simpler standardizing, cityName = governorate
+      governorate: gp.governorate,
+      price: Number(gp.price) || 0,
+      shippingCost: Number(gp.shippingCost) || 0,
+      codFee: Number(gp.codFee) || 0,
+      isActive: gp.isActive !== false,
+    }));
 
     // Replace product cityPricing with the newly built list
     const updatedProduct = await Product.findByIdAndUpdate(

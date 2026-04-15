@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { withDb } from '../../../../lib/withDb';
 import { requireAdmin } from '../../../../lib/requireAdmin';
+import { invalidateProductCache } from '../../../../lib/cache';
 
 import { getAdminProducts, createProduct } from '../../../../services/product.service';
 import { createProductSchema } from '../../../../lib/schemas/product.schema';
@@ -49,6 +50,7 @@ export const POST = withDb(async (req: NextRequest) => {
   }
 
   const product = await createProduct(parsed.data);
+  invalidateProductCache(); // Clear frontend list cache
 
   revalidateTag('products');
   return NextResponse.json({
