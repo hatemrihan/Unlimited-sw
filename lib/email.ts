@@ -310,7 +310,7 @@ function generateAdminEmailTemplate(orderData: OrderEmailData): string {
           
           <!-- Greeting -->
           <p style="font-size: 16px; line-height: 1.6; margin: 0 0 20px 0; direction: rtl; text-align: right;">
-            طلب جديد من <strong>${orderData.customerName}</strong>!
+            طلب جديد من <strong>${orderData.customerName}</strong>
           </p>
 
           <p style="font-size: 16px; line-height: 1.6; margin: 0 0 25px 0; direction: rtl; text-align: right;">

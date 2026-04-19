@@ -56,23 +56,22 @@ export function useCheckoutPricing({ cartItems, paymentMethod, cityName }: UseCh
   let codFee = 0;
   
   if (selectedGovernorate) {
-    // Start with the base governorate rates
-    shippingCost = selectedGovernorate.shippingCost || 0;
-    codFee = selectedGovernorate.codFee || 0;
+    const baseShipping = selectedGovernorate.shippingCost || 0;
+    const baseCod = selectedGovernorate.codFee || 0;
     
-    // Process overrides for each cart item
+    // Accumulate shipping and COD fees per item × quantity
+    // Each item uses its product-specific override if available, otherwise the base governorate rate
     cartItems.forEach(item => {
       const productSpecifics = selectedGovernorate.productPricing?.[item.id];
-      if (productSpecifics) {
-        // If a product has a custom shipping rate for this governorate, use the heaviest (highest) one
-        if (productSpecifics.shippingCost > shippingCost) {
-          shippingCost = productSpecifics.shippingCost;
-        }
-        // If a product has a custom COD fee, use the highest one
-        if (productSpecifics.codFee > codFee) {
-          codFee = productSpecifics.codFee;
-        }
-      }
+      const itemShipping = (productSpecifics?.shippingCost != null && productSpecifics.shippingCost > 0)
+        ? productSpecifics.shippingCost
+        : baseShipping;
+      const itemCod = (productSpecifics?.codFee != null && productSpecifics.codFee > 0)
+        ? productSpecifics.codFee
+        : baseCod;
+      
+      shippingCost += itemShipping * item.quantity;
+      codFee += itemCod * item.quantity;
     });
   }
 
