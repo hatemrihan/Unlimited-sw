@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 const Typewriter = ({
   text,
@@ -50,6 +51,7 @@ const Typewriter = ({
 }
 
 function ThankYouContent() {
+  const router = useRouter()
   const [orderId, setOrderId] = useState<string | null>(null)
   const [orderDetails, setOrderDetails] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -71,7 +73,7 @@ function ThankYouContent() {
         // Handle error quietly
       }
     } else {
-      window.location.href = '/'
+      router.replace('/')
       return
     }
 

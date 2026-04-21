@@ -7,7 +7,7 @@ import { useCart } from '../../contexts/CartContext';
 
 const CartPage = () => {
   const router = useRouter();
-  const { state: cartState, updateQuantity, removeItem, clearCart } = useCart();
+  const { state: cartState, updateQuantity, removeItem, clearCart, syncItems } = useCart();
   const [loading, setLoading] = useState<boolean>(true);
   // Key format: "productId_variantName" or "productId_default" for items without variants
   const [refreshedPrices, setRefreshedPrices] = useState<Record<string, number>>({});
@@ -48,35 +48,66 @@ const CartPage = () => {
           }
         });
 
-        // Now build price map with variant-specific prices
+        // Now build price map and evaluate LIVE STOCK validations!
         const priceMap: Record<string, number> = {};
-        cartState.items.forEach((item) => {
-          const product = productMap[item.id];
-          if (product) {
-            // Create a unique key for this cart item (product + variant)
-            const variantKey = item.variant?.name || 'default';
-            const priceKey = `${item.id}_${variantKey}`;
+        let needsSync = false;
 
-            // Find matching variant price if item has a variant
-            let price = product.price || 0;
-            if (item.variant && product.variants && Array.isArray(product.variants)) {
-              const matchingVariant = product.variants.find(
-                (v: any) => v.name === item.variant?.name
-              );
-              // Use variant price if it exists, otherwise fall back to main product price
-              if (matchingVariant && matchingVariant.price !== undefined && matchingVariant.price > 0) {
-                price = matchingVariant.price;
+        const validatedItems = cartState.items.map((item) => {
+          const product = productMap[item.id];
+          if (!product) return item; // Safety fallback
+
+          const variantKey = item.variant?.name || 'default';
+          const priceKey = `${item.id}_${variantKey}`;
+
+          let currentPrice = product.price || 0;
+          let availableStock = typeof product.stock === 'number' ? product.stock : 0;
+
+          if (item.variant && product.variants && Array.isArray(product.variants)) {
+            const matchingVariant = product.variants.find((v: any) => v.name === item.variant?.name);
+            if (matchingVariant) {
+              if (matchingVariant.price !== undefined && matchingVariant.price > 0) {
+                currentPrice = matchingVariant.price;
+              }
+              if (typeof matchingVariant.stock === 'number') {
+                availableStock = matchingVariant.stock;
               }
             }
-
-            priceMap[priceKey] = price;
           }
-        });
+
+          priceMap[priceKey] = currentPrice;
+
+          // Enforce math boundaries naturally
+          let validatedQuantity = item.quantity;
+          if (validatedQuantity > availableStock) {
+            validatedQuantity = availableStock;
+            needsSync = true;
+          } else if (item.stock !== availableStock) {
+            // Background metadata optimization
+            needsSync = true;
+          }
+
+          return {
+            ...item,
+            quantity: validatedQuantity,
+            stock: availableStock
+          };
+        }).filter(item => item.quantity > 0); // Silently eject completely sold out items
+        
+        // Did an item get removed completely?
+        if (validatedItems.length !== cartState.items.length) {
+          needsSync = true; 
+        }
 
         setRefreshedPrices(priceMap);
-        console.log('🔄 Cart prices refreshed with variant support:', priceMap);
+
+        // Intelligently overwrite the local storage cart gracefully
+        if (needsSync && typeof syncItems === 'function') {
+           syncItems(validatedItems);
+           console.log('🔄 Cart intelligently corrected due to background stock movements!');
+        }
+
       } catch (error) {
-        console.error('❌ Error refreshing cart prices:', error);
+        console.error('❌ Error refreshing cart prices/stock:', error);
       } finally {
         setLoading(false);
       }
@@ -186,7 +217,6 @@ const CartPage = () => {
               {/* Left Side - Cart Items */}
               <div className="lg:col-span-2">
                 {cartState.items.map((item) => {
-                  console.log('Cart item:', item.name, 'Stock:', item.stock, 'Quantity:', item.quantity);
                   return (
                     <div key={`${item.id}-${JSON.stringify(item.variant)}`} className="bg-stone-900/50  p-4 mb-4">
                       {/* Mobile Layout - Stack vertically */}

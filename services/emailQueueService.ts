@@ -84,6 +84,7 @@ async function processAsyncRoutines(savedOrder: any, orderData: any) {
           } : undefined
         })),
         totalAmount: savedOrder.totalAmount,
+        subtotal: savedOrder.subtotal || 0,
         shippingCost: savedOrder.shippingCost,
         codFee: savedOrder.codFee || 0,
         paymentMethod: savedOrder.paymentMethod,

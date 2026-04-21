@@ -37,6 +37,7 @@ const CartContext = createContext<{
   addItem: (item: Omit<CartItem, 'quantity'>, quantityToAdd?: number, maxStock?: number) => void;
   removeItem: (id: string, variant?: CartItem['variant']) => void;
   updateQuantity: (id: string, variant: CartItem['variant'], quantity: number, maxStock?: number) => void;
+  syncItems: (items: CartItem[]) => void;
   clearCart: () => void;
 } | null>(null);
 
@@ -232,6 +233,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     dispatch({ type: 'UPDATE_QUANTITY', payload: { id, variant, quantity, maxStock } });
   };
 
+  const syncItems = (items: CartItem[]) => {
+    dispatch({ type: 'LOAD_CART', payload: items });
+  };
+
   const clearCart = () => {
     dispatch({ type: 'CLEAR_CART' });
   };
@@ -242,6 +247,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       addItem,
       removeItem,
       updateQuantity,
+      syncItems,
       clearCart
     }}>
       {children}

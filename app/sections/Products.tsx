@@ -28,33 +28,31 @@ const Products = ({
 
   const isMounted = React.useRef(true);
   
-  // Client-side fetch if server-side initialProducts is empty
+  // Always fetch fresh data on mount to pick up stock/out-of-stock changes
   React.useEffect(() => {
     isMounted.current = true;
     
-    const fetchOnMount = async () => {
-      if (initialProducts.length === 0) {
-        setIsLoadingMore(true);
-        try {
-          const res = await fetch('/api/products?page=1&limit=6');
-          if (res.ok) {
-            const data = await res.json();
-            if (isMounted.current && data.products) {
-              setProducts(data.products);
-              setHasMore(data.hasMore);
-            }
+    const fetchFresh = async () => {
+      try {
+        const timestamp = new Date().getTime();
+        const res = await fetch(`/api/products?page=1&limit=6&t=${timestamp}`, {
+          cache: 'no-store'
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted.current && data.products) {
+            setProducts(data.products);
+            setHasMore(data.hasMore);
           }
-        } catch (err) {
-          console.error("Mount fetch failed:", err);
-        } finally {
-          if (isMounted.current) setIsLoadingMore(false);
         }
+      } catch (err) {
+        console.error("Mount fetch failed:", err);
       }
     };
 
-    fetchOnMount();
+    fetchFresh();
     return () => { isMounted.current = false; };
-  }, [initialProducts]);
+  }, []);
 
   // Load more function
   const loadMore = async () => {
@@ -63,7 +61,10 @@ const Products = ({
     setLoadMoreError(null);
     try {
       const nextPage = page + 1;
-      const res = await fetch(`/api/products?page=${nextPage}&limit=6`);
+      const timestamp = new Date().getTime();
+      const res = await fetch(`/api/products?page=${nextPage}&limit=6&t=${timestamp}`, {
+        cache: 'no-store'
+      });
       if (res.ok) {
         const data = await res.json();
         if (isMounted.current) {

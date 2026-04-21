@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
 
       // 🚀 OPTIMIZED: Fetch paginated products
       const activeProducts = await Product.find(query)
-        .select('name price originalPrice discount mainImage images videos description promoCode variants stock isActive isFeatured order showOutOfStockBadge showPreorderBadge category tags specifications shippingInfo faqs detailedDescription cityPricing')
+        .select('name price originalPrice discount mainImage images videos description promoCode variants stock isActive isFeatured order showOutOfStockBadge showPreorderBadge customOutOfStockMessage category tags specifications shippingInfo faqs detailedDescription cityPricing')
         .sort({ order: 1 })
         .skip(skip)
         .limit(limit)

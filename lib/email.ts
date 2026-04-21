@@ -50,6 +50,7 @@ export interface OrderEmailData {
     };
   }>;
   totalAmount: number;
+  subtotal?: number;
   shippingCost: number;
   codFee?: number;
   paymentMethod: string;
@@ -229,7 +230,7 @@ function generateOrderEmailTemplate(orderData: OrderEmailData): string {
             <table style="width: 100%; font-size: 15px;">
               <tr>
                 <td style="padding: 8px 0;">Subtotal</td>
-                <td style="padding: 8px 0; text-align: right;">${(orderData.totalAmount - orderData.shippingCost - (orderData.codFee || 0)).toLocaleString()}${currencySymbol}</td>
+                <td style="padding: 8px 0; text-align: right;">${(orderData.subtotal ?? (orderData.totalAmount - orderData.shippingCost - (orderData.codFee || 0) + (orderData.discountAmount || 0))).toLocaleString()}${currencySymbol}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0;">Shipping</td>
@@ -351,7 +352,7 @@ function generateAdminEmailTemplate(orderData: OrderEmailData): string {
             <table style="width: 100%; font-size: 15px;">
               <tr>
                 <td style="padding: 8px 0;">Subtotal</td>
-                <td style="padding: 8px 0; text-align: right;">${(orderData.totalAmount - orderData.shippingCost - (orderData.codFee || 0)).toLocaleString()}${currencySymbol}</td>
+                <td style="padding: 8px 0; text-align: right;">${(orderData.subtotal ?? (orderData.totalAmount - orderData.shippingCost - (orderData.codFee || 0) + (orderData.discountAmount || 0))).toLocaleString()}${currencySymbol}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0;">Shipping</td>

@@ -54,7 +54,7 @@ export default async function Home() {
 
   try {
     const res = await fetch(`${baseUrl}/api/products?page=1&limit=6`, {
-      next: { revalidate: 1800 } // matches your 30min cache
+      next: { revalidate: 60, tags: ['products'] }
     });
     const data = await res.json();
     if (data.success && data.products) {

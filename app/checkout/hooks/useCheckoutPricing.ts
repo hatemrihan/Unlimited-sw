@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { CartItem, City, PromoData } from '../types';
 
 interface UseCheckoutPricingProps {
@@ -7,14 +7,28 @@ interface UseCheckoutPricingProps {
   cityName: string;
 }
 
+/**
+ * Resolves the effective price for a cart item based on governorate-specific overrides.
+ * Falls back to the base cart price when no custom pricing exists.
+ */
+function resolveItemPrice(item: CartItem, governorate?: City): number {
+  const specific = governorate?.productPricing?.[item.id];
+  return (specific?.price && specific.price > 0) ? specific.price : item.price;
+}
+
 export function useCheckoutPricing({ cartItems, paymentMethod, cityName }: UseCheckoutPricingProps) {
   const [cities, setCities] = useState<City[]>([]);
   const [loadingCities, setLoadingCities] = useState(true);
-  const [refreshedPrices, setRefreshedPrices] = useState<Record<string, number>>({});
   const [appliedPromo, setAppliedPromo] = useState<PromoData | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
 
-  // Fetch cities and refresh product prices from checkout APIs
+  // Stable dependency key — only re-fetch when the set of product IDs actually changes
+  const productIdsKey = useMemo(
+    () => [...new Set(cartItems.map(item => item.id))].sort().join(','),
+    [cartItems]
+  );
+
+  // Fetch cities with product-specific pricing from MongoDB
   useEffect(() => {
     if (!cartItems || cartItems.length === 0) {
       setLoadingCities(false);
@@ -23,12 +37,8 @@ export function useCheckoutPricing({ cartItems, paymentMethod, cityName }: UseCh
 
     const fetchCitiesAndPrices = async () => {
       try {
-        const productIds = [...new Set(cartItems.map(item => item.id))];
-        const productIdsString = productIds.join(',');
-
-        // Execute dynamic API call to MongoDB to resolve product-specific shipping matrices
-        // Force no-store to ensure we get the latest edited prices from admin
-        const citiesResponse = await fetch(`/api/checkout/cities${productIdsString ? `?productIds=${productIdsString}` : ''}`, {
+        const queryParam = productIdsKey ? `?productIds=${productIdsKey}` : '';
+        const citiesResponse = await fetch(`/api/checkout/cities${queryParam}`, {
           cache: 'no-store'
         });
         
@@ -36,9 +46,6 @@ export function useCheckoutPricing({ cartItems, paymentMethod, cityName }: UseCh
           const citiesData = await citiesResponse.json();
           setCities(citiesData.cities || []);
         }
-
-
-
       } catch (error) {
         console.error('Error fetching dynamic checkout data:', error);
       } finally {
@@ -47,11 +54,14 @@ export function useCheckoutPricing({ cartItems, paymentMethod, cityName }: UseCh
     };
 
     fetchCitiesAndPrices();
-  }, [cartItems]);
+  }, [productIdsKey]);
 
-  // Calculate dynamic component pricing and override static cart prices based on the selected governorate
+  // Resolve selected governorate from fetched cities
   const selectedGovernorate = cities.find(city => city.cityName === cityName);
   
+  // ── Shipping & COD ─────────────────────────────────────────────────────
+  // Accumulates per-item × quantity. Each item uses its product-specific
+  // override if available, otherwise falls back to the base governorate rate.
   let shippingCost = 0;
   let codFee = 0;
   
@@ -59,8 +69,6 @@ export function useCheckoutPricing({ cartItems, paymentMethod, cityName }: UseCh
     const baseShipping = selectedGovernorate.shippingCost || 0;
     const baseCod = selectedGovernorate.codFee || 0;
     
-    // Accumulate shipping and COD fees per item × quantity
-    // Each item uses its product-specific override if available, otherwise the base governorate rate
     cartItems.forEach(item => {
       const productSpecifics = selectedGovernorate.productPricing?.[item.id];
       const itemShipping = (productSpecifics?.shippingCost != null && productSpecifics.shippingCost > 0)
@@ -75,53 +83,49 @@ export function useCheckoutPricing({ cartItems, paymentMethod, cityName }: UseCh
     });
   }
 
-  // Calculate Subtotal with live governorate pricing
-  const refreshedSubtotal = cartItems.reduce((sum, item) => {
-    // Determine dynamic price
-    let currentPrice = item.price; // fallback to cart base price
-    
-    // Check if the selected governorate has a custom price for this specific product
-    if (selectedGovernorate?.productPricing?.[item.id]) {
-      const specificPrice = selectedGovernorate.productPricing[item.id].price;
-      if (specificPrice > 0) {
-        currentPrice = specificPrice;
-      }
-    }
-    
-    return sum + (currentPrice * item.quantity);
-  }, 0);
+  // ── Subtotal ───────────────────────────────────────────────────────────
+  const refreshedSubtotal = cartItems.reduce(
+    (sum, item) => sum + resolveItemPrice(item, selectedGovernorate) * item.quantity,
+    0
+  );
 
-  // Expose the dynamically overridden prices so the UI can display them correctly per item
+  // ── Dynamic Price Map (for UI display per line item) ───────────────────
   const dynamicPrices: Record<string, number> = {};
   cartItems.forEach(item => {
-    const variantKey = item.variant?.name || 'default';
-    const priceKey = `${item.id}_${variantKey}`;
-    
-    let currentPrice = item.price;
-    if (selectedGovernorate?.productPricing?.[item.id]) {
-        const specificPrice = selectedGovernorate.productPricing[item.id].price;
-        if (specificPrice > 0) {
-          currentPrice = specificPrice;
-        }
-    }
-    dynamicPrices[priceKey] = currentPrice;
+    const priceKey = `${item.id}_${item.variant?.name || 'default'}`;
+    dynamicPrices[priceKey] = resolveItemPrice(item, selectedGovernorate);
   });
 
+  // ── Shipping Config Error ──────────────────────────────────────────────
   const shippingConfigError = cityName && !selectedGovernorate
     ? 'Shipping costs not configured for selected products in your region.'
     : null;
 
-  // Final Calculations
+  // ── Discount ───────────────────────────────────────────────────────────
+  // Correctly handles both percentage and fixed discount types
+  const discountAmount = appliedPromo
+    ? appliedPromo.discountType === 'percentage'
+      ? Math.round((refreshedSubtotal * appliedPromo.discountValue) / 100)
+      : appliedPromo.discountValue
+    : 0;
+
+  // ── Final Totals ───────────────────────────────────────────────────────
   const shouldWaiveShipping = appliedPromo && appliedPromo.waiveShipping;
   const finalCodFee = paymentMethod === 'cashOnDelivery' ? codFee : 0;
   const finalShippingCost = shouldWaiveShipping ? 0 : shippingCost;
-  const discountAmount = appliedPromo ? appliedPromo.discountValue : 0;
   const subtotalAfterDiscount = Math.max(0, refreshedSubtotal - discountAmount);
   const totalWithShipping = subtotalAfterDiscount + finalShippingCost + finalCodFee;
 
+  // ── Promo Code ─────────────────────────────────────────────────────────
   const applyPromoCode = async (code: string) => {
-    if (!code.trim()) {
+    const trimmed = code.trim();
+    if (!trimmed) {
       setPromoError('Please enter a promo code');
+      return;
+    }
+
+    // Guard: don't re-validate the same code
+    if (appliedPromo?.code?.toLowerCase() === trimmed.toLowerCase()) {
       return;
     }
     
@@ -129,7 +133,7 @@ export function useCheckoutPricing({ cartItems, paymentMethod, cityName }: UseCh
       const response = await fetch('/api/promo/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code })
+        body: JSON.stringify({ code: trimmed })
       });
       const data = await response.json();
       
