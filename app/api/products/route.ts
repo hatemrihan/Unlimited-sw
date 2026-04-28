@@ -137,11 +137,5 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Cache invalidation function
-export function invalidateProductsCache() {
-  apiCache.delete('products:all');
-  apiCache.delete('products:featured');
-  console.log('🗑️ Products cache invalidated');
-}
-
-
+// Re-export the centralized cache invalidation (the old inline version had wrong keys)
+export { invalidateProductCache as invalidateProductsCache } from '../../../lib/cache';

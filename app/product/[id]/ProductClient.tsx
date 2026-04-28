@@ -201,10 +201,12 @@ export default function ProductClient({ product, allProducts }: Props) {
                     ) : (
                       <span className="text-base lg:text-lg font-bold">{product.price.toLocaleString()} LE</span>
                     )}
-                    {isOutOfStock && product.customOutOfStockMessage && (
-                      <span className="bg-red-600 border border-red-500 shadow-md text-white px-2 py-0.5 text-xs font-bold uppercase tracking-widest rounded animate-pulse ml-2" dir="auto">{product.customOutOfStockMessage}</span>
+                    {/* Custom badge — always visible when set by admin */}
+                    {product.customOutOfStockMessage && (
+                      <span className="bg-stone-900 text-white px-1.5 py-0.5 text-[10px] font-medium uppercase rounded ml-2" dir="auto">{product.customOutOfStockMessage}</span>
                     )}
-                    {(product as any).showOutOfStockBadge && isOutOfStock && (
+                    {/* Standard badge — only when out of stock AND no custom message */}
+                    {isOutOfStock && !product.customOutOfStockMessage && (
                       <span className="bg-gray-700 text-white px-1.5 py-0.5 text-xs font-medium rounded ml-2">OUT OF STOCK</span>
                     )}
                   </div>

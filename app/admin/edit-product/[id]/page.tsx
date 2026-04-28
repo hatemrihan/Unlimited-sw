@@ -392,7 +392,7 @@ const EditProductPage = () => {
               {/* Admin Badges (only effective when stock is 0) */}
               <div className="space-y-3 lg:space-y-4 mb-6">
                 <div className="bg-gray-50 border border-gray-200 text-gray-900 px-3 py-3 text-xs font-medium rounded-lg">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Badges (shown only when stock is 0)</h4>
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">Badges & Custom Labels</h4>
                   
                   <div className="flex items-center gap-6 mb-4">
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -426,7 +426,7 @@ const EditProductPage = () => {
                       className="w-full p-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-gray-400 focus:outline-none text-sm"
                       placeholder="e.g. نعود خلال ٧ أيام (Restocking in 7 Days)"
                     />
-                    <p className="text-xs text-gray-500 mt-1 font-normal">If set, this pulsating badge overrides the standard out of stock checkboxes.</p>
+                    <p className="text-xs text-gray-500 mt-1 font-normal">This badge is <strong>always visible</strong> on the product card. Use for announcements like "Restocking Soon" or "New Arrival".</p>
                   </div>
                 </div>
               </div>

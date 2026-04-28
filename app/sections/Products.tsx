@@ -176,23 +176,24 @@ const Products = ({
                           </div>
                         )}
                         
-                        {availableStock === 0 && (
-                          <>
-                            {product.customOutOfStockMessage && (
-                              <div className="bg-red-600 border border-red-500 text-white px-2 py-1 text-[10px] font-bold uppercase tracking-widest animate-pulse shadow-md rounded-sm w-fit" dir="auto">
-                                {product.customOutOfStockMessage}
-                              </div>
-                            )}
-                            {product.showPreorderBadge ? (
-                              <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase w-fit">
-                                PREORDER
-                              </div>
-                            ) : (
-                              <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase w-fit">
-                                OUT OF STOCK
-                              </div>
-                            )}
-                          </>
+                        {/* Custom badge — ALWAYS visible when set by admin */}
+                        {product.customOutOfStockMessage && (
+                          <div className="bg-stone-900 text-white px-1.5 py-0.5 text-[10px] font-medium uppercase w-fit" dir="auto">
+                            {product.customOutOfStockMessage}
+                          </div>
+                        )}
+
+                        {/* Standard badges — only when stock=0 AND no custom message */}
+                        {availableStock === 0 && !product.customOutOfStockMessage && (
+                          product.showPreorderBadge ? (
+                            <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase w-fit">
+                              PREORDER
+                            </div>
+                          ) : (
+                            <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase w-fit">
+                              OUT OF STOCK
+                            </div>
+                          )
                         )}
                       </div>
                     </div>
