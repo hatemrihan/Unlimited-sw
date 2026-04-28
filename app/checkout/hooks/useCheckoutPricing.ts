@@ -8,12 +8,13 @@ interface UseCheckoutPricingProps {
 }
 
 /**
- * Resolves the effective price for a cart item based on governorate-specific overrides.
- * Falls back to the base cart price when no custom pricing exists.
+ * Resolves the effective price for a cart item.
+ * Always uses item.price — this is refreshed from MongoDB on every page load
+ * via CartContext, so it always reflects the admin's latest base price.
+ * CityPricing only controls shipping/COD per governorate, not the product price.
  */
-function resolveItemPrice(item: CartItem, governorate?: City): number {
-  const specific = governorate?.productPricing?.[item.id];
-  return (specific?.price && specific.price > 0) ? specific.price : item.price;
+function resolveItemPrice(item: CartItem, _governorate?: City): number {
+  return item.price;
 }
 
 export function useCheckoutPricing({ cartItems, paymentMethod, cityName }: UseCheckoutPricingProps) {
