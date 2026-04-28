@@ -37,7 +37,6 @@ interface Product {
   description: string;
   categories?: string[];
   discount?: number;
-  isFeatured?: boolean;
   isActive?: boolean;
   stock?: number;
   order?: number;

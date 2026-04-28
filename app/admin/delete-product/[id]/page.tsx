@@ -13,6 +13,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import ProtectedAdminRoute from '@/components/auth/protected-admin-route';
+import SidebarNav from '../../sections/SideBarNav';
+import { useSession } from 'next-auth/react';
+import { Loader2, ArrowRight, AlertTriangle, Image as ImageIcon } from 'lucide-react';
 
 interface Product {
   _id?: string;
@@ -22,19 +29,20 @@ interface Product {
   description: string;
   stock: number;
   isActive: boolean;
-  isFeatured: boolean;
 }
 
 const DeleteProductPage = () => {
   const router = useRouter();
   const params = useParams();
   const productId = params.id as string;
+  const { data: session } = useSession();
   
   const [loading, setLoading] = useState<boolean>(true);
   const [deleting, setDeleting] = useState<boolean>(false);
   const [product, setProduct] = useState<Product | null>(null);
+  const [confirmText, setConfirmText] = useState("");
+  const [isNavigatingBack, setIsNavigatingBack] = useState(false);
 
-  // Fetch product data
   useEffect(() => {
     const fetchProduct = async () => {
       try {
@@ -45,12 +53,12 @@ const DeleteProductPage = () => {
           const data = await response.json();
           setProduct(data.product);
         } else {
-          alert('Failed to load product data');
+          toast.error('فشل في تحميل بيانات المنتج');
           router.push('/admin#products');
         }
       } catch (error) {
         console.error('Error fetching product:', error);
-        alert('Error loading product data');
+        toast.error('حدث خطأ أثناء تحميل بيانات المنتج');
         router.push('/admin#products');
       } finally {
         setLoading(false);
@@ -62,168 +70,129 @@ const DeleteProductPage = () => {
     }
   }, [productId, router]);
 
-  // Function to delete product
+  const handleBack = () => {
+    setIsNavigatingBack(true);
+    router.push('/admin#products');
+  };
+
   const handleDeleteProduct = async () => {
     if (!product) return;
-    
     setDeleting(true);
     
     try {
-      console.log('🗑️ Deleting product:', product.name);
-
       const response = await fetch(`/api/admin/products/${productId}`, {
         method: 'DELETE',
       });
 
       if (response.ok) {
-        console.log(`✅ Successfully deleted product: ${product.name}`);
-        
-        // Show success message
-        alert('Product deleted successfully!');
-        
-        // 🚀 CRITICAL: Force refresh products list to show real-time changes
-        // Clear any cached data and redirect to products with refresh
-        router.push('/admin?refresh=true&section=products');
+        toast.success('تم حذف المنتج بنجاح!');
+        router.push('/admin?refresh=true#products');
       } else {
-        console.error('❌ Failed to delete product');
-        alert('Failed to delete product. Please try again.');
+        toast.error('فشل في حذف المنتج. يرجى المحاولة مرة أخرى.');
+        setDeleting(false);
       }
     } catch (error) {
-      console.error('❌ Error deleting product:', error);
-      alert('Error deleting product. Please try again.');
-    } finally {
+      console.error('Error deleting product:', error);
+      toast.error('حدث خطأ أثناء حذف المنتج. يرجى المحاولة مرة أخرى.');
       setDeleting(false);
     }
   };
 
-  // Loading state
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-black text-white p-2 md:p-4">
-        <div className="w-full">
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
-              <p className="text-gray-300">Loading product data...</p>
-            </div>
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="max-w-2xl mx-auto flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin border-white mx-auto mb-4 text-white/50" />
+            <p className="text-white/50">جاري تحميل بيانات المنتج...</p>
           </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  if (!product) {
-    return (
-      <div className="min-h-screen bg-black text-white p-2 md:p-4">
-        <div className="w-full">
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="text-center">
-              <p className="text-red-400 mb-4">Product not found</p>
-              <button
-                onClick={() => router.push('/admin#products')}
-                className="bg-white text-black px-6 py-3 rounded-lg font-medium hover:bg-gray-200 transition-all duration-300"
-              >
-                Back to Products
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-black text-white p-2 md:p-4">
-      <div className="w-full max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center gap-4 mb-3">
-            <button
-              onClick={() => router.push('/admin#products')}
-              className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors"
+    if (!product) {
+      return (
+        <div className="max-w-2xl mx-auto flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <p className="text-red-400 mb-4">لم يتم العثور على المنتج</p>
+            <Button
+              onClick={handleBack}
+              disabled={isNavigatingBack}
+              className="bg-white text-black hover:bg-white/90"
             >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-              Back to Products
-            </button>
+              {isNavigatingBack && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              العودة للمنتجات
+            </Button>
           </div>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl tracking-tight font-bold text-white mb-2 text-center">
-            Delete Product
+        </div>
+      );
+    }
+
+    return (
+      <div className="max-w-2xl mx-auto pt-4 md:pt-8">
+        {/* Header Navigation */}
+        <div className="flex items-center justify-between mb-6 border-b border-white/[0.06] pb-4">
+          <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
+            حذف المنتج
           </h1>
-          <div className="h-1 w-20 sm:w-24 mx-auto md:w-32 bg-white flex"></div>
+          <button
+            onClick={handleBack}
+            disabled={isNavigatingBack}
+            className="flex items-center gap-2 text-white/50 hover:text-white transition-colors text-sm disabled:opacity-50"
+          >
+            {isNavigatingBack ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ArrowRight className="w-4 h-4" />
+            )}
+            العودة للمنتجات
+          </button>
         </div>
 
-        {/* Warning Card */}
-        <div className="bg-red-900/20 border border-red-800 rounded-lg p-6 mb-6">
-          <div className="flex items-start gap-4">
-            <div className="flex-shrink-0">
-              <svg className="w-8 h-8 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <h2 className="text-xl font-bold text-red-200 mb-2">⚠️ Warning: This action cannot be undone!</h2>
-              <p className="text-red-300 mb-4">
-                You are about to permanently delete this product. This will remove it from your store, 
-                customer orders, and all associated data. Please make sure you want to proceed.
-              </p>
-            </div>
+        {/* Warning Alert */}
+        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-6 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <h2 className="text-sm font-bold text-red-200 mb-1">لا يمكن التراجع عن هذا الإجراء!</h2>
+            <p className="text-red-300/80 text-xs leading-relaxed">
+              سيتم حذف هذا المنتج نهائياً من متجرك وإزالته من جميع الطلبات المرتبطة به.
+            </p>
           </div>
         </div>
 
-        {/* Product Details */}
-        <div className="bg-black border border-white/10 rounded-lg p-4 md:p-6 mb-6">
-          <h3 className="text-lg font-semibold text-white mb-4">Product to be deleted:</h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Product Image */}
-            <div className="flex justify-center md:justify-start">
-              <div className="w-full max-w-sm">
-                <div className="relative w-full h-64 rounded-lg overflow-hidden">
-                  <img
-                    src={product.mainImage}
-                    alt={product.name}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.currentTarget.src = '/images/placeholder.png';
-                    }}
-                  />
-                </div>
-              </div>
+        {/* Product Compact Card */}
+        <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-4 mb-6">
+          <div className="flex flex-col sm:flex-row gap-4 items-center sm:items-start">
+            <div className="relative w-24 h-24 rounded-md overflow-hidden border border-white/[0.08] bg-black/40 flex-shrink-0 flex items-center justify-center">
+              {product.mainImage ? (
+                <img
+                  src={product.mainImage}
+                  alt={product.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => { e.currentTarget.src = '/images/placeholder.png'; }}
+                />
+              ) : (
+                <ImageIcon className="w-8 h-8 text-white/20" />
+              )}
             </div>
-
-            {/* Product Information */}
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-xl font-bold text-white mb-2">{product.name}</h4>
-                <p className="text-gray-300 text-sm mb-4">{product.description}</p>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex justify-between items-center py-2 border-b border-white/10">
-                  <span className="text-gray-300">Price:</span>
-                  <span className="text-white font-semibold">{product.price.toLocaleString()} L.E</span>
+            
+            <div className="flex-1 w-full text-center sm:text-right">
+              <h3 className="text-lg font-bold text-white mb-3 line-clamp-1">{product.name}</h3>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <span className="text-white/40 block text-xs mb-0.5">السعر</span>
+                  <span className="text-white font-medium">{product.price.toLocaleString()} L.E</span>
                 </div>
-                
-                <div className="flex justify-between items-center py-2 border-b border-white/10">
-                  <span className="text-gray-300">Stock:</span>
-                  <span className={`font-semibold ${product.stock > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {product.stock} units
+                <div>
+                  <span className="text-white/40 block text-xs mb-0.5">المخزون</span>
+                  <span className={`font-medium ${product.stock > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {product.stock} وحدة
                   </span>
                 </div>
-                
-                <div className="flex justify-between items-center py-2 border-b border-white/10">
-                  <span className="text-gray-300">Status:</span>
-                  <span className={`font-semibold ${product.isActive ? 'text-green-400' : 'text-red-400'}`}>
-                    {product.isActive ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-                
-                <div className="flex justify-between items-center py-2">
-                  <span className="text-gray-300">Featured:</span>
-                  <span className={`font-semibold ${product.isFeatured ? 'text-blue-400' : 'text-gray-400'}`}>
-                    {product.isFeatured ? 'Yes' : 'No'}
+                <div>
+                  <span className="text-white/40 block text-xs mb-0.5">الحالة</span>
+                  <span className={`font-medium ${product.isActive ? 'text-green-400' : 'text-red-400'}`}>
+                    {product.isActive ? 'نشط' : 'غير نشط'}
                   </span>
                 </div>
               </div>
@@ -232,24 +201,18 @@ const DeleteProductPage = () => {
         </div>
 
         {/* Confirmation Section */}
-        <div className="bg-black border border-white/10 rounded-lg p-4 md:p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">Confirm Deletion</h3>
-          
-          <div className="bg-yellow-900/20 border border-yellow-800 rounded-lg p-4 mb-6">
-            <p className="text-yellow-200 text-sm">
-              <strong>Please type the product name to confirm deletion:</strong>
-            </p>
-            <p className="text-yellow-300 text-sm mt-1">
-              Type: <span className="font-mono bg-yellow-900/30 px-2 py-1 rounded">{product.name}</span>
-            </p>
-          </div>
-
-          <div className="mb-6">
-            <input
+        <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-5">
+          <div className="mb-4">
+            <label htmlFor="confirmInput" className="block text-sm font-medium text-white/80 mb-2">
+              لتأكيد الحذف، اكتب <span className="font-mono bg-white/10 px-1.5 py-0.5 rounded text-white select-all">{product.name}</span>
+            </label>
+            <Input
               type="text"
               id="confirmInput"
-              placeholder={`Type "${product.name}" to confirm`}
-              className="w-full p-3 bg-transparent border border-white/20 rounded-lg text-white focus:border-white focus:outline-none"
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder="اكتب اسم المنتج هنا..."
+              className="w-full p-3 h-11 bg-black/20 border-white/[0.12] rounded-md text-white focus:border-white/[0.3] focus-visible:ring-0 focus-visible:ring-offset-0"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && e.currentTarget.value === product.name) {
                   handleDeleteProduct();
@@ -258,38 +221,46 @@ const DeleteProductPage = () => {
             />
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button
+          <div className="flex justify-end gap-3 mt-6">
+            <Button
               type="button"
-              onClick={() => router.push('/admin#products')}
-              className="bg-white text-black px-4 py-2 rounded-lg font-medium hover:bg-gray-200 transition-all duration-300"
+              onClick={handleBack}
+              disabled={isNavigatingBack || deleting}
+              className="bg-transparent text-white hover:bg-white/[0.05] border-0"
+              variant="ghost"
             >
-              Cancel
-            </button>
+              إلغاء
+            </Button>
             
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <button
-                  type="button"
-                  disabled={deleting}
-                  className="bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 disabled:bg-gray-400 disabled:text-gray-600 transition-all duration-300"
+                <Button
+                  disabled={deleting || confirmText !== product.name}
+                  className="bg-red-600/90 hover:bg-red-600 text-white disabled:bg-white/10 disabled:text-white/30"
                 >
-                  {deleting ? 'Deleting...' : 'Delete Product Permanently'}
-                </button>
+                  {deleting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      جاري الحذف...
+                    </>
+                  ) : (
+                    'حذف نهائياً'
+                  )}
+                </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent>
+              <AlertDialogContent className="bg-stone-900 border border-white/[0.08] text-white" dir="rtl">
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete the product "{product.name}" 
-                    and remove it from your store, customer orders, and all associated data.
+                  <AlertDialogTitle>هل أنت متأكد تماماً؟</AlertDialogTitle>
+                  <AlertDialogDescription className="text-white/60">
+                    لا يمكن التراجع عن هذا الإجراء. سيتم حذف <span className="text-white font-medium">{product.name}</span> نهائياً.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDeleteProduct}>
-                    Delete Product
+                <AlertDialogFooter className="flex-row sm:justify-start gap-2">
+                  <AlertDialogCancel className="bg-white/[0.05] hover:bg-white/[0.1] hover:text-white border-white/[0.12] text-white m-0">
+                    إلغاء
+                  </AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteProduct} className="bg-red-600 text-white hover:bg-red-700 border-0 m-0">
+                    حذف المنتج
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -297,7 +268,22 @@ const DeleteProductPage = () => {
           </div>
         </div>
       </div>
-    </div>
+    );
+  };
+
+  return (
+    <ProtectedAdminRoute>
+      <div className="flex min-h-screen flex-col relative bg-stone-900">
+        <SidebarNav
+          activeSection="products"
+          onSectionChange={() => router.push('/admin')}
+          userName={session?.user?.name || "المدير"}
+        />
+        <main className="flex-1 p-4 md:p-8 pb-20 lg:pb-8 overflow-x-hidden relative z-10 md:mr-[220px]" dir="rtl">
+          {renderContent()}
+        </main>
+      </div>
+    </ProtectedAdminRoute>
   );
 };
 

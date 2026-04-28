@@ -9,56 +9,45 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const rawIds = searchParams.get('productIds')?.split(',').filter(Boolean) ?? [];
 
-  // ✅ FIX: Filter out invalid ObjectIds BEFORE querying — prevents CastError crash
+  // Filter out invalid ObjectIds before querying
   const productIds = rawIds.filter(id => mongoose.Types.ObjectId.isValid(id));
-  if (productIds.length !== rawIds.length) {
-    console.warn(
-      `⚠️ Filtered out ${rawIds.length - productIds.length} invalid product IDs:`,
-      rawIds.filter(id => !mongoose.Types.ObjectId.isValid(id))
-    );
-  }
 
   try {
-    console.log('🏪 Fetching live governorates for checkout...');
     await dbConnect();
 
-    // Get global default governorates
+    // Get all active governorates with default shipping/COD
     const raw = await CityPricing.find({ isActive: true })
-      .select('governorate cityName shippingCost codFee isActive')
+      .select('governorate shippingCost codFee isActive')
       .sort({ governorate: 1 })
       .lean();
 
-    // Deduplicate by governorate (lowercase key) and initialize productPricing map
+    // Deduplicate by governorate (lowercase key)
     const govMap: Record<string, any> = {};
-    for (const city of raw) {
-      const govName = (city.governorate || '').trim();
-      if (!govName) continue;
+    for (const doc of raw) {
+      const name = (doc.governorate || '').trim();
+      if (!name) continue;
 
-      const key = govName.toLowerCase();
+      const key = name.toLowerCase();
       if (govMap[key]) continue;
 
       govMap[key] = {
-        _id:          city._id,
-        governorate:  govName,
-        cityName:     govName,
-        shippingCost: city.shippingCost,
-        codFee:       city.codFee,
-        isActive:     city.isActive,
+        _id:          doc._id,
+        governorate:  name,
+        cityName:     name,        // backward-compatible alias
+        shippingCost: doc.shippingCost,
+        codFee:       doc.codFee,
+        isActive:     doc.isActive,
         productPricing: {},
       };
     }
 
-    // ✅ FIX: Wrap product overlay in its OWN try-catch
-    // A failure here should NOT kill the governorate data we already have
+    // Overlay per-product shipping/COD (NOT price — price comes from Product.price)
     if (productIds.length > 0) {
       try {
-        console.log(`📦 Overlaying pricing for ${productIds.length} valid product IDs`);
         const products = await Product.find(
           { _id: { $in: productIds } },
           { _id: 1, cityPricing: 1 }
         ).lean();
-
-        console.log(`📦 Found ${products.length} products with cityPricing in MongoDB`);
 
         for (const product of products) {
           const pid = (product._id as any).toString();
@@ -67,25 +56,23 @@ export async function GET(request: NextRequest) {
           for (const cp of product.cityPricing) {
             const govName = (cp.governorate || '').trim();
             const key = govName.toLowerCase();
-
             if (!govMap[key]) continue;
 
+            // Only shipping/COD — product price is NOT stored here
             govMap[key].productPricing[pid] = {
-              price:        cp.price,
-              shippingCost: cp.shippingCost,
-              codFee:       cp.codFee,
-              isActive:     cp.isActive,
+              shippingCost: cp.shippingCost ?? 0,
+              codFee:       cp.codFee ?? 0,
+              isActive:     cp.isActive !== false,
             };
           }
         }
       } catch (productError) {
-        // ✅ Product overlay failed but governorate data is still valid — continue
-        console.error('⚠️ Product pricing overlay failed (governorates still valid):', productError);
+        // Product overlay failed but governorate data is still valid
+        console.error('Product shipping overlay failed:', productError);
       }
     }
 
     const cities = Object.values(govMap);
-    console.log(`✅ Returning ${cities.length} live governorates (source: mongodb)`);
 
     return NextResponse.json({
       success: true,
@@ -94,7 +81,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('❌ MongoDB checkout cities fetch failed, falling back to static:', error);
+    console.error('MongoDB governorate fetch failed, using static fallback:', error);
     return NextResponse.json({
       success: true,
       cities: STATIC_CITIES,

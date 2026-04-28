@@ -13,8 +13,7 @@ import {
     useReactTable,
     VisibilityState,
 } from "@tanstack/react-table";
-import { MoreHorizontal } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { MoreHorizontal, Loader2, MessageSquare, CheckCircle, MailOpen, Mail, Copy } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
     DropdownMenu,
@@ -25,14 +24,6 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
 import { toast } from "sonner";
 import { contactService } from '@/services/contactService';
 import { handleApiError } from '@/utils/handleApiError';
@@ -46,8 +37,6 @@ interface Contact {
     status: 'new' | 'read' | 'replied';
     createdAt: string;
 }
-
-// Columns shifted down inside component for useMemo hook wrapping
 
 const Contacts = () => {
     const [contacts, setContacts] = useState<Contact[]>([]);
@@ -68,14 +57,16 @@ const Contacts = () => {
                 <Checkbox
                     checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
                     onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-                    aria-label="Select all"
+                    aria-label="تحديد الكل"
+                    className="border-white/20 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
                 />
             ),
             cell: ({ row }) => (
                 <Checkbox
                     checked={row.getIsSelected()}
                     onCheckedChange={(value) => row.toggleSelected(!!value)}
-                    aria-label="Select row"
+                    aria-label="تحديد الصف"
+                    className="border-white/20 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
                 />
             ),
             enableSorting: false,
@@ -83,38 +74,55 @@ const Contacts = () => {
         },
         {
             accessorKey: "name",
-            header: "Name",
-            cell: ({ row }) => <div className="font-medium text-gray-900">{row.getValue("name")}</div>,
+            header: "الاسم",
+            cell: ({ row }) => <div className="font-medium text-[12px] text-white">{row.getValue("name")}</div>,
         },
         {
             accessorKey: "email",
-            header: "Email",
-            cell: ({ row }) => <div className="text-gray-900">{row.getValue("email")}</div>,
+            header: "البريد الإلكتروني",
+            cell: ({ row }) => <div className="text-[12px] text-white/80">{row.getValue("email")}</div>,
         },
         {
             accessorKey: "status",
-            header: "Status",
+            header: "الحالة",
             cell: ({ row }) => {
                 const status = row.getValue("status") as Contact['status'];
+                
+                let StatusIcon = MessageSquare;
+                let statusClasses = 'bg-white/10 text-white border-white/20';
+                let statusText = 'غير معروف';
+
+                if (status === 'new') {
+                    StatusIcon = MessageSquare;
+                    statusClasses = 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+                    statusText = 'جديد';
+                } else if (status === 'read') {
+                    StatusIcon = MailOpen;
+                    statusClasses = 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+                    statusText = 'مقروء';
+                } else if (status === 'replied') {
+                    StatusIcon = CheckCircle;
+                    statusClasses = 'bg-green-500/10 text-green-400 border-green-500/20';
+                    statusText = 'تم الرد';
+                }
+
                 return (
-                    <span className={`px-2 py-1 text-xs font-bold rounded-full ${status === 'new' ? 'bg-blue-100 text-blue-800' :
-                            status === 'replied' ? 'bg-green-100 text-green-800' :
-                                'bg-gray-100 text-gray-800'
-                        }`}>
-                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] rounded border font-medium ${statusClasses}`}>
+                        <StatusIcon className="w-3 h-3" />
+                        {statusText}
                     </span>
                 );
             },
         },
         {
             accessorKey: "createdAt",
-            header: "Date",
+            header: "التاريخ",
             cell: ({ row }) => {
                 const rawDate = row.getValue("createdAt");
                 const date = rawDate ? new Date(rawDate as string) : null;
                 return (
-                    <div className="text-sm text-gray-500 font-medium">
-                        {date && !isNaN(date.getTime()) ? date.toLocaleDateString('en-US', {
+                    <div className="text-[11px] text-white/60">
+                        {date && !isNaN(date.getTime()) ? date.toLocaleDateString('ar-EG', {
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric'
@@ -129,28 +137,30 @@ const Contacts = () => {
             cell: ({ row }) => {
                 const contact = row.original;
                 return (
-                    <DropdownMenu>
+                    <DropdownMenu dir="rtl">
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0 text-gray-900 hover:bg-gray-100">
-                                <span className="sr-only">Open menu</span>
+                            <button className="h-7 w-7 flex items-center justify-center rounded text-white/60 hover:bg-white/[0.08] hover:text-white transition-colors mr-auto">
+                                <span className="sr-only">فتح القائمة</span>
                                 <MoreHorizontal className="h-4 w-4" />
-                            </Button>
+                            </button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-white border-gray-200">
-                            <DropdownMenuLabel className="text-gray-900 font-bold">Actions</DropdownMenuLabel>
+                        <DropdownMenuContent align="start" className="bg-[#1c1917] border-white/[0.08] text-white">
+                            <DropdownMenuLabel className="text-[11px] text-white/40">الإجراءات</DropdownMenuLabel>
                             <DropdownMenuItem onClick={async () => {
                                 try {
                                     await navigator.clipboard.writeText(contact.email);
-                                    toast.success("Copied email address");
+                                    toast.success("تم نسخ البريد الإلكتروني");
                                 } catch {
-                                    toast.error("Failed to copy to clipboard");
+                                    toast.error("فشل في النسخ");
                                 }
-                            }} className="cursor-pointer text-gray-700 hover:bg-gray-100">
-                                Copy Email
+                            }} className="text-[12px] hover:bg-white/[0.04] focus:bg-white/[0.04] focus:text-white cursor-pointer">
+                                <Copy className="w-3.5 h-3.5 ml-2" />
+                                نسخ البريد الإلكتروني
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator className="bg-gray-100" />
-                            <DropdownMenuItem onClick={() => window.location.href = `mailto:${contact.email}`} className="cursor-pointer text-blue-600 hover:bg-blue-50 font-medium">
-                                Reply via Email
+                            <DropdownMenuSeparator className="bg-white/[0.08]" />
+                            <DropdownMenuItem onClick={() => window.location.href = `mailto:${contact.email}`} className="text-[12px] text-blue-400 hover:bg-blue-500/10 focus:bg-blue-500/10 focus:text-blue-400 cursor-pointer font-medium">
+                                <Mail className="w-3.5 h-3.5 ml-2" />
+                                الرد عبر البريد
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
@@ -233,104 +243,105 @@ const Contacts = () => {
     });
 
     return (
-        <div className="bg-white text-gray-900 min-h-screen p-6 relative w-full">
-            <div className="mb-6">
-                <h1 className="text-xl sm:text-2xl md:text-3xl tracking-tight font-bold text-gray-900 mb-1">Contact Requests</h1>
-                <p className="text-gray-500 text-sm">Review incoming customer inquiries and support tickets.</p>
+        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6" dir="rtl">
+            <div className="flex items-center justify-between mb-6">
+                <div>
+                    <h2 className="text-2xl font-bold tracking-tight text-white mb-1">طلبات التواصل</h2>
+                    <p className="text-sm text-white/60">مراجعة استفسارات العملاء وتذاكر الدعم الفني.</p>
+                </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center py-4 gap-4">
-                <Input
-                    placeholder="Search by name, email, or status..."
-                    value={globalFilter ?? ""}
-                    onChange={(event) => setGlobalFilter(event.target.value)}
-                    className="w-full sm:max-w-sm border-gray-200 focus-visible:ring-gray-900"
-                />
-            </div>
-
-            <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-                <Table>
-                    <TableHeader>
-                        {table.getHeaderGroups().map((headerGroup) => (
-                            <TableRow key={headerGroup.id} className="bg-gray-50 hover:bg-gray-50 border-b border-gray-200">
-                                {headerGroup.headers.map((header) => {
-                                    return (
-                                        <TableHead key={header.id} className="text-gray-600 font-semibold tracking-wide py-4">
-                                            {header.isPlaceholder
-                                                ? null
-                                                : flexRender(
-                                                    header.column.columnDef.header,
-                                                    header.getContext()
-                                                )}
-                                        </TableHead>
-                                    )
-                                })}
-                            </TableRow>
-                        ))}
-                    </TableHeader>
-                    <TableBody>
-                        {loading ? (
-                             <TableRow>
-                                 <TableCell colSpan={columns.length} className="h-48 text-center text-gray-500">
-                                     <div className="flex justify-center flex-col items-center py-8 gap-4">
-                                         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-t-2 border-gray-900 border-l-2 border-transparent"></div>
-                                         <span className="font-medium animate-pulse tracking-wide">Loading secure index...</span>
-                                     </div>
-                                 </TableCell>
-                             </TableRow>
-                        ) : table.getRowModel().rows?.length ? (
-                            table.getRowModel().rows.map((row) => (
-                                <TableRow
-                                    key={row.id}
-                                    data-state={row.getIsSelected() && "selected"}
-                                    className="border-b border-gray-100 hover:bg-gray-50 transition-colors duration-200"
-                                >
-                                    {row.getVisibleCells().map((cell) => (
-                                        <TableCell key={cell.id} className="py-4">
-                                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                        </TableCell>
-                                    ))}
-                                </TableRow>
-                            ))
-                        ) : (
-                            <TableRow>
-                                <TableCell colSpan={columns.length} className="h-48 text-center text-gray-500 font-medium tracking-wide">
-                                    No contacts found matching your search.
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-            </div>
-            
-            {/* Pagination Controls */}
-            {!loading && contacts.length > 0 && (
-                <div className="flex items-center justify-between gap-2 py-4 px-2">
-                    <div className="text-sm font-medium text-gray-500">
-                        Page {table.getState().pagination.pageIndex + 1} of {Math.max(1, table.getPageCount())}
-                    </div>
-                    <div className="flex gap-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => table.previousPage()}
-                            disabled={!table.getCanPreviousPage()}
-                            className="border-gray-300 text-gray-700 hover:bg-gray-50 bg-white font-medium"
-                        >
-                            Previous
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => table.nextPage()}
-                            disabled={!table.getCanNextPage()}
-                            className="border-gray-300 text-gray-700 hover:bg-gray-50 bg-white font-medium"
-                        >
-                            Next
-                        </Button>
+            <div className="bg-white/[0.02] border border-white/[0.08] rounded-xl overflow-hidden backdrop-blur-xl">
+                <div className="p-4 border-b border-white/[0.08] flex items-center justify-between gap-4">
+                    <div className="relative w-full max-w-sm">
+                        <Input
+                            placeholder="ابحث عن طريق الاسم، البريد، أو الحالة..."
+                            value={globalFilter ?? ""}
+                            onChange={(event) => setGlobalFilter(event.target.value)}
+                            className="bg-black/20 border-white/[0.08] text-white placeholder:text-white/40 focus-visible:ring-1 focus-visible:ring-white/20 h-9 text-[13px]"
+                        />
                     </div>
                 </div>
-            )}
+
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-right">
+                        <thead>
+                            <tr className="border-b border-white/[0.08] bg-black/20">
+                                {table.getHeaderGroups().map((headerGroup) => (
+                                    <React.Fragment key={headerGroup.id}>
+                                        {headerGroup.headers.map((header) => (
+                                            <th key={header.id} className="h-10 px-4 align-middle font-medium text-white/60 text-[11px] whitespace-nowrap">
+                                                {header.isPlaceholder
+                                                    ? null
+                                                    : flexRender(
+                                                        header.column.columnDef.header,
+                                                        header.getContext()
+                                                    )}
+                                            </th>
+                                        ))}
+                                    </React.Fragment>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {loading ? (
+                                <tr>
+                                    <td colSpan={columns.length} className="h-32 text-center">
+                                        <div className="flex flex-col items-center justify-center text-white/40">
+                                            <Loader2 className="h-6 w-6 animate-spin mb-2" />
+                                            <span className="text-[12px]">جاري تحميل البيانات...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ) : table.getRowModel().rows?.length ? (
+                                table.getRowModel().rows.map((row) => (
+                                    <tr
+                                        key={row.id}
+                                        data-state={row.getIsSelected() && "selected"}
+                                        className="border-b border-white/[0.08] hover:bg-white/[0.02] transition-colors"
+                                    >
+                                        {row.getVisibleCells().map((cell) => (
+                                            <td key={cell.id} className="px-4 py-3 align-middle">
+                                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={columns.length} className="h-32 text-center text-white/40 text-[13px]">
+                                        لم يتم العثور على أي طلبات تواصل.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+
+                {!loading && contacts.length > 0 && (
+                    <div className="p-4 border-t border-white/[0.08] flex items-center justify-between bg-black/20">
+                        <div className="text-[12px] text-white/40">
+                            الصفحة {table.getState().pagination.pageIndex + 1} من {Math.max(1, table.getPageCount())}
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => table.previousPage()}
+                                disabled={!table.getCanPreviousPage()}
+                                className="h-8 px-3 text-[12px] font-medium rounded-md border border-white/[0.08] bg-white/[0.04] text-white hover:bg-white/[0.08] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                السابق
+                            </button>
+                            <button
+                                onClick={() => table.nextPage()}
+                                disabled={!table.getCanNextPage()}
+                                className="h-8 px-3 text-[12px] font-medium rounded-md border border-white/[0.08] bg-white/[0.04] text-white hover:bg-white/[0.08] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                التالي
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

@@ -148,7 +148,6 @@ export default async function Home() {
       <Hero />
       {/* <CounterDown /> */}
       <Products initialProducts={initialProducts} initialHasMore={initialHasMore} />
-      {/* <FeaturedProducts /> */}
       <Explore />
       {/* <Intro /> */}
       <FeedbackFormLazy />

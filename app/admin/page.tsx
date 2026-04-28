@@ -1,819 +1,334 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { XAxis, YAxis, CartesianGrid, ResponsiveContainer, AreaChart, Area, Tooltip } from 'recharts';
+import React, { useState, useEffect, useCallback, memo } from 'react';
+import {
+  Package, ShoppingCart, Tag, Users, Star,
+  TrendingUp, TrendingDown, ArrowUpRight,
+  Loader2, RefreshCw,
+} from 'lucide-react';
 import ProtectedAdminRoute from '@/components/auth/protected-admin-route';
 import SidebarNav from './sections/SideBarNav';
 import Orders from './sections/orders';
 import Products from './sections/products';
 import PromoCodes from './sections/promoCodes';
-import Intro from './sections/intro';
 import Reviews from './sections/reviews';
 import Notifications from './sections/notifications';
 import Contacts from './sections/contacts';
+import PaymentSettings from './sections/paymentSettings';
+import Cities from './sections/cities';
 import { useSession } from 'next-auth/react';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+// ── Types ─────────────────────────────────────────────────────
 
+interface RecentOrder { _id: string; customerName: string; status: string; createdAt: string; total: number; }
+interface RecentProduct { _id: string; name: string; price: number; createdAt: string; }
+interface RecentReview { _id: string; rating: number; isApproved: boolean; message: string; createdAt: string; }
+
+// ── Helpers ───────────────────────────────────────────────────
+
+function formatEGP(val: number) { return `${val.toLocaleString('en-EG')} ج.م`; }
+
+function formatDate(dateStr: string | undefined): string {
+  if (!dateStr) return 'غير معروف';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return 'غير معروف';
+    return d.toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' });
+  } catch { return 'غير معروف'; }
+}
+
+function statusColor(s: string) {
+  const m: Record<string, string> = {
+    delivered: 'text-green-400 bg-green-400/10', shipped: 'text-blue-400 bg-blue-400/10',
+    confirmed: 'text-amber-400 bg-amber-400/10', cancelled: 'text-red-400 bg-red-400/10',
+    pending: 'text-orange-400 bg-orange-400/10',
+  };
+  return m[s.toLowerCase()] || 'text-white/40 bg-white/[0.04]';
+}
+
+function statusAr(s: string) {
+  const m: Record<string, string> = {
+    pending: 'قيد الانتظار', confirmed: 'مؤكد', shipped: 'تم الشحن',
+    delivered: 'تم التوصيل', cancelled: 'ملغي',
+  };
+  return m[s.toLowerCase()] || s;
+}
+
+// ── Mini Bar Chart ────────────────────────────────────────────
+const MiniBarChart = memo(({ data, height = 120 }: { data: { label: string; value: number }[]; height?: number }) => {
+  const max = Math.max(...data.map(d => d.value), 1);
+  return (
+    <div className="flex items-end gap-[3px] overflow-visible" style={{ height }} dir="ltr">
+      {data.map((d) => (
+        <div key={d.label} className="flex-1 flex flex-col justify-end items-center gap-1 group relative h-full">
+          <div className="w-full rounded-t bg-white/[0.15] group-hover:bg-white/30 transition-all duration-200 min-h-[2px]"
+            style={{ height: `${(d.value / max) * 100}%` }} />
+          <div className="absolute -top-7 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-white text-black text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap pointer-events-none z-10 shadow-lg">
+            {d.value.toLocaleString()}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+});
+MiniBarChart.displayName = 'MiniBarChart';
+
+// ── KPI Card ──────────────────────────────────────────────────
+const KPICard = memo(({ icon: Icon, label, value, sub, color, onClick }: {
+  icon: React.ElementType; label: string; value: string; sub?: string; color: string; onClick?: () => void;
+}) => (
+  <div onClick={onClick} className={`bg-white/[0.03] border border-white/[0.06] rounded-lg p-4 group hover:border-white/[0.12] transition-colors ${onClick ? 'cursor-pointer' : ''}`}>
+    <div className="flex items-center justify-between mb-3">
+      <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${color}15` }}>
+        <Icon className="h-4 w-4" style={{ color }} />
+      </div>
+      <ArrowUpRight className="h-3.5 w-3.5 text-white/10 group-hover:text-white/30 transition-colors" />
+    </div>
+    <div className="text-xl font-semibold text-white tracking-tight leading-none">{value}</div>
+    <div className="text-[11px] text-white/35 mt-1.5">{label}</div>
+    {sub && <div className="text-[10px] text-white/20 mt-0.5">{sub}</div>}
+  </div>
+));
+KPICard.displayName = 'KPICard';
+
+// ── Dashboard Content ─────────────────────────────────────────
+const DashboardContent = memo(({ onNavigate }: { onNavigate: (s: string) => void }) => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [stats, setStats] = useState({ products: 0, orders: 0, promoCodes: 0 });
+  const [monthlyData, setMonthlyData] = useState<{ name: string; sales: number }[]>([]);
+  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
+  const [recentProducts, setRecentProducts] = useState<RecentProduct[]>([]);
+  const [recentReviews, setRecentReviews] = useState<RecentReview[]>([]);
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true); setError(false);
+      const [prodRes, ordRes, promoRes] = await Promise.all([
+        fetch('/api/admin/products?limit=5'), fetch('/api/orders?limit=1000'), fetch('/api/promo'),
+      ]);
+      const s = { products: 0, orders: 0, promoCodes: 0 };
+
+      if (prodRes.ok) {
+        const d = await prodRes.json();
+        s.products = d.pagination?.total || d.products?.length || 0;
+        setRecentProducts((d.products || []).slice(0, 5).map((p: any) => ({
+          _id: p._id || '', name: p.name || '', price: p.price || 0,
+          createdAt: formatDate(p.createdAt),
+        })));
+      }
+
+      if (ordRes.ok) {
+        const d = await ordRes.json();
+        const orders = d.orders || [];
+        s.orders = d.totalCount || orders.length || 0;
+        const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+        const monthly = months.map(m => ({ name: m, sales: 0 }));
+        orders.forEach((o: any) => {
+          try {
+            // Only count non-cancelled orders for revenue (optional but usually correct)
+            if (o.status !== 'cancelled') {
+              const dt = new Date(o.orderDate || o.createdAt);
+              if (!isNaN(dt.getTime())) { 
+                const mi = dt.getMonth(); 
+                if (mi >= 0 && mi < 12) {
+                  const orderTotal = Number(o.totalAmount) || Number(o.total) || 0;
+                  monthly[mi].sales += orderTotal; 
+                }
+              }
+            }
+          } catch { /* skip */ }
+        });
+        setMonthlyData(monthly);
+        setRecentOrders(orders.slice(0, 5).map((o: any) => ({
+          _id: o._id || o.orderId || '', customerName: o.customer?.name || o.customerName || 'غير معروف',
+          status: o.status || 'pending', createdAt: formatDate(o.createdAt || o.orderDate),
+          total: Number(o.totalAmount) || Number(o.total) || 0,
+        })));
+      }
+
+      if (promoRes.ok) { const d = await promoRes.json(); s.promoCodes = d.promoCodes?.length || 0; }
+
+      try { const r = await fetch('/api/admin/feedback'); if (r.ok) { const d = await r.json(); setRecentReviews((d.feedback || []).slice(0, 5).map((rv: any) => ({ _id: rv._id || '', rating: rv.rating || 0, isApproved: rv.isApproved || false, message: rv.message || '', createdAt: formatDate(rv.createdAt) }))); } } catch { /* skip */ }
+
+      setStats(s);
+    } catch { setError(true); } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  if (loading) return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="h-5 w-5 animate-spin text-white/20" /></div>;
+
+  if (error) return (
+    <div className="flex flex-col items-center justify-center min-h-[40vh] gap-3">
+      <p className="text-[13px] text-white/30">فشل في تحميل البيانات</p>
+      <button onClick={fetchData} className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.06] border border-white/[0.08] rounded text-[12px] text-white/60 hover:text-white hover:bg-white/[0.1] transition-colors">
+        <RefreshCw className="h-3.5 w-3.5" /> إعادة المحاولة
+      </button>
+    </div>
+  );
+
+  const totalRevenue = monthlyData.reduce((s, m) => s + m.sales, 0);
+
+  return (
+    <div className="space-y-6 max-w-[1100px]" dir="rtl">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-[15px] font-semibold text-white leading-none">لوحة التحكم</h2>
+          <p className="text-[11px] text-white/25 mt-1.5">أداء المتجر في الوقت الفعلي</p>
+        </div>
+        <button onClick={fetchData} className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.06] border border-white/[0.08] rounded text-[11px] text-white/40 hover:text-white hover:bg-white/[0.1] transition-colors">
+          <RefreshCw className="h-3 w-3" /> تحديث
+        </button>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KPICard icon={ShoppingCart} label="الإيرادات" value={formatEGP(totalRevenue)} sub="من الطلبات" color="#4ade80" onClick={() => onNavigate('orders')} />
+        <KPICard icon={Package} label="الطلبات" value={stats.orders.toString()} sub="إجمالي الطلبات" color="#60a5fa" onClick={() => onNavigate('orders')} />
+        <KPICard icon={Tag} label="المنتجات" value={stats.products.toString()} sub="في المتجر" color="#fbbf24" onClick={() => onNavigate('products')} />
+        <KPICard icon={Users} label="أكواد الخصم" value={stats.promoCodes.toString()} sub="أكواد فعالة" color="#c084fc" onClick={() => onNavigate('promo')} />
+      </div>
+
+      {/* Monthly Revenue Chart */}
+      <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-5">
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-[11px] text-white/40 uppercase tracking-wider font-medium">المبيعات الشهرية</span>
+          <span className="text-[10px] text-white/20">{monthlyData.length} شهر</span>
+        </div>
+        {monthlyData.some(m => m.sales > 0) ? (
+          <>
+            <MiniBarChart data={monthlyData.map(d => ({ label: d.name, value: d.sales }))} height={110} />
+            <div className="flex justify-between mt-2.5" dir="ltr">
+              {monthlyData.map(d => <span key={d.name} className="text-[7px] text-white/15 flex-1 text-center">{d.name}</span>)}
+            </div>
+          </>
+        ) : (
+          <div className="h-[110px] flex flex-col items-center justify-center text-[12px] text-white/15">
+            لا توجد بيانات مبيعات بعد
+            <div className="text-[10px] mt-2 opacity-50 font-mono">
+              DEBUG: orders count = {stats.orders}, monthlySum = {monthlyData.reduce((a, b) => a + b.sales, 0)}
+              <br/>
+              First order date: {recentOrders[0]?.createdAt || 'none'}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Recent Orders + Products */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        {/* Orders */}
+        <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-5">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-[11px] text-white/40 uppercase tracking-wider font-medium">أحدث الطلبات</span>
+            <button onClick={() => onNavigate('orders')} className="text-[10px] text-white/25 hover:text-white/50 transition-colors">عرض الكل ←</button>
+          </div>
+          {recentOrders.length > 0 ? (
+            <div className="space-y-1.5">
+              {recentOrders.map(o => (
+                <div key={o._id} className="flex items-center gap-3 py-2 px-2.5 rounded-md hover:bg-white/[0.02] transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[12px] text-white block truncate">{o.customerName}</span>
+                    <span className="text-[10px] text-white/20 block">{o.createdAt}</span>
+                  </div>
+                  <span className="text-[12px] text-white/60 font-mono shrink-0" dir="ltr">{formatEGP(o.total)}</span>
+                  <span className={`text-[9px] px-2 py-0.5 rounded-full font-medium shrink-0 ${statusColor(o.status)}`}>{statusAr(o.status)}</span>
+                </div>
+              ))}
+            </div>
+          ) : <div className="text-[12px] text-white/15 py-10 text-center">لا توجد طلبات بعد</div>}
+        </div>
+
+        {/* Products */}
+        <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-5">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-[11px] text-white/40 uppercase tracking-wider font-medium">أحدث المنتجات</span>
+            <button onClick={() => onNavigate('products')} className="text-[10px] text-white/25 hover:text-white/50 transition-colors">عرض الكل ←</button>
+          </div>
+          {recentProducts.length > 0 ? (
+            <div className="space-y-1.5">
+              {recentProducts.map(p => (
+                <div key={p._id} className="flex items-center gap-3 py-2 px-1.5 rounded-md hover:bg-white/[0.02] transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[12px] text-white block truncate">{p.name}</span>
+                    <span className="text-[9px] text-white/20">{p.createdAt}</span>
+                  </div>
+                  <span className="text-[12px] text-white/50 font-mono shrink-0" dir="ltr">{formatEGP(p.price)}</span>
+
+                </div>
+              ))}
+            </div>
+          ) : <div className="text-[12px] text-white/15 py-8 text-center">لا توجد منتجات بعد</div>}
+        </div>
+      </div>
+
+      {/* Reviews */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+
+        <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-5">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-[11px] text-white/40 uppercase tracking-wider font-medium">آخر التقييمات</span>
+            <button onClick={() => onNavigate('reviews')} className="text-[10px] text-white/25 hover:text-white/50 transition-colors">عرض الكل ←</button>
+          </div>
+          {recentReviews.length > 0 ? (
+            <div className="space-y-2">
+              {recentReviews.map(rv => (
+                <div key={rv._id} className="flex items-center gap-3 py-1.5 px-1.5 rounded-md hover:bg-white/[0.02] transition-colors">
+                  <div className="flex items-center gap-0.5 shrink-0" dir="ltr">
+                    {[1, 2, 3, 4, 5].map(s => <Star key={s} className={`h-3 w-3 ${s <= rv.rating ? 'text-amber-400 fill-amber-400' : 'text-white/10'}`} />)}
+                  </div>
+                  <div className="flex-1 min-w-0"><span className="text-[11px] text-white/50 block truncate">{rv.message || '—'}</span></div>
+                  <span className="text-[9px] text-white/15 shrink-0">{rv.createdAt}</span>
+                </div>
+              ))}
+            </div>
+          ) : <div className="text-[12px] text-white/15 py-8 text-center">لا توجد تقييمات بعد</div>}
+        </div>
+      </div>
+    </div>
+  );
+});
+DashboardContent.displayName = 'DashboardContent';
+
+// ── Main Admin Page ───────────────────────────────────────────
 
 const AdminDashboard = () => {
   const { data: session } = useSession();
   const [activeSection, setActiveSection] = useState('dashboard');
-  const [dashboardStats, setDashboardStats] = useState({
-    products: 0,
-    orders: 0,
-    promoCodes: 0
-  });
-  const [monthlyData, setMonthlyData] = useState<Array<{ name: string, sales: number }>>([
-    { name: 'Jan', sales: 0 }, { name: 'Feb', sales: 0 }, { name: 'Mar', sales: 0 },
-    { name: 'Apr', sales: 0 }, { name: 'May', sales: 0 }, { name: 'Jun', sales: 0 },
-    { name: 'Jul', sales: 0 }, { name: 'Aug', sales: 0 }, { name: 'Sep', sales: 0 },
-    { name: 'Oct', sales: 0 }, { name: 'Nov', sales: 0 }, { name: 'Dec', sales: 0 }
-  ]);
-  const [recentOrders, setRecentOrders] = useState<any[]>([]);
-  const [recentProducts, setRecentProducts] = useState<any[]>([]);
-  const [recentAthletes, setRecentAthletes] = useState<any[]>([]);
-  const [recentReviews, setRecentReviews] = useState<any[]>([]);
-  const [loadingStats, setLoadingStats] = useState(true);
 
-  // Visit store function
-  const handleVisitStore = () => {
+  useEffect(() => {
     if (typeof window !== 'undefined') {
-      window.open('/', '_blank');
-    }
-  };
-
-  // Function to process monthly data
-  const processMonthlyData = (orders: any[]) => {
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-
-    const monthlySales = months.map(month => ({ name: month, sales: 0 }));
-
-    if (orders && orders.length > 0) {
-      orders.forEach((order: any) => {
-        try {
-          const orderDate = new Date(order.orderDate || order.createdAt);
-          if (!isNaN(orderDate.getTime())) {
-            const monthIndex = orderDate.getMonth();
-            if (monthIndex >= 0 && monthIndex < 12) {
-              monthlySales[monthIndex].sales += order.totalAmount || order.total || 0;
-            }
-          }
-        } catch (error) {
-          console.error('Error processing order date:', error);
-        }
-      });
-    }
-
-    return monthlySales;
-  };
-
-  // Function to fetch dashboard statistics
-  const fetchDashboardStats = useCallback(async () => {
-    try {
-      setLoadingStats(true);
-
-      // Fetch all data in parallel
-      // Fetch all data in parallel with optimal payload targeting
-      const [productsResponse, ordersResponse, promoCodesResponse] = await Promise.all([
-        fetch('/api/admin/products?limit=10'), // Minimal surface, maps totalCount natively
-        fetch('/api/orders?limit=1000'),       // Expanded slice resolving Monthly Sales Area Charts
-        fetch('/api/promo')
-      ]);
-
-      const stats = {
-        products: 0,
-        orders: 0,
-        promoCodes: 0
-      };
-
-      // Get products count
-      if (productsResponse.ok) {
-        const productsData = await productsResponse.json();
-        // Resolve scalable Database Count bypassing hard pagination limits securely
-        stats.products = productsData.pagination?.total || productsData.products?.length || 0;
-
-        // Get recent products
-        const recentProductsData = productsData.products?.slice(0, 5).map((product: any) => {
-          // Properly format the date
-          let formattedDate = 'Unknown';
-          try {
-            if (product.createdAt) {
-              const date = new Date(product.createdAt);
-              if (!isNaN(date.getTime())) {
-                formattedDate = date.toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'short',
-                  day: 'numeric'
-                });
-              }
-            }
-          } catch (error) {
-            console.error('Error formatting product date:', error);
-          }
-
-          return {
-            _id: product._id || 'Unknown',
-            name: product.name || 'Unknown Product',
-            price: product.price || 0,
-            isFeatured: product.isFeatured || false,
-            createdAt: formattedDate
-          };
-        }) || [];
-
-        setRecentProducts(recentProductsData);
+      const hash = window.location.hash.replace('#', '');
+      const validSections = ['dashboard', 'notifications', 'reviews', 'products', 'promo', 'orders', 'contacts', 'payment', 'governorates'];
+      if (hash && validSections.includes(hash)) {
+        setActiveSection(hash);
       }
-
-      // Get orders count and chart data
-      if (ordersResponse.ok) {
-        const ordersData = await ordersResponse.json();
-        // Bind straight into Mongoose generic indexing limits natively
-        stats.orders = ordersData.totalCount || ordersData.orders?.length || 0;
-
-        // Process orders for chart data (last 7 days)
-        const orders = ordersData.orders || [];
-        const monthlyData = processMonthlyData(orders);
-        const recentOrdersData = orders.slice(0, 5).map((order: any) => {
-          // Properly format the date
-          let formattedDate = 'Unknown';
-          try {
-            const dateValue = order.createdAt || order.orderDate;
-            if (dateValue) {
-              const date = new Date(dateValue);
-              if (!isNaN(date.getTime())) {
-                formattedDate = date.toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'short',
-                  day: 'numeric'
-                });
-              }
-            }
-          } catch (error) {
-            console.error('Error formatting order date:', error);
-          }
-
-          return {
-            _id: order._id || order.orderId || 'Unknown',
-            customerName: order.customer?.name || order.customerName || 'Unknown',
-            status: order.status || 'pending',
-            createdAt: formattedDate,
-            total: order.totalAmount || order.total || 0
-          };
-        });
-
-        if (process.env.NODE_ENV === 'development') {
-          console.log('Monthly data:', monthlyData);
-          console.log('Recent orders:', recentOrdersData);
-        }
-
-        setMonthlyData(monthlyData);
-        setRecentOrders(recentOrdersData);
-      }
-
-      // Get promo codes count
-      if (promoCodesResponse.ok) {
-        const promoCodesData = await promoCodesResponse.json();
-        stats.promoCodes = promoCodesData.promoCodes?.length || 0;
-      }
-
-      // Get recent athletes
-      try {
-        const athletesResponse = await fetch('/api/admin/intro');
-        if (athletesResponse.ok) {
-          const athletesData = await athletesResponse.json();
-          const recentAthletesData = (athletesData.items || []).slice(0, 5).map((athlete: any) => {
-            // Properly format the date
-            let formattedDate = 'Unknown';
-            try {
-              if (athlete.createdAt) {
-                const date = new Date(athlete.createdAt);
-                if (!isNaN(date.getTime())) {
-                  formattedDate = date.toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                  });
-                }
-              }
-            } catch (error) {
-              console.error('Error formatting athlete date:', error);
-            }
-
-            return {
-              _id: athlete._id || 'Unknown',
-              title: athlete.title || 'Untitled',
-              isActive: athlete.isActive || false,
-              createdAt: formattedDate
-            };
-          });
-          setRecentAthletes(recentAthletesData);
-        }
-      } catch (error) {
-        console.error('Error fetching recent athletes:', error);
-      }
-
-      // Get recent reviews
-      try {
-        const reviewsResponse = await fetch('/api/admin/feedback');
-        if (reviewsResponse.ok) {
-          const reviewsData = await reviewsResponse.json();
-          const recentReviewsData = (reviewsData.feedback || []).slice(0, 5).map((review: any) => {
-            // Properly format the date
-            let formattedDate = 'Unknown';
-            try {
-              if (review.createdAt) {
-                const date = new Date(review.createdAt);
-                if (!isNaN(date.getTime())) {
-                  formattedDate = date.toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                  });
-                }
-              }
-            } catch (error) {
-              console.error('Error formatting review date:', error);
-            }
-
-            return {
-              _id: review._id || 'Unknown',
-              rating: review.rating || 0,
-              isApproved: review.isApproved || false,
-              message: review.message || '',
-              createdAt: formattedDate
-            };
-          });
-          setRecentReviews(recentReviewsData);
-        }
-      } catch (error) {
-        console.error('Error fetching recent reviews:', error);
-      }
-
-      setDashboardStats(stats);
-    } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
-    } finally {
-      setLoadingStats(false);
     }
   }, []);
-
-  // Fetch stats when component mounts
-  useEffect(() => {
-    fetchDashboardStats();
-  }, []);
-
-  // Refresh stats when returning to dashboard
-  useEffect(() => {
-    if (activeSection === 'dashboard') {
-      fetchDashboardStats();
-    }
-  }, [activeSection, fetchDashboardStats]);
-
-  // Render dashboard content
-  const renderDashboardContent = () => (
-    <div className="space-y-6">
-      {/* Dashboard Stats Cards */}
-      <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 gap-3">
-        {/* Products Card */}
-        <div className="bg-white shadow-sm hover:shadow-md transition-shadow border border-gray-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-xs font-medium text-gray-600 mb-1">Products</h3>
-              <div className="text-xl font-bold text-gray-900">
-                {loadingStats ? (
-                  <div className="animate-pulse bg-gray-200 h-6 w-10 rounded"></div>
-                ) : (
-                  dashboardStats.products
-                )}
-              </div>
-            </div>
-            <div className="p-2 rounded-full bg-blue-50">
-              <svg className="h-4 w-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-              </svg>
-            </div>
-          </div>
-          <button
-            onClick={() => setActiveSection('products')}
-            className="text-xs text-blue-600 hover:text-blue-800 mt-2 inline-flex items-center"
-          >
-            Manage Products
-            <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
-            </svg>
-          </button>
-        </div>
-
-        {/* Orders Card */}
-        <div className="bg-white shadow-sm hover:shadow-md transition-shadow border border-gray-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-xs font-medium text-gray-600 mb-1">Orders</h3>
-              <div className="text-xl font-bold text-gray-900">
-                {loadingStats ? (
-                  <div className="animate-pulse bg-gray-200 h-6 w-10 rounded"></div>
-                ) : (
-                  dashboardStats.orders
-                )}
-              </div>
-            </div>
-            <div className="p-2 rounded-full bg-green-50">
-              <svg className="h-4 w-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-            </div>
-          </div>
-          <button
-            onClick={() => setActiveSection('orders')}
-            className="text-xs text-green-600 hover:text-green-800 mt-2 inline-flex items-center"
-          >
-            View Orders
-            <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
-            </svg>
-          </button>
-        </div>
-
-        {/* Promo Codes Card */}
-        <div className="bg-white shadow-sm hover:shadow-md transition-shadow border border-gray-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-xs font-medium text-gray-600 mb-1">Promo Codes</h3>
-              <div className="text-xl font-bold text-gray-900">
-                {loadingStats ? (
-                  <div className="animate-pulse bg-gray-200 h-6 w-10 rounded"></div>
-                ) : (
-                  dashboardStats.promoCodes
-                )}
-              </div>
-            </div>
-            <div className="p-2 rounded-full bg-purple-50">
-              <svg className="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-              </svg>
-            </div>
-          </div>
-          <button
-            onClick={() => setActiveSection('promo')}
-            className="text-xs text-purple-600 hover:text-purple-800 mt-2 inline-flex items-center"
-          >
-            Manage Promo Codes
-            <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
-            </svg>
-          </button>
-        </div>
-      </div>
-
-
-      {/* Monthly Sales Overview */}
-      <Card className="bg-white border-gray-200">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold text-gray-900">Monthly Sales Overview</CardTitle>
-          <CardDescription className="text-gray-500 text-sm">Sales performance for all months</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={monthlyData}
-                margin={{
-                  top: 10,
-                  right: 30,
-                  left: 10,
-                  bottom: 10,
-                }}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="rgba(0,0,0,0.1)"
-                />
-                <XAxis
-                  dataKey="name"
-                  stroke="rgba(0,0,0,0.5)"
-                  tick={{ fill: 'rgba(0,0,0,0.7)', fontSize: 11 }}
-                />
-                <YAxis
-                  stroke="rgba(0,0,0,0.5)"
-                  tick={{ fill: 'rgba(0,0,0,0.7)', fontSize: 11 }}
-                />
-                <Tooltip
-                  formatter={(value) => [`L.E ${Number(value).toLocaleString()}`, 'Sales']}
-                  contentStyle={{
-                    backgroundColor: '#fff',
-                    color: '#000',
-                    border: '1px solid rgba(0,0,0,0.1)',
-                    borderRadius: '6px',
-                    padding: '8px',
-                    fontSize: '12px'
-                  }}
-                  itemStyle={{
-                    color: '#000',
-                  }}
-                  labelStyle={{
-                    color: '#000',
-                    fontWeight: 'bold'
-                  }}
-                />
-                <defs>
-                  <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1} />
-                  </linearGradient>
-                </defs>
-                <Area
-                  type="monotone"
-                  dataKey="sales"
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                  fill="url(#colorSales)"
-                  fillOpacity={1}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-2 pt-2 border-t border-gray-100">
-            <div className="grid grid-cols-4 gap-2 text-xs">
-              {monthlyData.map((month, index) => (
-                <div key={index} className="flex flex-col items-center">
-                  <span className="font-medium text-gray-700">{month.name}</span>
-                  <span className="text-gray-500">L.E {month.sales.toLocaleString()}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Recent Orders Table */}
-      <Card className="bg-white border-gray-200">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold text-gray-900">Recent Orders</CardTitle>
-          <CardDescription className="text-gray-500 text-sm">Latest orders across your store</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="px-3 py-2 text-left font-medium text-gray-600 text-xs">Order ID</th>
-                  <th className="px-3 py-2 text-left font-medium text-gray-600 text-xs">Customer</th>
-                  <th className="px-3 py-2 text-left font-medium text-gray-600 text-xs">Status</th>
-                  <th className="px-3 py-2 text-left font-medium text-gray-600 text-xs">Date</th>
-                  <th className="px-3 py-2 text-right font-medium text-gray-600 text-xs">Amount</th>
-                  <th className="px-3 py-2 text-right font-medium text-gray-600 text-xs"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentOrders && recentOrders.length > 0 ? (
-                  recentOrders.map((order) => (
-                    <tr key={order._id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="px-3 py-2 text-gray-900 text-xs">{order._id && order._id.length > 6 ? order._id.slice(-6) : order._id}</td>
-                      <td className="px-3 py-2 text-gray-900 text-xs">{order.customerName}</td>
-                      <td className="px-3 py-2">
-                        <span className={`px-2 py-0.5 rounded-full text-xs ${order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                          order.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
-                            order.status === 'shipped' ? 'bg-purple-100 text-purple-800' :
-                              order.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                                'bg-red-100 text-red-800'
-                          }`}>
-                          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-gray-500 text-xs">{order.createdAt}</td>
-                      <td className="px-3 py-2 text-right font-medium text-gray-900 text-xs">L.E {order.total.toLocaleString()}</td>
-                      <td className="px-3 py-2 text-right">
-                        <button
-                          onClick={() => setActiveSection('orders')}
-                          className="text-blue-600 hover:text-blue-800 text-xs"
-                        >
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={6} className="px-3 py-4 text-center text-gray-400 text-xs">
-                      No recent orders found
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          {recentOrders.length > 0 && (
-            <div className="mt-3 text-center">
-              <button
-                onClick={() => setActiveSection('orders')}
-                className="text-xs text-blue-600 hover:text-blue-800 inline-flex items-center"
-              >
-                View All Orders
-                <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
-                </svg>
-              </button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Recent Products Table */}
-      <Card className="bg-white border-gray-200">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold text-gray-900">Recent Products</CardTitle>
-          <CardDescription className="text-gray-500 text-sm">Latest products added to your store</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="px-3 py-2 text-left font-medium text-gray-600 text-xs">Product Name</th>
-                  <th className="px-3 py-2 text-left font-medium text-gray-600 text-xs">Price</th>
-                  <th className="px-3 py-2 text-left font-medium text-gray-600 text-xs">Featured</th>
-                  <th className="px-3 py-2 text-left font-medium text-gray-600 text-xs">Date Added</th>
-                  <th className="px-3 py-2 text-right font-medium text-gray-600 text-xs"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentProducts && recentProducts.length > 0 ? (
-                  recentProducts.map((product) => (
-                    <tr key={product._id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="px-3 py-2 text-gray-900 text-xs">{product.name}</td>
-                      <td className="px-3 py-2 text-gray-900 text-xs">L.E {product.price?.toLocaleString()}</td>
-                      <td className="px-3 py-2">
-                        <span className={`px-2 py-0.5 rounded-full text-xs ${product.isFeatured ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                          {product.isFeatured ? 'Featured' : 'Regular'}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-gray-500 text-xs">{product.createdAt}</td>
-                      <td className="px-3 py-2 text-right">
-                        <button onClick={() => setActiveSection('products')} className="text-blue-600 hover:text-blue-800 text-xs">View</button>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr><td colSpan={5} className="px-3 py-4 text-center text-gray-400 text-xs">No recent products found</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          {recentProducts.length > 0 && (
-            <div className="mt-3 text-center">
-              <button onClick={() => setActiveSection('products')} className="text-xs text-blue-600 hover:text-blue-800 inline-flex items-center">
-                View All Products
-                <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-              </button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Recent Athletes Table */}
-      <Card className="bg-white border-gray-200">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold text-gray-900">Recent Athletes</CardTitle>
-          <CardDescription className="text-gray-500 text-sm">Latest athletes added to your platform</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="px-3 py-2 text-left font-medium text-gray-600 text-xs">Athlete Name</th>
-                  <th className="px-3 py-2 text-left font-medium text-gray-600 text-xs">Status</th>
-                  <th className="px-3 py-2 text-left font-medium text-gray-600 text-xs">Date Added</th>
-                  <th className="px-3 py-2 text-right font-medium text-gray-600 text-xs">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentAthletes && recentAthletes.length > 0 ? (
-                  recentAthletes.map((athlete) => (
-                    <tr key={athlete._id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="px-3 py-2 text-gray-900 text-xs font-medium">{athlete.title}</td>
-                      <td className="px-3 py-2">
-                        <span className={`px-2 py-0.5 rounded-full text-xs ${athlete.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
-                          {athlete.isActive ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-gray-500 text-xs">{athlete.createdAt}</td>
-                      <td className="px-3 py-2 text-right">
-                        <button onClick={() => setActiveSection('intro')} className="text-blue-600 hover:text-blue-800 text-xs">View</button>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr><td colSpan={4} className="px-3 py-4 text-center text-gray-400 text-xs">No recent athletes found</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          {recentAthletes.length > 0 && (
-            <div className="mt-3 text-center">
-              <button onClick={() => setActiveSection('intro')} className="text-xs text-blue-600 hover:text-blue-800 inline-flex items-center">
-                View All Athletes
-                <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-              </button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Recent Reviews Table */}
-      <Card className="bg-white border-gray-200">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold text-gray-900">Recent Reviews</CardTitle>
-          <CardDescription className="text-gray-500 text-sm">Latest customer reviews</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="px-3 py-2 text-left font-medium text-gray-600 text-xs">Rating</th>
-                  <th className="px-3 py-2 text-left font-medium text-gray-600 text-xs">Date</th>
-                  <th className="px-3 py-2 text-right font-medium text-gray-600 text-xs">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentReviews && recentReviews.length > 0 ? (
-                  recentReviews.map((review) => (
-                    <tr key={review._id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="px-3 py-2">
-                        <div className="flex items-center gap-1">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <svg key={star} className={`w-3 h-3 ${star <= review.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} viewBox="0 0 20 20">
-                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                            </svg>
-                          ))}
-                          <span className="text-xs text-gray-500 ml-1">({review.rating}/5)</span>
-                        </div>
-                      </td>
-                      <td className="px-3 py-2 text-gray-500 text-xs">{review.createdAt}</td>
-                      <td className="px-3 py-2 text-right">
-                        <button onClick={() => setActiveSection('reviews')} className="text-blue-600 hover:text-blue-800 text-xs">View</button>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr><td colSpan={3} className="px-3 py-4 text-center text-gray-400 text-xs">No recent reviews found</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          {recentReviews.length > 0 && (
-            <div className="mt-3 text-center">
-              <button onClick={() => setActiveSection('reviews')} className="text-xs text-blue-600 hover:text-blue-800 inline-flex items-center">
-                View All Reviews
-                <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-              </button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
 
   return (
     <ProtectedAdminRoute>
-      <div className="flex min-h-screen flex-col relative bg-gray-50">
+      <div className="flex min-h-screen flex-col relative bg-stone-900">
+        {/* Sidebar */}
+        <SidebarNav
+          activeSection={activeSection}
+          onSectionChange={setActiveSection}
+          userName={session?.user?.name || "المدير"}
+        />
 
-        <main className="flex-1 p-3 md:p-6 lg:p-8 pb-20 lg:pb-8 overflow-x-hidden bg-gray-50 relative z-10 md:ml-64">
-          <div className="max-w-7xl mx-auto">
-            {/* Dashboard heading */}
-            <div className="mb-8 pt-8 sm:pt-12 md:pt-16">
-              <a href="/admin">
-                <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl tracking-tight font-bold text-center sm:text-left text-gray-900 cursor-pointer">
-                  UNLIMITED-SW Dashboard
-                </h1>
-              </a>
-              <div className="h-1 w-24 sm:w-32 md:w-40 bg-gray-900 mt-2 mx-auto sm:mx-0"></div>
-            </div>
-
-            {/* Sidebar Navigation */}
-            <SidebarNav
-              logo="/images/Logo-image.png"
-              logoAlt="Alkady Logo"
-              items={[
-                {
-                  label: 'Dashboard',
-                  href: '#dashboard',
-                  icon: (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                  ),
-                  onClick: () => setActiveSection('dashboard')
-                },
-                {
-                  label: 'Notifications',
-                  href: '#notifications',
-                  icon: (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4.828 7l2.586 2.586a2 2 0 002.828 0L12 7H4.828zM4.828 17l2.586-2.586a2 2 0 012.828 0L12 17H4.828z" />
-                    </svg>
-                  ),
-                  onClick: () => setActiveSection('notifications')
-                },
-                {
-                  label: 'OUR ATHLETES',
-                  href: '#intro',
-                  icon: (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  ),
-                  onClick: () => setActiveSection('intro')
-                },
-                {
-                  label: 'Contact Requests',
-                  href: '#contacts',
-                  icon: (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                  ),
-                  onClick: () => setActiveSection('contacts')
-                },
-                {
-                  label: 'Reviews',
-                  href: '#reviews',
-                  icon: (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                  ),
-                  onClick: () => setActiveSection('reviews')
-                },
-                {
-                  label: 'Products',
-                  href: '#products',
-                  icon: (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                    </svg>
-                  ),
-                  onClick: () => setActiveSection('products')
-                },
-                {
-                  label: 'Promo Codes',
-                  href: '#promo',
-                  icon: (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                    </svg>
-                  ),
-                  onClick: () => setActiveSection('promo')
-                },
-                {
-                  label: 'Orders',
-                  href: '#orders',
-                  icon: (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                    </svg>
-                  ),
-                  onClick: () => setActiveSection('orders')
-                },
-                {
-                  label: '💳 Payment Settings',
-                  href: '/admin/payment-settings',
-                  icon: (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                    </svg>
-                  ),
-                  onClick: () => { if (typeof window !== 'undefined') window.open('/admin/payment-settings', '_blank'); }
-                },
-
-              ]}
-              activeHref={`#${activeSection}`}
-              className="custom-nav"
-              ease="power2.easeOut"
-              baseColor="#000000"
-              pillColor="#ffffff"
-              hoveredPillTextColor="#ffffff"
-              pillTextColor="#000000"
-              onMobileMenuClick={() => { }}
-              userName={session?.user?.name || "Admin"}
-              onVisitStore={handleVisitStore}
-            />
-
-            {/* Content based on active section */}
-            {activeSection === 'dashboard' && renderDashboardContent()}
+        {/* Main Content - margin on right for RTL sidebar */}
+        <main className="flex-1 p-3 md:p-6 lg:p-8 pb-20 lg:pb-8 overflow-x-hidden bg-stone-900 relative z-10 md:mr-[220px]" dir="rtl">
+          <div className="max-w-7xl mx-auto pt-6 md:pt-10">
+            {activeSection === 'dashboard' && <DashboardContent onNavigate={setActiveSection} />}
             {activeSection === 'notifications' && <Notifications />}
-            {activeSection === 'intro' && <Intro />}
             {activeSection === 'reviews' && <Reviews />}
             {activeSection === 'products' && <Products />}
             {activeSection === 'promo' && <PromoCodes />}
             {activeSection === 'orders' && <Orders />}
             {activeSection === 'contacts' && <Contacts />}
-
-
+            {activeSection === 'payment' && <PaymentSettings />}
+            {activeSection === 'governorates' && <Cities />}
           </div>
         </main>
       </div>

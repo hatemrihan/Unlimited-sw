@@ -403,7 +403,7 @@ export default function CheckoutPage() {
                         <option value="" className="bg-stone-900 text-white">Select a governorate</option>
                         {cities.filter((city: City) => city.isActive)
                           .map((city: City) => (
-                            <option key={city._id} value={city.cityName} className="bg-stone-900 text-white">
+                            <option key={city._id} value={city.governorate} className="bg-stone-900 text-white">
                               {city.governorate}
                             </option>
                           ))}

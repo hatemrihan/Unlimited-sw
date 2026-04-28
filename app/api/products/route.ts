@@ -4,7 +4,6 @@ import { getActiveProducts } from '../../../services/product.service';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const featured = searchParams.get('featured') === 'true';
   const limit = searchParams.get('limit')
     ? parseInt(searchParams.get('limit')!, 10)
     : undefined;
@@ -15,9 +14,9 @@ export async function GET(request: NextRequest) {
   // Try MongoDB first — service already has static fallback built in
   let products;
   try {
-    products = await getActiveProducts(featured);
+    products = await getActiveProducts();
   } catch {
-    products = getStaticActiveProducts(featured);
+    products = getStaticActiveProducts();
   }
 
   let result = products;

@@ -5,22 +5,19 @@ import Product from '../../../../../../models/product';
 import CityPricing from '../../../../../../models/cityPricing';
 import { invalidateProductCache, invalidateCitiesCache } from '../../../../../../lib/cache';
 
-// Schema for the bulk governorate pricing update sent by the admin client
+// Schema for per-governorate shipping/COD overrides
+// NOTE: price is NOT here — the product price comes from Product.price
 const bulkCityPricingSchema = z.array(z.object({
   governorate:  z.string().min(1),
-  price:        z.number().nonnegative(),
   shippingCost: z.number().nonnegative().optional().default(0),
   codFee:       z.number().nonnegative().optional().default(0),
   isActive:     z.boolean().default(true),
 }));
 
-// GET - Get city pricing for a specific product
+// GET - Get governorate shipping/COD config for a specific product
 export const GET = withDb(async (request: NextRequest, ctx?: any) => {
-  if (process.env.NODE_ENV === 'development') console.log('💰 Fetching product city pricing...');
-  
   const { id: productId } = await ctx.params;
   
-  // Get product with city pricing
   const product = await Product.findById(productId).select('name price cityPricing');
   if (!product) {
     return NextResponse.json(
@@ -29,20 +26,19 @@ export const GET = withDb(async (request: NextRequest, ctx?: any) => {
     );
   }
   
-  // Get all available governorates (which are saved in CityPricing collection)
+  // Get all available governorates from global config
   const allGovernorates = await CityPricing.find({ isActive: true }).sort({ governorate: 1 });
 
-  // For each global governorate, map it to the product's specific override, or fall back to default
+  // For each governorate, show existing product-specific override or global default
   const cityPricingData = allGovernorates.map(gov => {
     const govName = gov.governorate;
-    const existingGovPricing = (product.cityPricing || []).find((cp: any) => cp.governorate === govName);
+    const existing = (product.cityPricing || []).find((cp: any) => cp.governorate === govName);
     
     return {
-      governorate: govName,
-      price: existingGovPricing?.price ?? product.price ?? 0,
-      isActive: existingGovPricing?.isActive !== false,
-      shippingCost: existingGovPricing?.shippingCost ?? gov.shippingCost,
-      codFee: existingGovPricing?.codFee ?? gov.codFee,
+      governorate:  govName,
+      shippingCost: existing?.shippingCost ?? gov.shippingCost,
+      codFee:       existing?.codFee ?? gov.codFee,
+      isActive:     existing?.isActive !== false,
     };
   });
   
@@ -54,14 +50,11 @@ export const GET = withDb(async (request: NextRequest, ctx?: any) => {
   });
 });
 
-// PUT - Update city pricing for a specific product
+// PUT - Update governorate shipping/COD for a specific product
 export const PUT = withDb(async (request: NextRequest, ctx?: any) => {
-  if (process.env.NODE_ENV === 'development') console.log('💰 Updating product city pricing...');
-  
   const { id: productId } = await ctx.params;
   const body = await request.json();
   
-  // Validate request body
   const parsed = bulkCityPricingSchema.safeParse(body.cityPricing);
   if (!parsed.success) {
     return NextResponse.json(
@@ -70,45 +63,35 @@ export const PUT = withDb(async (request: NextRequest, ctx?: any) => {
     );
   }
   
-  const cityPricing = parsed.data;
-    
-    // Validate product exists
-    const product = await Product.findById(productId);
-    if (!product) {
-      return NextResponse.json(
-        { success: false, error: 'Product not found' },
-        { status: 404 }
-      );
-    }
-    
-    // FIXED: Product-specific city pricing logic
-    // We map every incoming governorate to exactly 1 saved pricing object.
-    const productCityPricing = cityPricing.map((gp: any) => ({
-      cityName: gp.governorate, // For simpler standardizing, cityName = governorate
-      governorate: gp.governorate,
-      price: Number(gp.price) || 0,
-      shippingCost: Number(gp.shippingCost) || 0,
-      codFee: Number(gp.codFee) || 0,
-      isActive: gp.isActive !== false,
-    }));
-
-    // Replace product cityPricing with the newly built list
-    const updatedProduct = await Product.findByIdAndUpdate(
-      productId,
-      { cityPricing: productCityPricing },
-      { new: true, runValidators: true }
+  const product = await Product.findById(productId);
+  if (!product) {
+    return NextResponse.json(
+      { success: false, error: 'Product not found' },
+      { status: 404 }
     );
-    
-  if (process.env.NODE_ENV === 'development') console.log('✅ Product city pricing updated:', updatedProduct.name);
+  }
   
-  // 🚀 CRITICAL: Invalidate ALL caches immediately for real-time updates
+  // Map to clean schema — no price, no cityName
+  const productCityPricing = parsed.data.map(gp => ({
+    governorate:  gp.governorate,
+    shippingCost: Number(gp.shippingCost) || 0,
+    codFee:       Number(gp.codFee) || 0,
+    isActive:     gp.isActive !== false,
+  }));
+
+  const updatedProduct = await Product.findByIdAndUpdate(
+    productId,
+    { cityPricing: productCityPricing },
+    { new: true, runValidators: true }
+  );
+  
+  // Invalidate caches for real-time updates
   invalidateProductCache(productId.toString());
   invalidateCitiesCache();
-  if (process.env.NODE_ENV === 'development') console.log('🗑️ All product and city caches invalidated after city pricing update');
   
   return NextResponse.json({
     success: true,
-    message: 'City pricing updated successfully',
+    message: 'Governorate shipping updated successfully',
     cityPricing: updatedProduct.cityPricing
   });
 });

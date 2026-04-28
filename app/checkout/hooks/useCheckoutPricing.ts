@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { CartItem, City, PromoData } from '../types';
+import { useState, useEffect, useMemo } from 'react';
+import { CartItem, Governorate, PromoData } from '../types';
 
 interface UseCheckoutPricingProps {
   cartItems: CartItem[];
@@ -7,62 +7,52 @@ interface UseCheckoutPricingProps {
   cityName: string;
 }
 
-/**
- * Resolves the effective price for a cart item.
- * Always uses item.price — this is refreshed from MongoDB on every page load
- * via CartContext, so it always reflects the admin's latest base price.
- * CityPricing only controls shipping/COD per governorate, not the product price.
- */
-function resolveItemPrice(item: CartItem, _governorate?: City): number {
-  return item.price;
-}
-
 export function useCheckoutPricing({ cartItems, paymentMethod, cityName }: UseCheckoutPricingProps) {
-  const [cities, setCities] = useState<City[]>([]);
+  const [governorates, setGovernorates] = useState<Governorate[]>([]);
   const [loadingCities, setLoadingCities] = useState(true);
   const [appliedPromo, setAppliedPromo] = useState<PromoData | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
 
-  // Stable dependency key — only re-fetch when the set of product IDs actually changes
+  // Stable dependency key — only re-fetch when the set of product IDs changes
   const productIdsKey = useMemo(
     () => [...new Set(cartItems.map(item => item.id))].sort().join(','),
     [cartItems]
   );
 
-  // Fetch cities with product-specific pricing from MongoDB
+  // Fetch governorates with per-product shipping/COD from MongoDB
   useEffect(() => {
     if (!cartItems || cartItems.length === 0) {
       setLoadingCities(false);
       return;
     }
 
-    const fetchCitiesAndPrices = async () => {
+    const fetchGovernorates = async () => {
       try {
         const queryParam = productIdsKey ? `?productIds=${productIdsKey}` : '';
-        const citiesResponse = await fetch(`/api/checkout/cities${queryParam}`, {
+        const response = await fetch(`/api/checkout/cities${queryParam}`, {
           cache: 'no-store'
         });
         
-        if (citiesResponse.ok) {
-          const citiesData = await citiesResponse.json();
-          setCities(citiesData.cities || []);
+        if (response.ok) {
+          const data = await response.json();
+          setGovernorates(data.cities || []);
         }
       } catch (error) {
-        console.error('Error fetching dynamic checkout data:', error);
+        console.error('Error fetching governorates:', error);
       } finally {
         setLoadingCities(false);
       }
     };
 
-    fetchCitiesAndPrices();
+    fetchGovernorates();
   }, [productIdsKey]);
 
-  // Resolve selected governorate from fetched cities
-  const selectedGovernorate = cities.find(city => city.cityName === cityName);
+  // Find selected governorate
+  const selectedGovernorate = governorates.find(g => g.governorate === cityName);
   
   // ── Shipping & COD ─────────────────────────────────────────────────────
-  // Accumulates per-item × quantity. Each item uses its product-specific
-  // override if available, otherwise falls back to the base governorate rate.
+  // Per-product shipping rates. Heavier/larger products cost more to ship.
+  // Falls back to the governorate's default rate when no product-specific rate exists.
   let shippingCost = 0;
   let codFee = 0;
   
@@ -85,8 +75,9 @@ export function useCheckoutPricing({ cartItems, paymentMethod, cityName }: UseCh
   }
 
   // ── Subtotal ───────────────────────────────────────────────────────────
+  // Product price comes from item.price (refreshed from MongoDB via CartContext)
   const refreshedSubtotal = cartItems.reduce(
-    (sum, item) => sum + resolveItemPrice(item, selectedGovernorate) * item.quantity,
+    (sum, item) => sum + item.price * item.quantity,
     0
   );
 
@@ -94,16 +85,15 @@ export function useCheckoutPricing({ cartItems, paymentMethod, cityName }: UseCh
   const dynamicPrices: Record<string, number> = {};
   cartItems.forEach(item => {
     const priceKey = `${item.id}_${item.variant?.name || 'default'}`;
-    dynamicPrices[priceKey] = resolveItemPrice(item, selectedGovernorate);
+    dynamicPrices[priceKey] = item.price;
   });
 
   // ── Shipping Config Error ──────────────────────────────────────────────
   const shippingConfigError = cityName && !selectedGovernorate
-    ? 'Shipping costs not configured for selected products in your region.'
+    ? 'Shipping not configured for your governorate.'
     : null;
 
   // ── Discount ───────────────────────────────────────────────────────────
-  // Correctly handles both percentage and fixed discount types
   const discountAmount = appliedPromo
     ? appliedPromo.discountType === 'percentage'
       ? Math.round((refreshedSubtotal * appliedPromo.discountValue) / 100)
@@ -125,7 +115,6 @@ export function useCheckoutPricing({ cartItems, paymentMethod, cityName }: UseCh
       return;
     }
 
-    // Guard: don't re-validate the same code
     if (appliedPromo?.code?.toLowerCase() === trimmed.toLowerCase()) {
       return;
     }
@@ -157,7 +146,8 @@ export function useCheckoutPricing({ cartItems, paymentMethod, cityName }: UseCh
   };
 
   return {
-    cities,
+    cities: governorates,         // backward-compatible alias
+    governorates,
     loadingCities,
     selectedGovernorate,
     shippingConfigError,

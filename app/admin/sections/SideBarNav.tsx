@@ -1,9 +1,42 @@
-import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
-import { gsap } from 'gsap';
-// Authentication handled by password now, not NextAuth
+"use client";
 
-interface NavItem {
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import {
+  LayoutDashboard, Package, ShoppingCart, Mail, Star, Users,
+  Tag, Settings, ChevronDown, ChevronRight, Store, LogOut,
+  Bell, MapPin, CreditCard,
+} from "lucide-react";
+
+// ─── Navigation Config (Arabic) ──────────────────────────────
+
+type NavChild = { title: string; section: string };
+type NavItem = {
+  title: string;
+  section: string;
+  icon: React.ElementType;
+  children?: NavChild[];
+};
+
+const NAV_ITEMS: NavItem[] = [
+  { title: "لوحة التحكم", section: "dashboard", icon: LayoutDashboard },
+  { title: "الإشعارات", section: "notifications", icon: Bell },
+  { title: "الطلبات", section: "orders", icon: ShoppingCart },
+  { title: "المنتجات", section: "products", icon: Package },
+  { title: "أكواد الخصم", section: "promo", icon: Tag },
+  { title: "التقييمات", section: "reviews", icon: Star },
+  { title: "رسائل التواصل", section: "contacts", icon: Mail },
+];
+
+const SETTINGS_ITEMS: NavChild[] = [
+  { title: "الدفع", section: "payment-settings" },
+  { title: "المحافظات", section: "governorates" },
+];
+
+// ─── Types for backward compat ───────────────────────────────
+
+interface LegacyNavItem {
   label: string;
   href: string;
   icon: string | React.ReactElement;
@@ -14,8 +47,8 @@ interface NavItem {
 interface SidebarNavProps {
   logo?: string;
   logoAlt?: string;
-  items: NavItem[];
-  activeHref: string;
+  items?: LegacyNavItem[];
+  activeHref?: string;
   className?: string;
   ease?: string;
   baseColor?: string;
@@ -26,524 +59,219 @@ interface SidebarNavProps {
   initialLoadAnimation?: boolean;
   userName?: string;
   onVisitStore?: () => void;
+  // New clean API
+  activeSection?: string;
+  onSectionChange?: (section: string) => void;
 }
 
+// ─── Sidebar Component ───────────────────────────────────────
+
 const SidebarNav = ({
-  logo,
-  logoAlt = 'Logo',
+  logo = "/images/Logo-image.png",
+  logoAlt = "Logo",
+  activeSection = "dashboard",
+  onSectionChange,
+  // Legacy props (ignored in new design but accepted for compat)
   items,
   activeHref,
-  ease = 'power3.easeOut',
-  baseColor = '#fff',
-  pillColor = '#060010',
-  hoveredPillTextColor = '#000',
-  pillTextColor,
-  onMobileMenuClick,
-  initialLoadAnimation = true,
-  userName = 'Admin',
-  onVisitStore
+  userName = "Admin",
+  onVisitStore,
 }: SidebarNavProps) => {
-  // Admin authentication is now handled by password
-  const resolvedPillTextColor = pillTextColor ?? baseColor;
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const circleRefs = useRef<(HTMLSpanElement | null)[]>([]);
-  const tlRefs = useRef<(gsap.core.Timeline | null)[]>([]);
-  const activeTweenRefs = useRef<(gsap.core.Tween | null)[]>([]);
-  const hamburgerRef = useRef<HTMLButtonElement>(null);
-  const mobileMenuRef = useRef<HTMLDivElement>(null);
-  const navItemsRef = useRef<HTMLDivElement>(null);
-  const logoRef = useRef<HTMLDivElement>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
+  // Derive active from legacy prop if new prop not provided
+  const currentSection = activeSection || activeHref?.replace('#', '') || 'dashboard';
+
+  // Auto-open settings if a settings child is active
   useEffect(() => {
-    const layout = () => {
-      circleRefs.current.forEach(circle => {
-        if (!circle?.parentElement) return;
-
-        const pill = circle.parentElement;
-        const rect = pill.getBoundingClientRect();
-        const { width: w, height: h } = rect;
-        const R = ((w * w) / 4 + h * h) / (2 * h);
-        const D = Math.ceil(2 * R) + 2;
-        const delta = Math.ceil(R - Math.sqrt(Math.max(0, R * R - (w * w) / 4))) + 1;
-        const originY = D - delta;
-
-        circle.style.width = `${D}px`;
-        circle.style.height = `${D}px`;
-        circle.style.bottom = `-${delta}px`;
-
-        gsap.set(circle, {
-          xPercent: -50,
-          scale: 0,
-          transformOrigin: `50% ${originY}px`
-        });
-
-        const label = pill.querySelector('.pill-label');
-        const white = pill.querySelector('.pill-label-hover');
-
-        if (label) gsap.set(label, { y: 0 });
-        if (white) gsap.set(white, { y: h + 12, opacity: 0 });
-
-        const index = circleRefs.current.indexOf(circle);
-        if (index === -1) return;
-
-        tlRefs.current[index]?.kill();
-        const tl = gsap.timeline({ paused: true });
-
-        tl.to(circle, { scale: 1.2, xPercent: -50, duration: 2, ease, overwrite: 'auto' }, 0);
-
-        if (label) {
-          tl.to(label, { y: -(h + 8), duration: 2, ease, overwrite: 'auto' }, 0);
-        }
-
-        if (white) {
-          gsap.set(white, { y: Math.ceil(h + 100), opacity: 0 });
-          tl.to(white, { y: 0, opacity: 1, duration: 2, ease, overwrite: 'auto' }, 0);
-        }
-
-        tlRefs.current[index] = tl;
-      });
-    };
-
-    layout();
-
-    const onResize = () => layout();
-    window.addEventListener('resize', onResize);
-
-    if (document.fonts?.ready) {
-      document.fonts.ready.then(layout).catch(() => { });
+    if (SETTINGS_ITEMS.some(c => c.section === currentSection)) {
+      setSettingsOpen(true);
     }
+  }, [currentSection]);
 
-    const menu = mobileMenuRef.current;
-    if (menu) {
-      gsap.set(menu, { visibility: 'hidden', opacity: 0, scaleY: 1, y: 0 });
+  const handleNav = (section: string) => {
+    if (onSectionChange) {
+      onSectionChange(section);
+    } else if (items) {
+      // Legacy: find matching item and call onClick
+      const match = items.find(i => i.href === `#${section}`);
+      match?.onClick?.();
     }
-
-    if (initialLoadAnimation) {
-      const logo = logoRef.current;
-      const navItems = navItemsRef.current;
-
-      if (logo) {
-        gsap.set(logo, { scale: 0 });
-        gsap.to(logo, {
-          scale: 1,
-          duration: 0.6,
-          ease
-        });
-      }
-
-      if (navItems) {
-        gsap.set(navItems, { width: 0, overflow: 'hidden' });
-        gsap.to(navItems, {
-          width: 'auto',
-          duration: 0.6,
-          ease
-        });
-      }
-    }
-
-    return () => window.removeEventListener('resize', onResize);
-  }, [items, ease, initialLoadAnimation]);
-
-  const handleEnter = (i: number) => {
-    const tl = tlRefs.current[i];
-    if (!tl) return;
-    activeTweenRefs.current[i]?.kill();
-    activeTweenRefs.current[i] = tl.tweenTo(tl.duration(), {
-      duration: 0.3,
-      ease,
-      overwrite: 'auto'
-    });
+    setMobileOpen(false);
   };
 
-  const handleLeave = (i: number) => {
-    const tl = tlRefs.current[i];
-    if (!tl) return;
-    activeTweenRefs.current[i]?.kill();
-    activeTweenRefs.current[i] = tl.tweenTo(0, {
-      duration: 0.2,
-      ease,
-      overwrite: 'auto'
-    });
+  const handleExternal = (path: string) => {
+    if (typeof window !== 'undefined') window.open(path, '_blank');
+    setMobileOpen(false);
   };
 
+  const isActive = (section: string) => currentSection === section;
 
-  const toggleMobileMenu = () => {
-    const newState = !isMobileMenuOpen;
-    setIsMobileMenuOpen(newState);
-
-    const hamburger = hamburgerRef.current;
-    const menu = mobileMenuRef.current;
-
-    if (hamburger) {
-      const lines = hamburger.querySelectorAll('.hamburger-line');
-      if (newState) {
-        gsap.to(lines[0], { rotation: 45, y: 3, duration: 0.3, ease });
-        gsap.to(lines[1], { rotation: -45, y: -3, duration: 0.3, ease });
-      } else {
-        gsap.to(lines[0], { rotation: 0, y: 0, duration: 0.3, ease });
-        gsap.to(lines[1], { rotation: 0, y: 0, duration: 0.3, ease });
-      }
-    }
-
-    if (menu) {
-      if (newState) {
-        gsap.set(menu, { visibility: 'visible' });
-        gsap.fromTo(
-          menu,
-          { opacity: 0, y: 10, scaleY: 1 },
-          {
-            opacity: 1,
-            y: 0,
-            scaleY: 1,
-            duration: 0.3,
-            ease,
-            transformOrigin: 'top center'
-          }
-        );
-      } else {
-        gsap.to(menu, {
-          opacity: 0,
-          y: 10,
-          scaleY: 1,
-          duration: 0.2,
-          ease,
-          transformOrigin: 'top center',
-          onComplete: () => {
-            gsap.set(menu, { visibility: 'hidden' });
-          }
-        });
-      }
-    }
-
-    onMobileMenuClick?.();
-  };
-
-  const isExternalLink = (href: string) =>
-    href.startsWith('http://') ||
-    href.startsWith('https://') ||
-    href.startsWith('//') ||
-    href.startsWith('mailto:') ||
-    href.startsWith('tel:') ||
-    href.startsWith('#');
-
-  const isRouterLink = (href: string) => href && !isExternalLink(href);
-
-  const handleLogout = async () => {
-    try {
-      // Call logout API to clear cookie
-      await fetch('/api/admin/auth', {
-        method: 'DELETE',
-      });
-
-      // Redirect to login page
-      window.location.href = '/admin/login';
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-  };
-
-  // Admin user info
-  const userEmail = 'MOHAMED ALKADY';
-  const userInitial = 'UL';
-
-  const cssVars = {
-    ['--base']: baseColor,
-    ['--pill-bg']: pillColor,
-    ['--hover-text']: hoveredPillTextColor,
-    ['--pill-text']: resolvedPillTextColor,
-    ['--nav-h']: '42px',
-    ['--logo']: '36px',
-    ['--pill-pad-x']: '18px',
-    ['--pill-gap']: '3px'
-  };
-
-  return (
-    <>
-      {/* Desktop Sidebar */}
-      <div className="hidden md:flex fixed left-0 top-0 h-full w-64 bg-white shadow-lg z-50 border-r border-gray-200">
-        <div className="flex flex-col w-full p-6 h-full">
-          {/* Logo Section */}
-          <div className="mb-8 flex-shrink-0">
-            <div className="text-black font-bold text-xl">
-              UNLIMITED-SW
-            </div>
-          </div>
-
-          {/* Visit Store Button */}
-          <button
-            onClick={onVisitStore}
-            className="w-full bg-black text-white py-3 px-4 rounded-lg font-semibold text-sm mb-6 flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors flex-shrink-0"
-          >
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
-              <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
-            </svg>
-            VISIT STORE
-          </button>
-
-          {/* Navigation Items - Scrollable */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden pr-2 min-h-0">
-            <ul className="space-y-1 pb-4">
-              {items.map((item, i) => {
-                const isActive = activeHref === item.href;
-
-                const PillContent = (
-                  <>
-                    <span
-                      className="hover-circle absolute left-1/2 bottom-0 rounded-full z-[1] block pointer-events-none"
-                      style={{
-                        background: 'var(--base, #fff)',
-                        willChange: 'transform'
-                      }}
-                      aria-hidden="true"
-                      ref={el => {
-                        circleRefs.current[i] = el;
-                      }}
-                    />
-                    <span className="label-stack relative inline-block leading-[1] z-[2]">
-                      <span
-                        className="pill-label relative z-[2] inline-block leading-[1]"
-                        style={{ willChange: 'transform' }}
-                      >
-                        {item.label}
-                      </span>
-                      <span
-                        className="pill-label-hover absolute left-0 top-0 z-[3] inline-block"
-                        style={{
-                          color: 'var(--hover-text, #000)',
-                          willChange: 'transform, opacity'
-                        }}
-                        aria-hidden="true"
-                      >
-                        {item.label}
-                      </span>
-                    </span>
-                  </>
-                );
-
-                const basePillClasses = `relative overflow-hidden inline-flex items-center justify-center h-12 w-full no-underline rounded-lg box-border font-medium text-sm leading-[0] whitespace-nowrap cursor-pointer px-4 transition-all duration-200`;
-
-                return (
-                  <li key={item.href}>
-                    {item.onClick ? (
-                      <button
-                        role="menuitem"
-                        onClick={item.onClick}
-                        className={`${basePillClasses} ${isActive
-                          ? 'bg-black text-white'
-                          : 'bg-transparent text-gray-700 hover:bg-gray-100'
-                          }`}
-                        aria-label={item.ariaLabel || item.label}
-                        onMouseEnter={() => handleEnter(i)}
-                        onMouseLeave={() => handleLeave(i)}
-                      >
-                        <div className="flex items-center gap-3 w-full">
-                          <span className="text-lg">
-                            {typeof item.icon === 'string' ? item.icon : item.icon}
-                          </span>
-                          {PillContent}
-                        </div>
-                      </button>
-                    ) : isRouterLink(item.href) ? (
-                      <Link
-                        role="menuitem"
-                        href={item.href}
-                        className={`${basePillClasses} ${isActive
-                          ? 'bg-black text-white'
-                          : 'bg-transparent text-gray-700 hover:bg-gray-100'
-                          }`}
-                        aria-label={item.ariaLabel || item.label}
-                        onMouseEnter={() => handleEnter(i)}
-                        onMouseLeave={() => handleLeave(i)}
-                      >
-                        <div className="flex items-center gap-3 w-full">
-                          <span className="text-lg">
-                            {typeof item.icon === 'string' ? item.icon : item.icon}
-                          </span>
-                          {PillContent}
-                        </div>
-                      </Link>
-                    ) : (
-                      <a
-                        role="menuitem"
-                        href={item.href}
-                        className={`${basePillClasses} ${isActive
-                          ? 'bg-black text-white'
-                          : 'bg-transparent text-gray-700 hover:bg-gray-100'
-                          }`}
-                        aria-label={item.ariaLabel || item.label}
-                        onMouseEnter={() => handleEnter(i)}
-                        onMouseLeave={() => handleLeave(i)}
-                      >
-                        <div className="flex items-center gap-3 w-full">
-                          <span className="text-lg">
-                            {typeof item.icon === 'string' ? item.icon : item.icon}
-                          </span>
-                          {PillContent}
-                        </div>
-                      </a>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-
-          {/* User Section */}
-          <div className="mt-auto pt-6 border-t border-gray-200 flex-shrink-0">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                <span className="text-sm font-bold text-white">{userInitial}</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-bold text-gray-700 uppercase">WELCOME</div>
-                <div className="text-xs text-gray-500 truncate" title={userEmail}>
-                  {userEmail}
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-3 text-red-400 hover:text-red-300 text-sm font-medium transition-colors duration-200 w-full p-2 rounded-lg hover:bg-red-900/20"
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1V4a1 1 0 00-1-1H3zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
-              </svg>
-              Logout
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile Navigation */}
-      <div className="md:hidden fixed top-4 left-4 z-50">
+  const navContent = (
+    <aside
+      className="flex flex-col h-full rounded-lg overflow-hidden"
+      style={{
+        backgroundColor: 'rgba(28, 25, 23, 0.92)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+      }}
+      dir="rtl"
+    >
+      {/* Header */}
+      <div className="px-3 pt-4 pb-2">
         <button
-          ref={hamburgerRef}
-          onClick={toggleMobileMenu}
-          aria-label="Toggle menu"
-          aria-expanded={isMobileMenuOpen}
-          className="rounded-full border-0 flex items-center justify-center cursor-pointer p-3 relative bg-black text-white font-semibold text-sm"
+          onClick={() => handleNav('dashboard')}
+          className="flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-white/[0.04] transition-colors group w-full"
         >
-          {isMobileMenuOpen ? 'CLOSE' : 'MENU'}
+          <div className="w-6 h-6 flex items-center justify-center overflow-hidden shrink-0">
+            <Image src={logo} alt={logoAlt} width={18} height={18} className="object-contain" />
+          </div>
+          <span className="text-[12px] font-semibold text-stone-200 leading-none tracking-wide">
+            UNLIMITED
+          </span>
+          <span className="text-[10px] text-stone-600 leading-none mr-auto">
+            لوحة التحكم
+          </span>
         </button>
       </div>
 
-      {/* Mobile Menu */}
-      <div
-        ref={mobileMenuRef}
-        className="md:hidden fixed top-16 left-4 right-4 bg-black rounded-lg shadow-lg z-40"
-        style={{
-          ...cssVars,
-          background: 'var(--base, #000)'
-        }}
-      >
-        <div className="p-4">
-          {/* Visit Store Button */}
-          <button
-            onClick={onVisitStore}
-            className="w-full bg-white text-black py-3 px-4 rounded-lg font-semibold text-sm mb-4 flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors"
-          >
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
-              <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
-            </svg>
-            VISIT STORE
-          </button>
+      <div className="h-px bg-white/[0.06] mx-3" />
 
-          {/* Navigation Items */}
-          <ul className="space-y-2">
-            {items.map(item => {
-              const isActive = activeHref === item.href;
-              const defaultStyle = {
-                background: isActive ? 'var(--pill-bg, #fff)' : 'transparent',
-                color: isActive ? 'var(--base, #000)' : '#d1d5db'
-              };
-              const hoverIn = (e: React.MouseEvent<HTMLAnchorElement | HTMLButtonElement>) => {
-                if (!isActive) {
-                  e.currentTarget.style.background = 'var(--pill-bg, #fff)';
-                  e.currentTarget.style.color = 'var(--base, #000)';
-                }
-              };
-              const hoverOut = (e: React.MouseEvent<HTMLAnchorElement | HTMLButtonElement>) => {
-                if (!isActive) {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = '#d1d5db';
-                }
-              };
-
-              const linkClasses = 'flex items-center gap-3 py-3 px-4 text-sm font-medium rounded-lg transition-all duration-200 w-full';
-
+      {/* Scrollable Nav */}
+      <div className="flex flex-col flex-1 overflow-y-auto">
+        <nav className="px-2 py-2">
+          <div className="space-y-px">
+            {NAV_ITEMS.map((item) => {
+              const active = isActive(item.section);
               return (
-                <li key={item.href}>
-                  {item.onClick ? (
-                    <button
-                      onClick={() => {
-                        item.onClick?.();
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className={linkClasses}
-                      style={defaultStyle}
-                      onMouseEnter={hoverIn}
-                      onMouseLeave={hoverOut}
-                    >
-                      <span className="text-lg">{item.icon}</span>
-                      {item.label}
-                    </button>
-                  ) : isRouterLink(item.href) ? (
-                    <Link
-                      href={item.href}
-                      className={linkClasses}
-                      style={defaultStyle}
-                      onMouseEnter={hoverIn}
-                      onMouseLeave={hoverOut}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      <span className="text-lg">{item.icon}</span>
-                      {item.label}
-                    </Link>
-                  ) : (
-                    <a
-                      href={item.href}
-                      className={linkClasses}
-                      style={defaultStyle}
-                      onMouseEnter={hoverIn}
-                      onMouseLeave={hoverOut}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      <span className="text-lg">{item.icon}</span>
-                      {item.label}
-                    </a>
-                  )}
-                </li>
+                <button
+                  key={item.section}
+                  onClick={() => handleNav(item.section)}
+                  className={`
+                    w-full flex items-center gap-2 px-2.5 py-[6px] rounded-md text-[12px]
+                    transition-all duration-75
+                    ${active
+                      ? "bg-white/[0.08] text-white font-medium"
+                      : "text-white/80 hover:text-white hover:bg-white/[0.04]"
+                    }
+                  `}
+                >
+                  <item.icon className={`h-3.5 w-3.5 shrink-0 ${active ? 'text-white' : 'text-white/60'}`} strokeWidth={active ? 2 : 1.5} />
+                  <span className="flex-1 text-right truncate">{item.title}</span>
+                  {active && <ChevronRight className="h-2.5 w-2.5 text-white/60 rotate-180" />}
+                </button>
               );
             })}
-          </ul>
+          </div>
 
-          {/* User Section */}
-          <div className="mt-6 pt-4 border-t border-gray-700">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                <span className="text-sm font-bold text-white">{userInitial}</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-bold text-gray-300 uppercase">WELCOME</div>
-                <div className="text-xs text-gray-400 truncate" title={userEmail}>
-                  {userEmail}
-                </div>
-              </div>
-            </div>
+          {/* Settings (collapsible) */}
+          <div className="mt-px">
             <button
-              onClick={handleLogout}
-              className="flex items-center gap-3 text-red-400 hover:text-red-300 text-sm font-medium transition-colors duration-200 w-full p-2 rounded-lg hover:bg-red-900/20"
+              onClick={() => setSettingsOpen(!settingsOpen)}
+              className={`
+                w-full flex items-center gap-2 px-2.5 py-[6px] rounded-md text-[12px]
+                transition-all duration-75 cursor-pointer
+                ${settingsOpen ? "text-white" : "text-white/80 hover:text-white hover:bg-white/[0.04]"}
+              `}
             >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1V4a1 1 0 00-1-1H3zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
-              </svg>
-              Logout
+              <Settings className={`h-3.5 w-3.5 shrink-0 ${settingsOpen ? 'text-white' : 'text-white/60'}`} strokeWidth={1.5} />
+              <span className="flex-1 text-right truncate">الإعدادات</span>
+              <ChevronDown className={`h-2.5 w-2.5 text-white/60 transition-transform duration-150 ${settingsOpen ? 'rotate-0' : '-rotate-90'}`} />
+            </button>
+
+            {settingsOpen && (
+              <div className="mr-[18px] pr-2.5 border-r border-white/[0.06] mt-px space-y-px">
+                <button
+                  onClick={() => handleNav('payment')}
+                  className={`w-full block px-2.5 py-[5px] rounded-md text-[11px] text-right transition-all duration-75 ${isActive('payment') ? 'text-white bg-white/[0.04]' : 'text-white/70 hover:text-white hover:bg-white/[0.04]'}`}
+                >
+                  💳 الدفع
+                </button>
+                <button
+                  onClick={() => handleNav('governorates')}
+                  className={`w-full block px-2.5 py-[5px] rounded-md text-[11px] text-right transition-all duration-75 ${isActive('governorates') ? 'text-white bg-white/[0.04]' : 'text-white/70 hover:text-white hover:bg-white/[0.04]'}`}
+                >
+                  📍 المحافظات
+                </button>
+              </div>
+            )}
+          </div>
+        </nav>
+
+        {/* Footer */}
+        <div className="mt-auto mb-4">
+          <div className="h-px bg-white/[0.06] mx-3" />
+          <div className="px-2 py-2 space-y-px">
+            {/* User */}
+            <div className="flex items-center gap-2 px-2.5 py-[6px]">
+              <div className="w-5 h-5 rounded-full bg-white/[0.08] flex items-center justify-center shrink-0">
+                <span className="text-[9px] text-white/50 font-medium">{userName?.charAt(0)?.toUpperCase() || 'A'}</span>
+              </div>
+              <span className="text-[11px] text-white/40 truncate flex-1 text-right">{userName}</span>
+            </div>
+            {/* Visit Store */}
+            <button
+              onClick={onVisitStore || (() => { if (typeof window !== 'undefined') window.open('/', '_blank'); })}
+              className="w-full flex items-center gap-2 px-2.5 py-[6px] rounded-md text-white/80 hover:text-white hover:bg-white/[0.04] transition-all duration-75 group"
+            >
+              <Store className="h-3.5 w-3.5 shrink-0 group-hover:text-white" strokeWidth={1.5} />
+              <span className="text-[11px] font-medium leading-none truncate flex-1 text-right">العودة للمتجر</span>
+              <LogOut className="h-3 w-3 text-white/50 group-hover:text-white/80 shrink-0" strokeWidth={1.5} />
             </button>
           </div>
         </div>
       </div>
+    </aside>
+  );
+
+  return (
+    <>
+      {/* Desktop Sidebar - Right side for RTL */}
+      <div className="hidden md:block fixed top-0 right-0 z-40 w-[220px] pt-4 pr-4 h-screen">
+        <div className="h-[calc(100%-2rem)] overflow-hidden rounded-lg">
+          {navContent}
+        </div>
+      </div>
+
+      {/* Mobile Bottom Bar */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-stone-900/95 backdrop-blur-lg border-t border-white/[0.06]">
+        <div className="flex items-center justify-around px-2 py-1.5">
+          {NAV_ITEMS.slice(0, 5).map((item) => {
+            const active = isActive(item.section);
+            return (
+              <button
+                key={item.section}
+                onClick={() => handleNav(item.section)}
+                className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-md transition-colors ${active ? 'text-white' : 'text-white/40'}`}
+              >
+                <item.icon className="h-4 w-4" strokeWidth={active ? 2 : 1.5} />
+                <span className="text-[8px]">{item.title}</span>
+              </button>
+            );
+          })}
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-md text-white/40"
+          >
+            <Settings className="h-4 w-4" strokeWidth={1.5} />
+            <span className="text-[8px]">المزيد</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Menu Overlay */}
+      {mobileOpen && (
+        <div className="md:hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={() => setMobileOpen(false)}>
+          <div
+            className="absolute top-0 right-0 w-[260px] h-full bg-stone-900 border-l border-white/[0.06]"
+            onClick={(e) => e.stopPropagation()}
+            dir="rtl"
+          >
+            {navContent}
+          </div>
+        </div>
+      )}
     </>
   );
 };

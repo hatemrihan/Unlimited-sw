@@ -1,5 +1,8 @@
+"use client";
+
 import React, { useState, useEffect } from 'react';
 import { IFeedback } from '../../../models/feedback';
+import { toast } from 'sonner';
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -12,7 +15,7 @@ import {
   useReactTable,
   VisibilityState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react";
+import { ChevronDown, MoreHorizontal, MessageSquare, Star, Loader2, Check, X, Copy, Trash2, Eye, EyeOff, RefreshCw } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,7 +27,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
@@ -36,14 +38,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 const Reviews = () => {
   const [reviews, setReviews] = useState<IFeedback[]>([]);
@@ -54,7 +48,6 @@ const Reviews = () => {
   const [rowSelection, setRowSelection] = useState({});
   const [globalFilter, setGlobalFilter] = useState("");
 
-  // Function to fetch all reviews
   const fetchReviews = async () => {
     try {
       setLoading(true);
@@ -63,16 +56,16 @@ const Reviews = () => {
         const data = await response.json();
         setReviews(data.feedback || []);
       } else {
-        console.error('Failed to fetch reviews');
+        toast.error('فشل في جلب التقييمات');
       }
     } catch (error) {
       console.error('Error fetching reviews:', error);
+      toast.error('خطأ في جلب التقييمات');
     } finally {
       setLoading(false);
     }
   };
 
-  // Toggle approval status of a review
   const toggleApprovalStatus = async (review: IFeedback) => {
     try {
       const response = await fetch('/api/admin/feedback', {
@@ -87,23 +80,21 @@ const Reviews = () => {
       });
 
       if (response.ok) {
-        // Update local state
         setReviews(reviews.map(r =>
           r._id === review._id
             ? { ...r, isApproved: !r.isApproved } as IFeedback
             : r
         ));
-        alert(`Review ${!review.isApproved ? 'approved' : 'rejected'} successfully!`);
+        toast.success(`تم ${!review.isApproved ? 'اعتماد' : 'رفض'} التقييم بنجاح!`);
       } else {
-        alert('Failed to update status. Please try again.');
+        toast.error('فشل في تحديث حالة التقييم');
       }
     } catch (error) {
       console.error('Error updating review status:', error);
-      alert('Error updating status. Please try again.');
+      toast.error('خطأ في تحديث حالة التقييم');
     }
   };
 
-  // Toggle public visibility status of a review
   const toggleShowStatus = async (review: IFeedback) => {
     try {
       const currentShowStatus = (review as IFeedback & { isShownPublic?: boolean }).isShownPublic;
@@ -120,23 +111,21 @@ const Reviews = () => {
       });
 
       if (response.ok) {
-        // Update local state
         setReviews(reviews.map(r =>
           r._id === review._id
             ? { ...r, isShownPublic: newShowStatus } as IFeedback
             : r
         ));
-        alert(`Review is now ${newShowStatus ? 'visible' : 'hidden'} publicly!`);
+        toast.success(`تم ${newShowStatus ? 'إظهار' : 'إخفاء'} التقييم للعامة بنجاح!`);
       } else {
-        alert('Failed to update visibility. Please try again.');
+        toast.error('فشل في تحديث حالة العرض');
       }
     } catch (error) {
       console.error('Error updating review visibility:', error);
-      alert('Error updating visibility. Please try again.');
+      toast.error('خطأ في تحديث حالة العرض');
     }
   };
 
-  // Delete a review
   const deleteReview = async (reviewId: string) => {
     try {
       const response = await fetch(`/api/admin/feedback/${reviewId}`, {
@@ -145,17 +134,16 @@ const Reviews = () => {
 
       if (response.ok) {
         setReviews(reviews.filter(review => review._id !== reviewId));
-        alert('Review deleted successfully!');
+        toast.success('تم حذف التقييم بنجاح!');
       } else {
-        alert('Failed to delete review. Please try again.');
+        toast.error('فشل في حذف التقييم');
       }
     } catch (error) {
       console.error('Error deleting review:', error);
-      alert('Error deleting review. Please try again.');
+      toast.error('خطأ في حذف التقييم');
     }
   };
 
-  // Extract customer info from message
   const extractCustomerInfo = (message: string) => {
     const lines = message.split('\n');
     const customerInfo: { name?: string; email?: string; phone?: string } = {};
@@ -173,7 +161,6 @@ const Reviews = () => {
     return customerInfo;
   };
 
-  // Get clean message without customer info
   const getCleanMessage = (message: string) => {
     const lines = message.split('\n');
     return lines.filter(line =>
@@ -183,21 +170,15 @@ const Reviews = () => {
     ).join('\n').trim();
   };
 
-  // Render star rating
   const renderStars = (rating: number) => {
     return (
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-0.5" dir="ltr">
         {[1, 2, 3, 4, 5].map((star) => (
-          <svg
+          <Star
             key={star}
-            className={`w-3 h-3 ${star <= rating ? 'text-yellow-400 fill-current' : 'text-gray-400'
-              }`}
-            viewBox="0 0 20 20"
-          >
-            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-          </svg>
+            className={`w-3 h-3 ${star <= rating ? 'text-amber-400 fill-amber-400' : 'text-white/20'}`}
+          />
         ))}
-        <span className="text-xs text-gray-400 ml-1">({rating}/5)</span>
       </div>
     );
   };
@@ -212,14 +193,16 @@ const Reviews = () => {
             (table.getIsSomePageRowsSelected() && "indeterminate")
           }
           onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
+          aria-label="تحديد الكل"
+          className="border-white/20 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
         />
       ),
       cell: ({ row }) => (
         <Checkbox
           checked={row.getIsSelected()}
           onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
+          aria-label="تحديد الصف"
+          className="border-white/20 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
         />
       ),
       enableSorting: false,
@@ -227,28 +210,27 @@ const Reviews = () => {
     },
     {
       accessorKey: "_id",
-      header: "Review ID",
+      header: "رقم التقييم",
       cell: ({ row }) => (
-        <div className="font-mono text-gray-900 text-sm">{(row.getValue("_id") as string).slice(-8)}</div>
+        <div className="font-mono text-white/60 text-[11px]">{(row.getValue("_id") as string).slice(-8)}</div>
       ),
     },
     {
       accessorKey: "customerInfo",
-      header: "Customer",
+      header: "العميل",
       cell: ({ row }) => {
         const review = row.original as IFeedback & { name?: string; email?: string; phone?: string };
-        // Use new fields if available, fallback to extracting from message for old data
         const customerInfo = review.name
           ? { name: review.name, email: review.email, phone: review.phone }
           : extractCustomerInfo(row.original.message);
         return (
-          <div className="text-gray-900">
-            <div className="font-medium">{customerInfo.name || 'Anonymous'}</div>
+          <div className="flex flex-col">
+            <div className="text-[12px] font-medium text-white">{customerInfo.name || 'مجهول'}</div>
             {customerInfo.email && (
-              <div className="text-xs text-gray-300">{customerInfo.email}</div>
+              <div className="text-[10px] text-white/40">{customerInfo.email}</div>
             )}
             {customerInfo.phone && (
-              <div className="text-xs text-gray-300">{customerInfo.phone}</div>
+              <div className="text-[10px] text-white/40">{customerInfo.phone}</div>
             )}
           </div>
         );
@@ -256,74 +238,64 @@ const Reviews = () => {
     },
     {
       accessorKey: "reviewText",
-      header: "Review",
+      header: "نص التقييم",
       cell: ({ row }) => {
         const review = row.original as IFeedback & { name?: string };
-        // For new data, message is just the feedback; for old data, clean it
         const displayMessage = review.name ? row.original.message : getCleanMessage(row.original.message);
         return (
-          <div className="text-gray-900">
-            <div className="text-sm max-w-xs truncate" title={displayMessage}>
-              {displayMessage}
-            </div>
+          <div className="text-[12px] text-white/80 max-w-xs truncate" title={displayMessage}>
+            {displayMessage}
           </div>
         );
       },
     },
     {
       accessorKey: "rating",
-      header: "Rating",
+      header: "التقييم",
       cell: ({ row }) => (
-        <div className="text-gray-900">
+        <div className="flex justify-end">
           {renderStars(row.getValue("rating"))}
         </div>
       ),
     },
     {
       accessorKey: "isApproved",
-      header: "Status",
+      header: "الحالة",
       cell: ({ row }) => {
         const isApproved = row.getValue("isApproved");
         return (
-          <div className="text-gray-900">
-            <span className={`inline-flex px-2 py-1 text-xs rounded ${isApproved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-              }`}>
-              {isApproved ? 'Approved' : 'Pending'}
-            </span>
-          </div>
+          <span className={`inline-flex px-2 py-0.5 text-[10px] rounded border font-medium ${isApproved ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'}`}>
+            {isApproved ? 'معتمد' : 'قيد الانتظار'}
+          </span>
         );
       },
     },
     {
       accessorKey: "isShownPublic",
-      header: "Show",
+      header: "العرض",
       cell: ({ row }) => {
         const review = row.original;
         const isShownPublic = (review as IFeedback & { isShownPublic?: boolean }).isShownPublic;
         return (
-          <div className="text-gray-900">
-            <button
-              onClick={() => toggleShowStatus(review)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isShownPublic ? 'bg-green-500' : 'bg-gray-600'
-                }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isShownPublic ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-              />
-            </button>
-          </div>
+          <button
+            onClick={() => toggleShowStatus(review)}
+            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${isShownPublic ? 'bg-blue-500' : 'bg-white/20'}`}
+          >
+            <span
+              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${isShownPublic ? '-translate-x-5' : '-translate-x-1'}`}
+            />
+          </button>
         );
       },
     },
     {
       accessorKey: "createdAt",
-      header: "Date",
+      header: "التاريخ",
       cell: ({ row }) => {
         const date = new Date(row.getValue("createdAt"));
         return (
-          <div className="text-gray-900 text-sm">
-            {date.toLocaleDateString('en-US', {
+          <div className="text-[11px] text-white/60">
+            {date.toLocaleDateString('ar-EG', {
               month: 'short',
               day: 'numeric',
               year: 'numeric'
@@ -339,51 +311,64 @@ const Reviews = () => {
         const review = row.original;
 
         return (
-          <DropdownMenu>
+          <DropdownMenu dir="rtl">
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0 text-gray-900 hover:bg-white/10">
-                <span className="sr-only">Open menu</span>
+              <button className="h-7 w-7 flex items-center justify-center rounded text-white/60 hover:bg-white/[0.08] hover:text-white transition-colors mr-auto">
+                <span className="sr-only">فتح القائمة</span>
                 <MoreHorizontal className="h-4 w-4" />
-              </Button>
+              </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel className="text-gray-900">Actions</DropdownMenuLabel>
+            <DropdownMenuContent align="start" className="bg-[#1c1917] border-white/[0.08] text-white">
+              <DropdownMenuLabel className="text-[11px] text-white/40">الإجراءات</DropdownMenuLabel>
               <DropdownMenuItem
                 onClick={() => toggleApprovalStatus(review)}
-                className="text-gray-900 hover:bg-white/10"
+                className="text-[12px] hover:bg-white/[0.04] focus:bg-white/[0.04] focus:text-white cursor-pointer"
               >
-                {review.isApproved ? 'Reject Review' : 'Approve Review'}
+                {review.isApproved ? <X className="w-3.5 h-3.5 ml-2 text-amber-400" /> : <Check className="w-3.5 h-3.5 ml-2 text-green-400" />}
+                {review.isApproved ? 'رفض التقييم' : 'اعتماد التقييم'}
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => navigator.clipboard.writeText(getCleanMessage(review.message as string))}
-                className="text-gray-900 hover:bg-white/10"
+                onClick={() => toggleShowStatus(review)}
+                className="text-[12px] hover:bg-white/[0.04] focus:bg-white/[0.04] focus:text-white cursor-pointer"
               >
-                Copy Review Text
+                {((review as IFeedback & { isShownPublic?: boolean }).isShownPublic) ? <EyeOff className="w-3.5 h-3.5 ml-2 text-white/60" /> : <Eye className="w-3.5 h-3.5 ml-2 text-blue-400" />}
+                {((review as IFeedback & { isShownPublic?: boolean }).isShownPublic) ? 'إخفاء من العامة' : 'إظهار للعامة'}
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => {
+                  navigator.clipboard.writeText(getCleanMessage(review.message as string));
+                  toast.success('تم نسخ نص التقييم');
+                }}
+                className="text-[12px] hover:bg-white/[0.04] focus:bg-white/[0.04] focus:text-white cursor-pointer"
+              >
+                <Copy className="w-3.5 h-3.5 ml-2" />
+                نسخ نص التقييم
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-white/[0.08]" />
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <DropdownMenuItem
                     onSelect={(e) => e.preventDefault()}
-                    className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                    className="text-[12px] text-red-400 hover:bg-red-500/10 focus:bg-red-500/10 focus:text-red-400 cursor-pointer"
                   >
-                    Delete Review
+                    <Trash2 className="w-3.5 h-3.5 ml-2" />
+                    حذف التقييم
                   </DropdownMenuItem>
                 </AlertDialogTrigger>
-                <AlertDialogContent>
+                <AlertDialogContent className="bg-[#1c1917] border-white/[0.08] text-white" style={{ direction: 'rtl' }}>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete the review.
+                    <AlertDialogTitle className="text-right text-lg">هل أنت متأكد تماماً؟</AlertDialogTitle>
+                    <AlertDialogDescription className="text-right text-white/60 text-[13px]">
+                      لا يمكن التراجع عن هذا الإجراء. سيتم حذف التقييم نهائياً من قاعدة البيانات.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogFooter className="flex-row-reverse sm:flex-row-reverse justify-start gap-2">
+                    <AlertDialogCancel className="bg-white/[0.04] border-white/[0.08] hover:bg-white/[0.08] hover:text-white text-white">إلغاء</AlertDialogCancel>
                     <AlertDialogAction
                       onClick={() => deleteReview(review._id as string)}
-                      className="bg-red-600 hover:bg-red-700"
+                      className="bg-red-500 text-white hover:bg-red-600 border-none"
                     >
-                      Delete
+                      حذف
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -411,6 +396,7 @@ const Reviews = () => {
       columnFilters,
       columnVisibility,
       rowSelection,
+      globalFilter,
     },
   });
 
@@ -419,56 +405,67 @@ const Reviews = () => {
   }, []);
 
   return (
-    <div className="w-full">
+    <div className="space-y-6 max-w-[1100px] w-full" dir="rtl">
       {/* Page Header */}
-      <div className="mb-6">
-        <h1 className="text-xl sm:text-2xl md:text-3xl tracking-tight font-bold text-gray-900 mb-1">
-          Reviews
-        </h1>
-        <div className="h-1 w-24 sm:w-32 md:w-40 bg-gray-900"></div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-[15px] font-semibold text-white leading-none">التقييمات والمراجعات</h2>
+          <p className="text-[11px] text-white/25 mt-1.5">إدارة تقييمات وآراء العملاء</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={fetchReviews}
+            disabled={loading}
+            className="flex items-center justify-center p-1.5 h-8 w-8 bg-white/[0.06] border border-white/[0.08] rounded text-white/40 hover:text-white hover:bg-white/[0.1] transition-colors disabled:opacity-50"
+          >
+            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <div className="bg-white border border-gray-200 rounded-lg p-3 text-center shadow-sm">
-          <div className="text-xl font-bold text-gray-900">{reviews.length}</div>
-          <div className="text-gray-500 text-xs">Total Reviews</div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-white/[0.02] border border-white/[0.04] rounded-lg p-4 flex flex-col justify-center items-center">
+          <div className="text-[10px] text-white/40 mb-1">إجمالي التقييمات</div>
+          <div className="text-xl font-bold text-white font-mono">{reviews.length}</div>
         </div>
-        <div className="bg-white border border-gray-200 rounded-lg p-3 text-center shadow-sm">
-          <div className="text-xl font-bold text-green-600">
+        <div className="bg-white/[0.02] border border-white/[0.04] rounded-lg p-4 flex flex-col justify-center items-center">
+          <div className="text-[10px] text-white/40 mb-1">تم الاعتماد</div>
+          <div className="text-xl font-bold text-green-400 font-mono">
             {reviews.filter(r => r.isApproved).length}
           </div>
-          <div className="text-gray-500 text-xs">Approved</div>
         </div>
-        <div className="bg-white border border-gray-200 rounded-lg p-3 text-center shadow-sm">
-          <div className="text-xl font-bold text-yellow-600">
+        <div className="bg-white/[0.02] border border-white/[0.04] rounded-lg p-4 flex flex-col justify-center items-center">
+          <div className="text-[10px] text-white/40 mb-1">قيد الانتظار</div>
+          <div className="text-xl font-bold text-amber-400 font-mono">
             {reviews.filter(r => !r.isApproved).length}
           </div>
-          <div className="text-gray-500 text-xs">Pending</div>
         </div>
-        <div className="bg-white border border-gray-200 rounded-lg p-3 text-center shadow-sm">
-          <div className="text-xl font-bold text-blue-600">
+        <div className="bg-white/[0.02] border border-white/[0.04] rounded-lg p-4 flex flex-col justify-center items-center">
+          <div className="text-[10px] text-white/40 mb-1">معروض للعامة</div>
+          <div className="text-xl font-bold text-blue-400 font-mono">
             {reviews.filter(r => (r as IFeedback & { isShownPublic?: boolean }).isShownPublic).length}
           </div>
-          <div className="text-gray-500 text-xs">Shown Publicly</div>
         </div>
       </div>
 
       {/* Filters and Controls */}
-      <div className="flex items-center py-4 gap-4">
-        <Input
-          placeholder="Filter reviews..."
-          value={globalFilter ?? ""}
-          onChange={(event) => setGlobalFilter(event.target.value)}
-          className="max-w-sm bg-white border-gray-200 text-gray-900 placeholder:text-gray-400"
-        />
-        <DropdownMenu>
+      <div className="bg-white/[0.02] border border-white/[0.04] rounded-lg p-3 flex flex-col sm:flex-row justify-between items-center gap-3">
+        <div className="relative w-full sm:max-w-sm">
+          <Input
+            placeholder="بحث في التقييمات..."
+            value={globalFilter ?? ""}
+            onChange={(event) => setGlobalFilter(event.target.value)}
+            className="w-full h-9 bg-white/[0.02] border-white/[0.08] text-white text-[12px] placeholder:text-white/20 rounded-lg focus-visible:ring-1 focus-visible:ring-white/20"
+          />
+        </div>
+        <DropdownMenu dir="rtl">
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto bg-white border-gray-200 text-gray-700 hover:bg-gray-50">
-              Columns <ChevronDown className="ml-2 h-4 w-4" />
-            </Button>
+            <button className="h-9 px-3 flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-[12px] text-white hover:bg-white/[0.08] transition-colors whitespace-nowrap w-full sm:w-auto justify-center">
+              الأعمدة <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+            </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="bg-[#1c1917] border-white/[0.08] text-white">
             {table
               .getAllColumns()
               .filter((column) => column.getCanHide())
@@ -476,13 +473,18 @@ const Reviews = () => {
                 return (
                   <DropdownMenuCheckboxItem
                     key={column.id}
-                    className="capitalize text-gray-700"
+                    className="capitalize text-[12px] hover:bg-white/[0.04] focus:bg-white/[0.04] focus:text-white cursor-pointer flex justify-between"
                     checked={column.getIsVisible()}
                     onCheckedChange={(value) =>
                       column.toggleVisibility(!!value)
                     }
                   >
-                    {column.id}
+                    {column.id === 'customerInfo' ? 'العميل' :
+                     column.id === 'reviewText' ? 'نص التقييم' :
+                     column.id === 'rating' ? 'التقييم' :
+                     column.id === 'isApproved' ? 'الحالة' :
+                     column.id === 'isShownPublic' ? 'العرض' :
+                     column.id === 'createdAt' ? 'التاريخ' : column.id}
                   </DropdownMenuCheckboxItem>
                 );
               })}
@@ -491,83 +493,83 @@ const Reviews = () => {
       </div>
 
       {/* Table */}
-      <div className="rounded-md border border-gray-200 bg-white">
-        <Table>
-          <TableHeader>
+      <div className="bg-white/[0.02] border border-white/[0.04] rounded-lg overflow-x-auto">
+        <table className="w-full text-right border-collapse">
+          <thead>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="border-gray-200">
+              <tr key={headerGroup.id} className="border-b border-white/[0.04] bg-white/[0.02]">
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id} className="text-gray-600">
+                    <th key={header.id} className="px-4 py-3 text-[11px] font-medium text-white/40 whitespace-nowrap text-right">
                       {header.isPlaceholder
                         ? null
                         : flexRender(
                           header.column.columnDef.header,
                           header.getContext()
                         )}
-                    </TableHead>
+                    </th>
                   );
                 })}
-              </TableRow>
+              </tr>
             ))}
-          </TableHeader>
-          <TableBody>
+          </thead>
+          <tbody className="divide-y divide-white/[0.04]">
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow
+                <tr
                   key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                  className="border-gray-100 hover:bg-gray-50"
+                  className={`hover:bg-white/[0.02] transition-colors ${row.getIsSelected() ? 'bg-white/[0.04]' : ''}`}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="text-gray-900">
+                    <td key={cell.id} className="px-4 py-3 align-middle text-[12px]">
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
                       )}
-                    </TableCell>
+                    </td>
                   ))}
-                </TableRow>
+                </tr>
               ))
             ) : (
-              <TableRow>
-                <TableCell
+              <tr>
+                <td
                   colSpan={columns.length}
-                  className="h-24 text-center text-gray-400"
+                  className="h-24 text-center text-white/40 text-[12px]"
                 >
-                  {loading ? "Loading reviews..." : "No reviews found."}
-                </TableCell>
-              </TableRow>
+                  {loading ? (
+                     <div className="flex flex-col items-center justify-center gap-2">
+                       <Loader2 className="h-5 w-5 animate-spin text-white/20" />
+                       <span>جاري تحميل التقييمات...</span>
+                     </div>
+                  ) : "لا توجد تقييمات."}
+                </td>
+              </tr>
             )}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="flex-1 text-sm text-gray-500">
-          {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {table.getFilteredRowModel().rows.length} row(s) selected.
+      <div className="flex items-center justify-between text-[11px] border-t border-white/[0.04] pt-4">
+        <div className="text-white/40">
+          تم تحديد {table.getFilteredSelectedRowModel().rows.length} من أصل{" "}
+          {table.getFilteredRowModel().rows.length} صفوف.
         </div>
-        <div className="space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-            className="bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
+        <div className="flex gap-2">
+          <button
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
-            className="bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+            className="px-3 h-8 bg-white/[0.04] border border-white/[0.08] text-white hover:bg-white/[0.08] transition-colors rounded disabled:opacity-30 flex items-center justify-center"
           >
-            Next
-          </Button>
+            التالي
+          </button>
+          <button
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+            className="px-3 h-8 bg-white/[0.04] border border-white/[0.08] text-white hover:bg-white/[0.08] transition-colors rounded disabled:opacity-30 flex items-center justify-center"
+          >
+            السابق
+          </button>
         </div>
       </div>
     </div >

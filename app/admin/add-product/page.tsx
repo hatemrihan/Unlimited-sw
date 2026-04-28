@@ -1,567 +1,554 @@
 "use client";
 
-import React, { useMemo } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import { ArrowRight, Loader2, Check, ChevronLeft, Plus } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+
 import FileUpload from '../../../components/FileUpload';
 import ProtectedAdminRoute from '@/components/auth/protected-admin-route';
 import SidebarNav from '../sections/SideBarNav';
-import { useSession } from 'next-auth/react';
-
 import { useAddProduct } from '@/hooks/useAddProduct';
-import { getNavItems } from '@/utils/navItems';
 import { calculateFinalPrice } from '@/utils/pricing';
 
-const AddProductPage = () => {
-  const { data: session } = useSession();
+const STEPS = [
+  { id: 'general', num: '01', title: 'المعلومات الأساسية' },
+  { id: 'pricing', num: '02', title: 'التسعير والحالة' },
+  { id: 'media', num: '03', title: 'الوسائط والصور' },
+  { id: 'variants', num: '04', title: 'المتغيرات' },
+  { id: 'additional', num: '05', title: 'تفاصيل إضافية' }
+];
+
+const InputLabel = ({ children }: { children: React.ReactNode }) => (
+  <label className="block text-[13px] font-medium text-white/70 mb-2">{children}</label>
+);
+
+export default function AddProductPage() {
   const router = useRouter();
-  const navItems = useMemo(() => getNavItems(router), [router]);
+  const { data: session } = useSession();
+  const [isNavigatingBack, setIsNavigatingBack] = useState(false);
+  const [activeStepId, setActiveStepId] = useState(STEPS[0].id);
+
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
 
   const { 
     product, savingProduct, addProduct: handleAddProduct,
     updateField, updateVariant, addVariant, removeVariant, updateFaq, addFaq, removeFaq 
   } = useAddProduct();
 
+  const currentStepIndex = STEPS.findIndex(s => s.id === activeStepId);
+  const isLastStep = currentStepIndex === STEPS.length - 1;
+
+  const handleNext = async () => {
+    setLoadingAction('next');
+    // Simulate slight delay for smooth UX as requested
+    await new Promise(r => setTimeout(r, 300));
+    setLoadingAction(null);
+
+    if (!isLastStep) {
+      setActiveStepId(STEPS[currentStepIndex + 1].id);
+    } else {
+      handleAddProduct();
+    }
+  };
+
+  const handlePrev = async () => {
+    setLoadingAction('prev');
+    await new Promise(r => setTimeout(r, 200));
+    setLoadingAction(null);
+    
+    if (currentStepIndex > 0) {
+      setActiveStepId(STEPS[currentStepIndex - 1].id);
+    }
+  };
+
+  const handleAddVariantClick = async () => {
+    setLoadingAction('addVariant');
+    await new Promise(r => setTimeout(r, 200));
+    addVariant();
+    setLoadingAction(null);
+  };
+
+  const handleAddFaqClick = async () => {
+    setLoadingAction('addFaq');
+    await new Promise(r => setTimeout(r, 200));
+    addFaq();
+    setLoadingAction(null);
+  };
+
+  const inputClasses = "w-full p-3 bg-black/20 border border-white/[0.12] rounded-lg text-white focus:border-white/[0.3] focus:outline-none transition-colors text-sm";
+
   return (
     <ProtectedAdminRoute>
-      <div className="flex min-h-screen flex-col relative bg-gray-50">
+      <div className="flex min-h-screen flex-col relative bg-stone-900" dir="rtl">
         <SidebarNav
-          logo="/images/Logo-image.png"
-          logoAlt="Alkady Logo"
-          items={navItems}
-          activeHref={'/admin#products'}
-          className="custom-nav"
-          ease="power2.easeOut"
-          baseColor="#000000"
-          pillColor="#ffffff"
-          hoveredPillTextColor="#ffffff"
-          pillTextColor="#000000"
-          onMobileMenuClick={() => { }}
-          userName={session?.user?.name || "Admin"}
-          onVisitStore={() => { if (typeof window !== 'undefined') window.open('/', '_blank'); }}
+          activeSection="products"
+          onSectionChange={() => router.push('/admin')}
+          userName={session?.user?.name || "المدير"}
         />
-        <main className="flex-1 p-3 md:p-6 lg:p-8 pb-20 lg:pb-8 overflow-x-hidden relative z-10 md:ml-64">
-          <div className="max-w-6xl mx-auto">
-        {/* Header with Back Button */}
-        <div className="mb-6">
-          <div className="flex justify-center mb-3">
-            <button
-              onClick={() => router.push('/admin#products')}
-              className="text-gray-500 hover:text-gray-900 transition-colors duration-200 flex items-center gap-2 text-sm"
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-              Back to Products
-            </button>
-          </div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl tracking-tight font-bold text-gray-900 mb-1 text-center">
-            Add New Product
-          </h1>
-          <div className="h-1 w-16 sm:w-20 mx-auto md:w-24 bg-gray-900 flex"></div>
-        </div>
 
-        {/* Product Form */}
-        <div className="bg-white border border-gray-200 rounded-lg p-3 md:p-4 shadow-sm">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+        <div className="md:mr-[220px] flex-1 flex flex-col min-h-screen bg-stone-900 text-white">
+          
+          {/* Header Area */}
+          <div className="border-b border-white/[0.06] bg-stone-900/80 backdrop-blur-md sticky top-0 z-30 pt-4">
+            <div className="px-6 pb-4 max-w-[1400px] mx-auto flex flex-col gap-1.5">
+              <button
+                onClick={() => {
+                  setIsNavigatingBack(true);
+                  router.push('/admin#products');
+                }}
+                disabled={isNavigatingBack || savingProduct}
+                className="text-white/50 hover:text-white transition-colors text-xs flex items-center gap-1.5 font-medium w-fit disabled:opacity-50"
+              >
+                {isNavigatingBack ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRight className="w-3.5 h-3.5" />} 
+                العودة للمنتجات
+              </button>
 
-            {/* Left Side - General Information */}
-            <div className="space-y-4 lg:space-y-6">
-              <div>
-                <h3 className="text-base font-semibold text-gray-900 mb-3">General Information</h3>
-
-                {/* Product Name */}
-                <div className="mb-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Product Name *</label>
-                  <input
-                    type="text"
-                    value={product.name}
-                    onChange={(e) => updateField("name", e.target.value)}
-                    className="w-full p-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-gray-400 focus:outline-none text-sm"
-                    placeholder="Enter product name"
-                  />
-                </div>
-
-                {/* Product Description */}
-                <div className="mb-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Product Description *</label>
-                  <textarea
-                    value={product.description}
-                    onChange={(e) => updateField("description", e.target.value)}
-                    className="w-full p-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-gray-400 focus:outline-none text-sm"
-                    placeholder="Enter product description"
-                    rows={3}
-                  />
-                </div>
-              </div>
-
-              {/* Equipment Variants */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Equipment Variants *</label>
-                <p className="text-xs text-gray-500 mb-2">Add different sizes/colors for your equipment</p>
-
-                {product.variants.map((variant, index) => (
-                  <div key={variant.id} className="bg-gray-50 p-3 rounded-lg mb-3 border border-gray-200">
-                    <div className="space-y-3">
-                      {/* First Row: Variant Name and Stock */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div className="sm:col-span-2">
-                          <label className="block text-xs font-medium text-gray-600 mb-1">VARIANT NAME *</label>
-                          <input
-                            type="text"
-                            value={variant.name}
-                            onChange={(e) => {
-                              updateVariant(index, { ...variant, name: e.target.value });
-                            }}
-                            className="w-full p-2 bg-white border border-gray-200 rounded text-gray-900 text-sm focus:border-gray-400 focus:outline-none"
-                            placeholder="e.g., Black, Gray, Premium"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Stock</label>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="number"
-                              value={variant.stock}
-                              onChange={(e) => {
-                                updateVariant(index, { ...variant, stock: parseInt(e.target.value) || 0 });
-                              }}
-                              className="flex-1 p-2 bg-white border border-gray-200 rounded text-gray-900 text-sm focus:border-gray-400 focus:outline-none"
-                              placeholder="10"
-                              min="0"
-                            />
-
-                            {/* Delete Variant */}
-                            {product.variants.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => removeVariant(index)}
-                                className="text-red-400 hover:text-red-300 p-1 flex-shrink-0"
-                              >
-                                ✕
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mt-4">
-                        <label className="block text-xs font-medium text-gray-300 mb-2">
-                          Variant Media (Images & Videos)
-                        </label>
-                        <p className="text-xs text-gray-500 mb-2">
-                          Upload all media for this variant in order. First upload becomes the main display.
-                        </p>
-
-                        {/* Display current variant media */}
-                        {((variant.images && variant.images.length > 0) || (variant.videos && variant.videos.length > 0)) && (
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2">
-                            {/* Show images */}
-                            {variant.images?.map((img, imgIndex) => (
-                              <div key={img} className="relative">
-                                <img
-                                  src={img}
-                                  alt={`Variant ${variant.name} ${imgIndex + 1}`}
-                                  className="w-full h-20 object-cover rounded border border-white/20"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const newImages = variant.images?.filter((_, i) => i !== imgIndex) || [];
-                                    updateVariant(index, { ...variant, images: newImages });
-                                  }}
-                                  className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center hover:bg-red-600"
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            ))}
-                            {/* Show videos */}
-                            {variant.videos?.map((vid, vidIndex) => (
-                              <div key={vid} className="relative">
-                                <video
-                                  src={vid}
-                                  className="w-full h-20 object-cover rounded border border-white/20"
-                                  muted
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const newVariants = [...product.variants];
-                                    const newVideos = variant.videos?.filter((_, i) => i !== vidIndex) || [];
-                                    newVariants[index] = { ...variant, videos: newVideos };
-                                    updateField("variants", newVariants);
-                                  }}
-                                  className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center hover:bg-red-600"
-                                >
-                                  ×
-                                </button>
-                                <div className="absolute bottom-1 left-1 bg-black/70 text-white text-xs px-1 rounded">🎥</div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        <FileUpload
-                          label={`Add Media for ${variant.name || 'Variant'}`}
-                          accept="image/*,video/*"
-                          onUpload={(url, isVideo = false) => {
-                            const newVariants = [...product.variants];
-                            if (isVideo) {
-                              const currentVideos = variant.videos || [];
-                              newVariants[index] = { ...variant, videos: [...currentVideos, url] };
-                            } else {
-                              const currentImages = variant.images || [];
-                              newVariants[index] = { ...variant, images: [...currentImages, url] };
-                            }
-                            updateField("variants", newVariants);
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Add Variant Button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    addVariant();
-                  }}
-                  className="w-full p-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-gray-400 hover:text-gray-700 text-sm transition-colors"
-                >
-                  + Add Another Variant
-                </button>
-              </div>
-            </div>
-
-            {/* Right Side - Media & Pricing */}
-            <div className="space-y-4 lg:space-y-6">
-              {/* Product Media */}
-              <div>
-                <h3 className="text-base font-semibold text-gray-900 mb-3">Product Media</h3>
-
-                {/* Display current media */}
-                {(product.mainImage || product.images.length > 0 || (product.videos && product.videos.length > 0)) && (
-                  <div className="mb-4">
-                    <div className="grid grid-cols-3 gap-2">
-                      {/* Main Image */}
-                      {product.mainImage && (
-                        <div className="relative">
-                          <img
-                            src={product.mainImage}
-                            alt="Main product"
-                            className="w-full h-24 object-cover rounded border-2 border-yellow-500"
-                          />
-                          <span className="absolute top-1 left-1 bg-yellow-500 text-black text-xs px-1 rounded">Main</span>
-                        </div>
-                      )}
-                      {/* Additional Images */}
-                      {product.images.map((img, index) => (
-                        <div key={img} className="relative">
-                          <img
-                            src={img}
-                            alt={`Product ${index + 1}`}
-                            className="w-full h-24 object-cover rounded border border-gray-200"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const newImages = product.images.filter((_, i) => i !== index);
-                              updateField("images", newImages);
-                            }}
-                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center hover:bg-red-600"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                      {/* Videos */}
-                      {product.videos?.map((vid, index) => (
-                        <div key={vid} className="relative">
-                          <video
-                            src={vid}
-                            className="w-full h-24 object-cover rounded border border-gray-200"
-                            muted
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const newVideos = product.videos?.filter((_, i) => i !== index) || [];
-                              updateField("videos", newVideos);
-                            }}
-                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center hover:bg-red-600"
-                          >
-                            ×
-                          </button>
-                          <div className="absolute bottom-1 left-1 bg-black/70 text-white text-xs px-1 rounded">🎥</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <FileUpload
-                  label="Product Media (Images & Videos) *"
-                  accept="image/*,video/*"
-                  onUpload={(url, isVideo = false) => {
-                    if (!product.mainImage && !isVideo) {
-                      
-                      updateField("mainImage", url);
-                    } else if (isVideo) {
-                      
-                      const newVideos = [...(product.videos || []), url];
-                      updateField("videos", newVideos);
-                    } else {
-                      
-                      const newImages = [...product.images, url];
-                      updateField("images", newImages);
-                    }
-                  }}
-                />
-                <p className="text-xs text-gray-400 mt-2">
-                  First image becomes the main product image. Upload in the order you want them displayed.
-                </p>
-              </div>
-
-              {/* Pricing & Discount */}
-              <div>
-                <h3 className="text-base font-semibold text-gray-900 mb-3">Pricing & Discount</h3>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Original Price (L.E)</label>
-                    <input
-                      type="number"
-                      value={product.originalPrice || ''}
-                      onChange={(e) => updateField("originalPrice", parseFloat(e.target.value) || 0)}
-                      className="w-full p-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-gray-400 focus:outline-none text-sm"
-                      placeholder="1000"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Enter the original price before discount</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Discount (%)</label>
-                    <input
-                      type="number"
-                      value={product.discount || ''}
-                      onChange={(e) => updateField("discount", parseFloat(e.target.value) || 0)}
-                      className="w-full p-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-gray-400 focus:outline-none text-sm"
-                      placeholder="0"
-                      min="0"
-                      max="100"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Leave 0 for no discount</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Promo Code</label>
-                    <input
-                      type="text"
-                      value={product.promoCode || ''}
-                      onChange={(e) => updateField("promoCode", e.target.value)}
-                      className="w-full p-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-gray-400 focus:outline-none text-sm"
-                      placeholder="SAVE10"
-                    />
+              <div className="flex items-center justify-between mt-1">
+                <div>
+                  <h1 className="text-lg font-bold text-white tracking-tight">إضافة منتج جديد</h1>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[10px] font-medium tracking-wider text-white/50 uppercase">إدارة الكتالوج</span>
                   </div>
                 </div>
-
-                {/* Calculated Final Price Display */}
-                {product.originalPrice && product.discount ? (
-                  <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-500">Final Price:</p>
-                    <p className="text-xl font-bold text-gray-900">
-                      L.E {calculateFinalPrice(product.originalPrice || 0, product.discount).toLocaleString()}
-                    </p>
-                  </div>
-                ) : null}
-              </div>
-
-              {/* Product Settings */}
-              <div>
-                <h3 className="text-base font-semibold text-gray-900 mb-3">Product Settings</h3>
-
-                <div className="space-y-3">
-                  <label className="flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={product.isActive}
-                      onChange={(e) => updateField("isActive", e.target.checked)}
-                      className="mr-3"
-                    />
-                    <span className="text-sm text-gray-700">Show in Products Section</span>
-                  </label>
-
-                  <label className="flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={product.isFeatured}
-                      onChange={(e) => updateField("isFeatured", e.target.checked)}
-                      className="mr-3"
-                    />
-                    <span className="text-sm text-gray-700">Show in Featured Products</span>
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Admin Badges & Settings */}
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <h3 className="text-base font-semibold text-gray-900 mb-3">Admin Badges & Settings</h3>
-            
-            {/* Admin Badges (only effective when stock is 0) */}
-            <div className="space-y-3 lg:space-y-4 mb-6">
-              <div className="bg-gray-50 border border-gray-200 text-gray-900 px-3 py-3 text-xs font-medium rounded-lg">
-                <h4 className="text-sm font-semibold text-gray-900 mb-3">Badges (shown only when stock is 0)</h4>
                 
-                <div className="flex items-center gap-6 mb-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={product.showOutOfStockBadge || false}
-                      onChange={(e) => updateField("showOutOfStockBadge", e.target.checked)}
-                      className="mr-1 h-4 w-4 rounded text-gray-900"
-                    />
-                    <span className="text-gray-700 text-sm">OUT OF STOCK</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={product.showPreorderBadge || false}
-                      onChange={(e) => updateField("showPreorderBadge", e.target.checked)}
-                      className="mr-1 h-4 w-4 rounded text-gray-900"
-                    />
-                    <span className="text-gray-700 text-sm">PREORDER</span>
-                  </label>
-                </div>
-
-                <div className="pt-3 border-t border-gray-200">
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Custom Badge Message (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={product.customOutOfStockMessage || ''}
-                    onChange={(e) => updateField("customOutOfStockMessage", e.target.value)}
-                    className="w-full p-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-gray-400 focus:outline-none text-sm"
-                    placeholder="e.g. نعود خلال ٧ أيام (Restocking in 7 Days)"
-                  />
-                  <p className="text-xs text-gray-500 mt-1 font-normal">If set, this pulsating badge overrides the standard out of stock checkboxes.</p>
-                </div>
+                <Button
+                  onClick={handleAddProduct}
+                  disabled={savingProduct || isNavigatingBack}
+                  className="bg-white text-black hover:bg-white/90 text-sm h-9 px-6 rounded-lg font-medium"
+                >
+                  {savingProduct ? (
+                    <>
+                      <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                      جاري الحفظ...
+                    </>
+                  ) : (
+                    'نشر المنتج'
+                  )}
+                </Button>
               </div>
             </div>
           </div>
 
-          {/* Additional Information Section */}
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <h3 className="text-base font-semibold text-gray-900 mb-3">Additional Information</h3>
+          <div className="px-6 py-10 max-w-[1400px] mx-auto flex items-start w-full gap-12">
+            
+            {/* Vertical Stepper Sidebar */}
+            <aside className="hidden lg:block w-64 shrink-0 sticky top-[100px]">
+              <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6">
+                <h3 className="text-sm font-semibold mb-6 tracking-wide text-white/90">خطوات الإضافة</h3>
+                <div className="relative">
+                  <div className="absolute right-[15px] top-4 bottom-4 w-px bg-white/[0.08]" />
+                  <ul className="space-y-6 relative">
+                    {STEPS.map((step, idx) => {
+                      const isActive = activeStepId === step.id;
+                      const isCompleted = STEPS.findIndex(s => s.id === activeStepId) > idx;
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Detailed Description</label>
-                <textarea
-                  value={product.detailedDescription || ''}
-                  onChange={(e) => updateField("detailedDescription", e.target.value)}
-                  className="w-full p-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-gray-400 focus:outline-none text-sm"
-                  rows={4}
-                  placeholder="Enter detailed product description..."
-                />
+                      return (
+                        <li key={step.id}>
+                          <button
+                            onClick={() => setActiveStepId(step.id)}
+                            className="w-full flex items-center gap-4 text-right group"
+                          >
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border-2 transition-all duration-300 z-10 ${
+                              isActive 
+                                ? 'border-white bg-white text-black' 
+                                : isCompleted 
+                                  ? 'border-green-500 bg-stone-900 text-green-500' 
+                                  : 'border-white/20 bg-stone-900 text-white/40 group-hover:border-white/40'
+                            }`}>
+                              {isCompleted ? <Check className="w-4 h-4" strokeWidth={3} /> : <span className="text-[11px] font-bold">{step.num}</span>}
+                            </div>
+                            <div>
+                              <span className={`text-[13px] font-semibold transition-colors duration-300 ${
+                                isActive ? 'text-white' : isCompleted ? 'text-white/80' : 'text-white/40 group-hover:text-white/70'
+                              }`}>
+                                {step.title}
+                              </span>
+                            </div>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
               </div>
+            </aside>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Specifications</label>
-                <textarea
-                  value={product.specifications || ''}
-                  onChange={(e) => updateField("specifications", e.target.value)}
-                  className="w-full p-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-gray-400 focus:outline-none text-sm"
-                  rows={4}
-                  placeholder="Enter product specifications and technical details..."
-                />
-              </div>
+            {/* Main Content Area */}
+            <main className="w-full max-w-3xl shrink min-w-0 z-10">
+              <div className="bg-white/[0.02] border border-white/[0.08] rounded-2xl p-8 min-h-[500px] flex flex-col transition-all duration-300 ease-in-out">
+                
+                <h2 className="text-xl font-bold text-white mb-8 border-b border-white/[0.08] pb-4">
+                  {STEPS[currentStepIndex].title}
+                </h2>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Shipping Information</label>
-                <textarea
-                  value={product.shippingInfo || ''}
-                  onChange={(e) => updateField("shippingInfo", e.target.value)}
-                  className="w-full p-2 bg-white border border-gray-200 rounded-lg text-gray-900 focus:border-gray-400 focus:outline-none text-sm"
-                  rows={3}
-                  placeholder="Enter shipping information and delivery details..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">FAQs</label>
-                {product.faqs.map((faq, index) => (
-                  <div key={faq.id} className="mb-3 p-3 border border-gray-200 rounded-lg bg-gray-50">
-                    <div className="space-y-2">
+                <div className="flex-1">
+                  {/* Step 1: General Information */}
+                  {activeStepId === 'general' && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Question</label>
+                        <InputLabel>اسم المنتج *</InputLabel>
                         <input
                           type="text"
-                          value={faq.question}
-                          onChange={(e) => {
-                            updateFaq(index, { ...faq, question: e.target.value });
-                          }}
-                          className="w-full p-2 bg-white border border-gray-200 rounded text-gray-900 text-sm focus:border-gray-400 focus:outline-none"
-                          placeholder="Enter question..."
+                          value={product.name}
+                          onChange={(e) => updateField("name", e.target.value)}
+                          className={inputClasses}
+                          placeholder="أدخل اسم المنتج"
                         />
                       </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Answer</label>
-                        <textarea
-                          value={faq.answer}
-                          onChange={(e) => {
-                            updateFaq(index, { ...faq, answer: e.target.value });
-                          }}
-                          className="w-full p-2 bg-white border border-gray-200 rounded text-gray-900 text-sm focus:border-gray-400 focus:outline-none"
-                          rows={2}
-                          placeholder="Enter answer..."
-                        />
-                      </div>
-                      {product.faqs.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeFaq(index)}
-                          className="text-red-400 hover:text-red-300 text-xs"
-                        >
-                          Remove FAQ
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => {
-                    addFaq();
-                  }}
-                  className="w-full p-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-gray-400 hover:text-gray-700 text-sm transition-colors"
-                >
-                  + Add FAQ
-                </button>
-              </div>
-            </div>
-          </div>
 
-          {/* Submit Button */}
-          <div className="mt-8 flex justify-center">
-            <button
-              onClick={handleAddProduct}
-              disabled={savingProduct}
-              className="bg-gray-900 text-white px-6 py-2 rounded-lg font-medium hover:bg-gray-800 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-            >
-              {savingProduct ? 'Adding Product...' : 'Add Product'}
-            </button>
-          </div>
+                      <div>
+                        <InputLabel>وصف مختصر *</InputLabel>
+                        <textarea
+                          value={product.description}
+                          onChange={(e) => updateField("description", e.target.value)}
+                          className={inputClasses}
+                          placeholder="اكتب وصفاً مختصراً للمنتج..."
+                          rows={4}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Step 2: Pricing & Status */}
+                  {activeStepId === 'pricing' && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      <div className="flex items-center justify-between mb-8 bg-white/[0.03] p-5 rounded-xl border border-white/[0.05]">
+                        <div>
+                          <h4 className="text-sm font-medium text-white mb-1">حالة المنتج (نشط)</h4>
+                          <p className="text-[13px] text-white/50">
+                            {product.isActive ? 'سيظهر المنتج للعملاء في المتجر.' : 'المنتج مخفي حالياً عن المتجر.'}
+                          </p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="sr-only peer"
+                            checked={product.isActive}
+                            onChange={(e) => updateField("isActive", e.target.checked)}
+                          />
+                          <div className="w-11 h-6 bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                        </label>
+                      </div>
+
+
+                      <div className="grid grid-cols-2 gap-5">
+                        <div>
+                          <InputLabel>السعر الأصلي (ج.م)</InputLabel>
+                          <input
+                            type="number"
+                            value={product.originalPrice || ''}
+                            onChange={(e) => updateField("originalPrice", parseFloat(e.target.value) || 0)}
+                            className={inputClasses}
+                            placeholder="1000"
+                          />
+                        </div>
+                        <div>
+                          <InputLabel>الخصم (%)</InputLabel>
+                          <input
+                            type="number"
+                            value={product.discount || ''}
+                            onChange={(e) => updateField("discount", parseFloat(e.target.value) || 0)}
+                            className={inputClasses}
+                            placeholder="0"
+                            min="0"
+                            max="100"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <InputLabel>رمز الخصم (Promo Code)</InputLabel>
+                          <input
+                            type="text"
+                            value={product.promoCode || ''}
+                            onChange={(e) => updateField("promoCode", e.target.value)}
+                            className={inputClasses}
+                            placeholder="مثال: SAVE10"
+                          />
+                        </div>
+                      </div>
+
+                      {product.originalPrice && product.discount ? (
+                        <div className="mt-6 flex justify-between items-center py-5 px-6 bg-green-500/10 border border-green-500/20 rounded-xl">
+                          <span className="text-sm text-green-400/80 font-medium">السعر النهائي بعد الخصم</span>
+                          <span className="text-2xl font-bold text-green-400">
+                            {calculateFinalPrice(product.originalPrice || 0, product.discount).toLocaleString()} ج.م
+                          </span>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+
+                  {/* Step 3: Media */}
+                  {activeStepId === 'media' && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      <p className="text-[13px] text-white/50 mb-6 font-medium">الصور والفيديوهات الخاصة بالمنتج الأساسي</p>
+                      
+                      {(product.mainImage || product.images.length > 0 || (product.videos && product.videos.length > 0)) && (
+                        <div className="flex flex-wrap gap-4 mb-8 bg-white/[0.02] p-5 rounded-xl border border-white/[0.05]">
+                          {product.mainImage && (
+                            <div className="relative group w-28 h-28">
+                              <img src={product.mainImage} alt="الرئيسية" className="w-full h-full object-cover rounded-xl border-2 border-white/40" />
+                              <span className="absolute bottom-1 right-1 bg-white text-black text-[10px] px-2 py-0.5 rounded shadow font-bold">الرئيسية</span>
+                            </div>
+                          )}
+                          {product.images.map((img, idx) => (
+                            <div key={idx} className="relative group w-28 h-28">
+                              <img src={img} alt="" className="w-full h-full object-cover rounded-xl border border-white/[0.12]" />
+                              <button onClick={() => updateField("images", product.images.filter((_, i) => i !== idx))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 text-sm flex items-center justify-center shadow">×</button>
+                            </div>
+                          ))}
+                          {product.videos?.map((vid, idx) => (
+                            <div key={idx} className="relative group w-28 h-28">
+                              <video src={vid} className="w-full h-full object-cover rounded-xl border border-white/[0.12]" muted />
+                              <button onClick={() => updateField("videos", product.videos?.filter((_, i) => i !== idx) || [])} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 text-sm flex items-center justify-center shadow">×</button>
+                              <div className="absolute bottom-1 right-1 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded">فيديو</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="bg-black/30 border border-white/[0.08] p-5 rounded-xl">
+                        <FileUpload
+                          label="رفع وسائط (صورة/فيديو)"
+                          accept="image/*,video/*"
+                          onUpload={(url, isVideo) => {
+                            if (!product.mainImage && !isVideo) updateField("mainImage", url);
+                            else if (isVideo) updateField("videos", [...(product.videos || []), url]);
+                            else updateField("images", [...product.images, url]);
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Step 4: Variants */}
+                  {activeStepId === 'variants' && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      <div className="space-y-5">
+                        {product.variants.map((variant, index) => (
+                          <div key={variant.id} className="bg-white/[0.03] border border-white/[0.08] rounded-xl p-6">
+                            <div className="flex items-start gap-5 mb-5">
+                              <div className="flex-1">
+                                <InputLabel>اسم المتغير (مثال: أحمر - L)</InputLabel>
+                                <input
+                                  type="text"
+                                  value={variant.name}
+                                  onChange={(e) => updateVariant(index, { ...variant, name: e.target.value })}
+                                  className={inputClasses}
+                                />
+                              </div>
+                              <div className="w-28">
+                                <InputLabel>المخزون</InputLabel>
+                                <input
+                                  type="number"
+                                  value={variant.stock}
+                                  onChange={(e) => updateVariant(index, { ...variant, stock: parseInt(e.target.value) || 0 })}
+                                  className={inputClasses}
+                                />
+                              </div>
+                            </div>
+
+                            <div className="border-t border-white/[0.05] pt-5 flex items-center justify-between">
+                              <div className="flex-1">
+                                <p className="text-[12px] text-white/60 mb-3 font-medium">صور خاصة بهذا المتغير</p>
+                                <div className="flex items-center gap-3">
+                                  {variant.images?.map((img, i) => (
+                                    <div key={i} className="relative w-12 h-12">
+                                      <img src={img} className="w-full h-full object-cover rounded-lg border border-white/20" alt="" />
+                                      <button onClick={() => {
+                                        const newVariants = [...product.variants];
+                                        newVariants[index].images = variant.images?.filter((_, idx) => idx !== i);
+                                        updateField("variants", newVariants);
+                                      }} className="absolute -top-1.5 -right-1.5 bg-red-500 rounded-full w-4 h-4 text-[10px] text-white flex items-center justify-center shadow">×</button>
+                                    </div>
+                                  ))}
+                                  <div className="scale-90 origin-right">
+                                    <FileUpload
+                                      label="رفع صورة"
+                                      accept="image/*"
+                                      onUpload={(url) => {
+                                        const newVariants = [...product.variants];
+                                        newVariants[index] = { ...variant, images: [...(variant.images || []), url] };
+                                        updateField("variants", newVariants);
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              {product.variants.length > 1 && (
+                                <button
+                                  onClick={() => removeVariant(index)}
+                                  className="text-red-400 hover:text-white text-[13px] font-medium px-4 py-2 bg-red-500/10 hover:bg-red-500 rounded-lg transition-colors"
+                                >
+                                  إزالة المتغير
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+
+                        <Button
+                          variant="outline"
+                          onClick={handleAddVariantClick}
+                          disabled={loadingAction === 'addVariant'}
+                          className="w-full border-dashed border-white/[0.15] bg-transparent text-white/70 hover:text-white hover:bg-white/[0.05] h-14"
+                        >
+                          {loadingAction === 'addVariant' ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <Plus className="w-4 h-4 mr-2" />
+                          )}
+                          إضافة متغير جديد
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Step 5: Additional Details */}
+                  {activeStepId === 'additional' && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      {/* Custom Badges */}
+                      <div className="bg-white/[0.03] border border-white/[0.08] p-6 rounded-xl">
+                        <InputLabel>الشارات الخاصة (عند نفاذ المخزون)</InputLabel>
+                        <div className="flex gap-8 mb-5">
+                          <label className="flex items-center gap-3 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={product.showOutOfStockBadge || false}
+                              onChange={(e) => updateField("showOutOfStockBadge", e.target.checked)}
+                              className="h-4 w-4 rounded accent-stone-700"
+                            />
+                            <span className="text-[13px] text-white/90">نفذت الكمية</span>
+                          </label>
+                          <label className="flex items-center gap-3 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={product.showPreorderBadge || false}
+                              onChange={(e) => updateField("showPreorderBadge", e.target.checked)}
+                              className="h-4 w-4 rounded accent-stone-700"
+                            />
+                            <span className="text-[13px] text-white/90">طلب مسبق</span>
+                          </label>
+                        </div>
+                        <input
+                          type="text"
+                          value={product.customOutOfStockMessage || ''}
+                          onChange={(e) => updateField("customOutOfStockMessage", e.target.value)}
+                          className={inputClasses}
+                          placeholder="رسالة مخصصة (تتجاوز الشارات القياسية)"
+                        />
+                      </div>
+
+                      <div>
+                        <InputLabel>وصف تفصيلي كامل</InputLabel>
+                        <textarea
+                          value={product.detailedDescription || ''}
+                          onChange={(e) => updateField("detailedDescription", e.target.value)}
+                          className={inputClasses}
+                          rows={4}
+                          placeholder="اكتب وصفاً مفصلاً يظهر في أسفل صفحة المنتج..."
+                        />
+                      </div>
+
+                      <div>
+                        <InputLabel>المواصفات التقنية</InputLabel>
+                        <textarea
+                          value={product.specifications || ''}
+                          onChange={(e) => updateField("specifications", e.target.value)}
+                          className={inputClasses}
+                          rows={3}
+                          placeholder="المقاسات الدقيقة، الخامات، تعليمات العناية..."
+                        />
+                      </div>
+
+                      <div>
+                        <InputLabel>معلومات الشحن</InputLabel>
+                        <textarea
+                          value={product.shippingInfo || ''}
+                          onChange={(e) => updateField("shippingInfo", e.target.value)}
+                          className={inputClasses}
+                          rows={2}
+                          placeholder="معلومات عن التوصيل، المدة، والإرجاع..."
+                        />
+                      </div>
+
+                      {/* FAQs */}
+                      <div>
+                        <InputLabel>الأسئلة الشائعة</InputLabel>
+                        <div className="space-y-4 pt-2">
+                          {product.faqs.map((faq, index) => (
+                            <div key={faq.id} className="p-5 bg-white/[0.03] border border-white/[0.08] rounded-xl relative">
+                              {product.faqs.length > 1 && (
+                                <button onClick={() => removeFaq(index)} className="absolute top-4 left-4 text-white/40 hover:text-red-400 transition-colors">×</button>
+                              )}
+                              <input
+                                type="text"
+                                value={faq.question}
+                                onChange={(e) => updateFaq(index, { ...faq, question: e.target.value })}
+                                className="w-full mb-3 p-3 bg-black/30 border border-white/[0.08] rounded-lg text-white text-[13px] focus:border-white/30 focus:outline-none transition-colors"
+                                placeholder="السؤال..."
+                              />
+                              <textarea
+                                value={faq.answer}
+                                onChange={(e) => updateFaq(index, { ...faq, answer: e.target.value })}
+                                className="w-full p-3 bg-black/30 border border-white/[0.08] rounded-lg text-white text-[13px] focus:border-white/30 focus:outline-none transition-colors"
+                                rows={2}
+                                placeholder="الإجابة..."
+                              />
+                            </div>
+                          ))}
+                          <Button
+                            variant="outline"
+                            onClick={handleAddFaqClick}
+                            disabled={loadingAction === 'addFaq'}
+                            className="w-full border-dashed border-white/[0.15] bg-transparent text-white/70 hover:text-white hover:bg-white/[0.05] h-12"
+                          >
+                            {loadingAction === 'addFaq' ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                              <Plus className="w-4 h-4 mr-2" />
+                            )}
+                            إضافة سؤال جديد
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer Navigation within Wizard */}
+                <div className="mt-12 pt-6 border-t border-white/[0.08] flex items-center justify-between">
+                  <Button
+                    onClick={handlePrev}
+                    disabled={currentStepIndex === 0 || loadingAction === 'prev'}
+                    className={`bg-white/[0.05] text-white hover:bg-white/[0.1] px-6 h-11 rounded-lg ${currentStepIndex === 0 ? 'opacity-0 pointer-events-none' : ''}`}
+                  >
+                    {loadingAction === 'prev' ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <ArrowRight className="w-4 h-4 ml-2" />}
+                    السابق
+                  </Button>
+                  
+                  <Button
+                    onClick={handleNext}
+                    disabled={savingProduct || loadingAction === 'next'}
+                    className="bg-white text-black hover:bg-white/90 px-8 h-11 rounded-lg font-bold"
+                  >
+                    {savingProduct || loadingAction === 'next' ? (
+                      <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                    ) : isLastStep ? (
+                      <Check className="w-4 h-4 ml-2" />
+                    ) : (
+                      <ChevronLeft className="w-4 h-4 ml-2" />
+                    )}
+                    {isLastStep ? 'تأكيد ونشر' : 'التالي'}
+                  </Button>
+                </div>
+              </div>
+            </main>
           </div>
         </div>
-        </main>
       </div>
     </ProtectedAdminRoute>
   );
-};
-
-export default AddProductPage;
+}
