@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { withDb } from '../../../../../../lib/withDb';
 import Product from '../../../../../../models/product';
 import CityPricing from '../../../../../../models/cityPricing';
-import { invalidateProductCache, productCache } from '../../../../../../lib/cache';
+import { invalidateProductCache, invalidateCitiesCache } from '../../../../../../lib/cache';
 
 // Schema for the bulk governorate pricing update sent by the admin client
 const bulkCityPricingSchema = z.array(z.object({
@@ -103,7 +103,8 @@ export const PUT = withDb(async (request: NextRequest, ctx?: any) => {
   
   // 🚀 CRITICAL: Invalidate ALL caches immediately for real-time updates
   invalidateProductCache(productId.toString());
-  if (process.env.NODE_ENV === 'development') console.log('🗑️ All product caches invalidated after city pricing update');
+  invalidateCitiesCache();
+  if (process.env.NODE_ENV === 'development') console.log('🗑️ All product and city caches invalidated after city pricing update');
   
   return NextResponse.json({
     success: true,

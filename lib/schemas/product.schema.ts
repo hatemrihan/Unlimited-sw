@@ -7,6 +7,7 @@ const variantSchema = z.object({
   stock:  z.number().int().nonnegative().default(0),
   price:  z.number().nonnegative().optional(),
   images: z.array(z.string()).optional(),
+  videos: z.array(z.string()).optional(),
 });
 
 const faqSchema = z.object({

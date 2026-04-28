@@ -24,7 +24,7 @@ export interface IProductRepository {
 const PRODUCT_FIELDS =
   'name price originalPrice discount mainImage images videos description promoCode ' +
   'variants stock isActive isFeatured order showOutOfStockBadge showPreorderBadge ' +
-  'category tags specifications shippingInfo faqs detailedDescription cityPricing';
+  'customOutOfStockMessage category tags specifications shippingInfo faqs detailedDescription cityPricing';
 
 export class MongoProductRepository implements IProductRepository {
   async findAllActive(fields: string = PRODUCT_FIELDS): Promise<Product[]> {

@@ -17,6 +17,7 @@ export interface Product {
     stock: number;     // Stock for this variant
     price?: number;    // Optional different price for variant
     images?: string[]; // Optional variant-specific images
+    videos?: string[]; // Optional variant-specific videos
   }>;
   stock: number;
   isActive: boolean;
@@ -115,7 +116,8 @@ const ProductSchema = new mongoose.Schema({
     name: { type: String, required: true },      // Variant name (e.g., "Black", "Gray")
     stock: { type: Number, default: 0 },         // Stock for this variant
     price: { type: Number },                     // Optional variant price
-    images: [{ type: String }]                   // Variant-specific images
+    images: [{ type: String }],                  // Variant-specific images
+    videos: [{ type: String }]                   // Variant-specific videos
   }],
   
   // Stock quantity

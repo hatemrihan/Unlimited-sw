@@ -148,13 +148,14 @@ export const invalidateProductCache = (productId?: string) => {
   if (productId) {
     productCache.delete(`product:${productId}`);
     productCache.delete(`product:detail:${productId}`);
+    // CRITICAL: getProductById caches in apiCache, not productCache
+    apiCache.delete(`product:detail:${productId}`);
   }
   
-  // 🔥 CRITICAL: Invalidate ALL paginated list caches
-  // Since keys are like 'products:all:1:6', we must clear the entire API cache or 
-  // wipe everything starting with 'products:'
+  // 🔥 CRITICAL: Invalidate ALL paginated list caches + detail caches
+  // Since keys are like 'products:all:1:6' and 'product:detail:xxx'
   for (const key of (apiCache as any).cache.keys()) {
-    if (key.startsWith('products:')) {
+    if (key.startsWith('products:') || key.startsWith('product:')) {
       apiCache.delete(key);
     }
   }
