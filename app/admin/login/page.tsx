@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 
+// ── Typewriter Animation ──────────────────────────────────────
+
 const Typewriter = ({
     text,
     delay = 0,
@@ -49,34 +51,75 @@ const Typewriter = ({
     )
 }
 
+// ── Error Messages ────────────────────────────────────────────
+
+const ERROR_MESSAGES: Record<string, { title: string; description: string }> = {
+    OAuthCallback: {
+        title: "تعذّر تسجيل الدخول",
+        description: "حدث خطأ أثناء التواصل مع Google. تأكد من اتصال الإنترنت وحاول مرة أخرى.",
+    },
+    OAuthSignin: {
+        title: "تعذّر بدء تسجيل الدخول",
+        description: "لم نتمكن من الاتصال بخدمة Google. حاول مرة أخرى بعد قليل.",
+    },
+    AccessDenied: {
+        title: "غير مصرح لك",
+        description: "هذا الحساب غير مسجل كمسؤول. تواصل مع المطوّر إذا كنت تعتقد أن هذا خطأ.",
+    },
+    Callback: {
+        title: "خطأ في المصادقة",
+        description: "حدثت مشكلة أثناء التحقق من حسابك. حاول مرة أخرى.",
+    },
+    default: {
+        title: "حدث خطأ",
+        description: "شيء ما لم يعمل بشكل صحيح. حاول مرة أخرى أو تواصل مع المطوّر.",
+    },
+};
+
+// ── Login Content ─────────────────────────────────────────────
+
 function LoginContent() {
     const [loading, setLoading] = useState(false)
-    const [error, setError] = useState("")
+    const [error, setError] = useState<{ title: string; description: string } | null>(null)
+
+    // Check for error in URL params (e.g., ?error=OAuthCallback)
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search)
+            const urlError = params.get('error')
+            if (urlError) {
+                setError(ERROR_MESSAGES[urlError] || ERROR_MESSAGES.default)
+            }
+        }
+    }, [])
 
     const handleGoogleSignIn = async () => {
-        setError("")
+        setError(null)
         setLoading(true)
         try {
             await signIn("google", {
                 callbackUrl: "/admin",
             })
         } catch {
-            setError("Unable to start sign-in. Please try again.")
+            setError({
+                title: "تعذّر تسجيل الدخول",
+                description: "حدث خطأ غير متوقع. تأكد من اتصالك بالإنترنت وحاول مرة أخرى.",
+            })
             setLoading(false)
         }
     }
 
     return (
-        <main className="min-h-screen bg-stone-900 flex flex-col md:flex-row text-white relative overflow-hidden font-sans">
+        <main className="min-h-[100dvh] bg-stone-900 flex flex-col md:flex-row text-white relative overflow-hidden font-sans">
 
-            {/* Center Dividing Line (Vertical on desktop, Horizontal on mobile) */}
-            <div className="absolute left-0 top-1/2 w-full h-[1px] md:left-1/2 md:top-0 md:w-[1px] md:h-full bg-stone-800 z-10" />
+            {/* Dividing Line */}
+            <div className="absolute left-0 top-[55%] w-full h-[1px] md:left-1/2 md:top-0 md:w-[1px] md:h-full bg-stone-800 z-10" />
 
             {/* ─── LEFT SIDE: Typewriter Animations ─── */}
-            <div className="w-full md:w-1/2 h-[50vh] md:h-screen flex items-center justify-center p-8 relative">
+            <div className="w-full md:w-1/2 min-h-[55dvh] md:h-screen flex items-center justify-center px-6 py-12 sm:p-8 relative">
 
-                {/* Top Section */}
-                <div className="absolute top-[10%] md:top-[15%] left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-[#888] text-[10px] md:text-xs tracking-[0.2em] font-light uppercase w-full text-center">
+                {/* Top Labels */}
+                <div className="absolute top-[8%] sm:top-[10%] md:top-[15%] left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-[#888] text-[9px] sm:text-[10px] md:text-xs tracking-[0.2em] font-light uppercase w-full text-center px-4">
                     <div className="h-4 flex items-center justify-center">
                         <Typewriter text="UNLIMITED STORE" delay={300} speed={25} />
                     </div>
@@ -89,41 +132,43 @@ function LoginContent() {
                 </div>
 
                 {/* Center Huge Text */}
-                <div className="text-center w-full">
+                <div className="text-center w-full px-4">
                     <Typewriter
                         text="LOG IN By Admin Email →"
                         delay={2000}
                         speed={100}
-                        className="text-[7vw] md:text-[4vw] xl:text-[4.5rem] font-medium tracking-[0.05em] text-[#EFEFEF] leading-none"
+                        className="text-[8vw] sm:text-[7vw] md:text-[4vw] xl:text-[4.5rem] font-medium tracking-[0.05em] text-[#EFEFEF] leading-tight"
                     />
                 </div>
 
-                {/* Bottom Link Section */}
-                <div className="absolute bottom-[10%] md:bottom-[15%] left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-[#888] text-[10px] md:text-[11px] tracking-[0.15em] font-light uppercase w-full px-8 md:px-12 lg:px-24 text-center">
+                {/* Bottom Messages */}
+                <div className="absolute bottom-[6%] sm:bottom-[8%] md:bottom-[15%] left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 sm:gap-2 text-[#888] text-[8px] sm:text-[10px] md:text-[11px] tracking-[0.1em] sm:tracking-[0.15em] font-light uppercase w-full px-6 sm:px-8 md:px-12 lg:px-24 text-center">
 
                     <div className="flex items-center justify-center leading-relaxed">
-                        <Typewriter text="Welcome Unlimited Fam, This Is Me, Your Developer, Hatem. I Just Want To Say A Small Message , Whatever You Want To Do, Just Say It To Me, And I Will Do It Right Away." delay={5800} speed={40} />
+                        <Typewriter text="Welcome Unlimited Fam, This Is Me, Your Developer, Hatem. I Just Want To Say A Small Message, Whatever You Want To Do, Just Say It To Me, And I Will Do It Right Away." delay={5800} speed={40} />
                     </div>
 
-                    <div className="flex items-center justify-center mt-1">
+                    <div className="flex items-center justify-center mt-0.5 sm:mt-1">
                         <Typewriter text="Your Success Is Always My Success." delay={12600} speed={40} />
                     </div>
 
-                    <div className="text-lg flex items-center justify-center mt-8 text-[#b3b3b3] tracking-widest font-normal" style={{ direction: 'rtl' }}>
+                    <div className="text-sm sm:text-lg flex items-center justify-center mt-4 sm:mt-8 text-[#b3b3b3] tracking-widest font-normal" style={{ direction: 'rtl' }}>
                         <Typewriter text=" 'Unlimited Version 1.0.0' " delay={13800} speed={50} />
                     </div>
                 </div>
             </div>
 
             {/* ─── RIGHT SIDE: Google Sign In ─── */}
-            <div className="w-full md:w-1/2 h-[50vh] md:h-screen flex flex-col items-center justify-center p-8 relative">
+            <div className="w-full md:w-1/2 min-h-[45dvh] md:h-screen flex flex-col items-center justify-center px-6 py-10 sm:p-8 relative">
+
+                {/* Sign-in Button */}
                 <button
                     onClick={handleGoogleSignIn}
                     disabled={loading}
-                    className="h-10 flex items-center justify-center transition-colors duration-500 cursor-pointer relative group bg-transparent border-none appearance-none"
+                    className="h-12 sm:h-10 flex items-center justify-center transition-colors duration-500 cursor-pointer relative group bg-transparent border-none appearance-none active:scale-95 touch-manipulation"
                 >
                     <div className="flex items-center gap-3">
-                        <div className="w-5 h-5 flex items-center justify-center">
+                        <div className="w-5 h-5 flex items-center justify-center shrink-0">
                             {loading ? (
                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
                             ) : (
@@ -135,16 +180,29 @@ function LoginContent() {
                                 </svg>
                             )}
                         </div>
-                        <span className="text-xs uppercase tracking-widest font-medium text-[#888] group-hover:text-white transition-colors duration-500">
-                            {loading ? "SIGNING IN..." : "CONTINUE WITH GOOGLE"}
+                        <span className="text-[11px] sm:text-xs uppercase tracking-widest font-medium text-[#888] group-hover:text-white transition-colors duration-500">
+                            {loading ? "جاري الدخول..." : "الدخول عبر Google"}
                         </span>
                     </div>
-                    <span className="absolute -bottom-2 left-0 w-0 h-[1px] bg-white transition-all duration-500 group-hover:w-full opacity-0 group-hover:opacity-100"></span>
+                    <span className="absolute -bottom-2 left-0 w-0 h-[1px] bg-white transition-all duration-500 group-hover:w-full opacity-0 group-hover:opacity-100" />
                 </button>
 
+                {/* Error Display */}
                 {error && (
-                    <div className="mt-6 text-red-500 text-[10px] tracking-widest uppercase text-center">
-                        {error}
+                    <div className="mt-6 sm:mt-8 max-w-[280px] sm:max-w-xs text-center space-y-2 animate-in fade-in duration-300" dir="rtl">
+                        <div className="w-8 h-8 mx-auto rounded-full bg-red-500/10 flex items-center justify-center mb-3">
+                            <svg className="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                            </svg>
+                        </div>
+                        <p className="text-red-400 text-[13px] sm:text-sm font-medium">{error.title}</p>
+                        <p className="text-white/40 text-[11px] sm:text-[12px] leading-relaxed">{error.description}</p>
+                        <button
+                            onClick={() => setError(null)}
+                            className="mt-2 text-[10px] text-white/30 hover:text-white/60 transition-colors uppercase tracking-widest"
+                        >
+                            إغلاق
+                        </button>
                     </div>
                 )}
             </div>
@@ -152,6 +210,8 @@ function LoginContent() {
         </main>
     )
 }
+
+// ── Export ─────────────────────────────────────────────────────
 
 export default function AdminLoginPage() {
     return <LoginContent />
