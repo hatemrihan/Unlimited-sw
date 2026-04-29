@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Feedback from '../../../../models/feedback';
 import connectToDatabase from '../../../../lib/mongodb';
 
-// GET - Get all feedback for admin
+// GET - Fetch all feedback for admin dashboard
 export async function GET() {
   try {
     await connectToDatabase();
@@ -11,107 +11,57 @@ export async function GET() {
       .sort({ createdAt: -1 })
       .select('_id message rating createdAt isApproved isShownPublic name email phone');
 
-    return NextResponse.json({ feedback });
-
+    return NextResponse.json({ success: true, feedback });
   } catch (error) {
     console.error('Error fetching feedback for admin:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch feedback' },
+      { success: false, error: 'Failed to fetch feedback' },
       { status: 500 }
     );
   }
 }
 
-// PATCH - Approve/Reject feedback or toggle show status
+// PATCH - Toggle approval / visibility for a single feedback item
 export async function PATCH(request: NextRequest) {
   try {
     await connectToDatabase();
 
-    const body = await request.json();
-    const { id, isApproved, isShownPublic } = body;
+    const { id, isApproved, isShownPublic } = await request.json();
 
     if (!id) {
       return NextResponse.json(
-        { error: 'Feedback ID is required' },
+        { success: false, error: 'Feedback ID is required' },
         { status: 400 }
       );
     }
 
-    // Build update object based on what was provided
-    const updateObj: { isApproved?: boolean; isShownPublic?: boolean } = {};
-    if (typeof isApproved === 'boolean') {
-      updateObj.isApproved = isApproved;
-    }
-    if (typeof isShownPublic === 'boolean') {
-      updateObj.isShownPublic = isShownPublic;
+    // Build update object from provided fields
+    const update: Record<string, boolean> = {};
+    if (typeof isApproved === 'boolean')    update.isApproved = isApproved;
+    if (typeof isShownPublic === 'boolean') update.isShownPublic = isShownPublic;
+
+    if (Object.keys(update).length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'No valid fields to update' },
+        { status: 400 }
+      );
     }
 
-    const feedback = await Feedback.findByIdAndUpdate(
-      id,
-      updateObj,
-      { new: true }
-    );
+    const feedback = await Feedback.findByIdAndUpdate(id, update, { new: true });
 
     if (!feedback) {
       return NextResponse.json(
-        { error: 'Feedback not found' },
+        { success: false, error: 'Feedback not found' },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({
-      message: 'Feedback updated successfully',
-      feedback
-    });
-
+    return NextResponse.json({ success: true, feedback });
   } catch (error) {
     console.error('Error updating feedback:', error);
     return NextResponse.json(
-      { error: 'Failed to update feedback' },
+      { success: false, error: 'Failed to update feedback' },
       { status: 500 }
     );
   }
 }
-
-// DELETE - Delete feedback
-export async function DELETE(request: NextRequest) {
-  try {
-    await connectToDatabase();
-
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-
-    if (!id) {
-      return NextResponse.json(
-        { error: 'Feedback ID is required' },
-        { status: 400 }
-      );
-    }
-
-    const feedback = await Feedback.findByIdAndDelete(id);
-
-    if (!feedback) {
-      return NextResponse.json(
-        { error: 'Feedback not found' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({
-      message: 'Feedback deleted successfully'
-    });
-
-  } catch (error) {
-    console.error('Error deleting feedback:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete feedback' },
-      { status: 500 }
-    );
-  }
-}
-
-
-
-
-
-

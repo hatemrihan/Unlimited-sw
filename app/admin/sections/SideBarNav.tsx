@@ -21,7 +21,7 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   { title: "لوحة التحكم", section: "dashboard", icon: LayoutDashboard },
-  { title: "الإشعارات", section: "notifications", icon: Bell },
+  // { title: "الإشعارات", section: "notifications", icon: Bell },
   { title: "الطلبات", section: "orders", icon: ShoppingCart },
   { title: "المنتجات", section: "products", icon: Package },
   { title: "أكواد الخصم", section: "promo", icon: Tag },

@@ -307,20 +307,27 @@ const AdminDashboard = () => {
     }
   }, []);
 
+  const handleSectionChange = (section: string) => {
+    setActiveSection(section);
+    if (typeof window !== 'undefined') {
+      window.location.hash = section;
+    }
+  };
+
   return (
     <ProtectedAdminRoute>
       <div className="flex min-h-screen flex-col relative bg-stone-900">
         {/* Sidebar */}
         <SidebarNav
           activeSection={activeSection}
-          onSectionChange={setActiveSection}
+          onSectionChange={handleSectionChange}
           userName={session?.user?.name || "المدير"}
         />
 
         {/* Main Content - margin on right for RTL sidebar */}
         <main className="flex-1 p-3 md:p-6 lg:p-8 pb-20 lg:pb-8 overflow-x-hidden bg-stone-900 relative z-10 md:mr-[220px]" dir="rtl">
           <div className="max-w-7xl mx-auto pt-6 md:pt-10">
-            {activeSection === 'dashboard' && <DashboardContent onNavigate={setActiveSection} />}
+            {activeSection === 'dashboard' && <DashboardContent onNavigate={handleSectionChange} />}
             {activeSection === 'notifications' && <Notifications />}
             {activeSection === 'reviews' && <Reviews />}
             {activeSection === 'products' && <Products />}

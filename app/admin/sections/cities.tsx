@@ -290,8 +290,8 @@ const CitiesManagement = () => {
               <tr>
                 <th className="px-4 py-3 font-medium w-[25%]">المحافظة</th>
                 <th className="px-4 py-3 font-medium w-[20%] text-center">تكلفة الشحن (ج.م)</th>
-                <th className="px-4 py-3 font-medium w-[20%] text-center">رسوم الدفع (ج.م)</th>
-                <th className="px-4 py-3 font-medium w-[20%] text-center">الإجمالي (COD)</th>
+                <th className="px-4 py-3 font-medium w-[20%] text-center">رسوم الدفع (COD)</th>
+                <th className="px-4 py-3 font-medium w-[20%] text-center">الإجمالي </th>
                 <th className="px-4 py-3 font-medium w-[15%] text-left">الحالة</th>
               </tr>
             </thead>
@@ -326,8 +326,8 @@ const CitiesManagement = () => {
                     <button
                       onClick={() => toggleActive(gov.name)}
                       className={`px-2.5 py-1 rounded text-[10px] font-medium transition-colors ${gov.isActive
-                          ? 'bg-green-500/10 text-green-400'
-                          : 'bg-white/[0.04] text-white/40 hover:bg-white/[0.08]'
+                        ? 'bg-green-500/10 text-green-400'
+                        : 'bg-white/[0.04] text-white/40 hover:bg-white/[0.08]'
                         }`}
                     >
                       {gov.isActive ? 'مفعل' : 'معطل'}
