@@ -1,71 +1,53 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 export default function AccessDeniedPage() {
-  const router = useRouter();
+    const router = useRouter();
 
-  return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <Card className="shadow-lg border-0">
-          <CardHeader className="text-center pb-8">
-            <CardTitle className="text-3xl font-bold text-red-600 mb-2">
-              ACCESS DENIED
-            </CardTitle>
-            <CardDescription className="text-gray-600 text-sm leading-relaxed">
-              You do not have permission to access the admin dashboard. 
-              Only authorized personnel with approved email addresses can proceed.
-            </CardDescription>
-            <CardDescription className="text-gray-500 text-xs mt-2">
-              If you believe this is an error, please contact the system administrator.
-            </CardDescription>
-          </CardHeader>
-          
-          <CardContent className="px-8 pb-6">
-            <div className="space-y-4">
-              <div className="text-center">
-                <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-                  <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                  </svg>
+    return (
+        <main className="min-h-[100dvh] bg-stone-900 flex flex-col items-center justify-center p-6 text-white font-sans relative overflow-hidden">
+            {/* Background Accent */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-red-500/5 rounded-full blur-[120px] pointer-events-none" />
+            
+            <div className="w-full max-w-lg relative z-10 text-center space-y-8">
+                {/* Warning Icon */}
+                <div className="w-24 h-24 mx-auto bg-white/[0.03] border border-white/[0.08] rounded-2xl flex items-center justify-center animate-pulse">
+                    <svg className="w-10 h-10 text-red-500" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                    </svg>
                 </div>
-                <p className="text-gray-500 text-sm">
-                  Your email address is not authorized for admin access.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-          
-          <CardFooter className="text-center pt-0 pb-8">
-            <div className="w-full space-y-3">
-              <Button
-                onClick={() => router.push("/")}
-                className="w-full bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200"
-              >
-                Return to Main Site
-              </Button>
-              <Button
-                onClick={() => router.push("/admin/login")}
-                variant="outline"
-                className="w-full border-gray-300 text-gray-600 hover:bg-gray-50 font-medium py-3 px-4 rounded-lg transition-colors duration-200"
-              >
-                Try Different Account
-              </Button>
-            </div>
-          </CardFooter>
-        </Card>
-      </div>
-    </div>
-  );
-}
 
+                <div className="space-y-4">
+                    <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-[#EFEFEF]">
+                        Access Denied
+                    </h1>
+                    <p className="text-[#888] text-sm md:text-base max-w-md mx-auto leading-relaxed uppercase tracking-widest font-light">
+                        This email is not authorized for administrative access to Unlimited.
+                    </p>
+                </div>
+
+                <div className="pt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+                    <button
+                        onClick={() => router.push("/")}
+                        className="w-full sm:w-auto px-8 h-12 bg-white text-stone-950 text-xs uppercase tracking-widest font-bold rounded-lg hover:bg-[#EFEFEF] transition-all active:scale-95"
+                    >
+                        Return Home
+                    </button>
+                    <button
+                        onClick={() => router.push("/admin/login")}
+                        className="w-full sm:w-auto px-8 h-12 bg-transparent border border-white/10 text-white text-xs uppercase tracking-widest font-bold rounded-lg hover:bg-white/5 transition-all active:scale-95"
+                    >
+                        Try Another Account
+                    </button>
+                </div>
+
+                {/* Footer Message */}
+                <div className="pt-12 text-[#444] text-[10px] uppercase tracking-[0.3em] font-light">
+                    Unlimited Authorized Personnel Only
+                </div>
+            </div>
+        </main>
+    );
+}

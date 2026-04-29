@@ -1,8 +1,6 @@
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
-
-// Admin emails array (for admin dashboard access)
-const adminEmails = ["hatemrihan100@gmail.com", "muhamed.alkady@gmail.com", "juwayriyahaminnoufaljee@gmail.com"];
+import { adminEmails } from "./admins";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -18,14 +16,16 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async signIn({ user }) {
-      return !!user.email;
+      if (!user.email) return false;
+      // We allow the sign-in, but the middleware/session will handle actual access control
+      return true;
     },
     async jwt({ token, user }) {
       if (user) {
         token.email = user.email;
         token.name = user.name;
         token.picture = user.image;
-        token.isAdmin = user.email ? adminEmails.includes(user.email) : false;
+        token.isAdmin = user.email ? adminEmails.includes(user.email.toLowerCase()) : false;
       }
       return token;
     },
@@ -41,7 +41,7 @@ export const authOptions: NextAuthOptions = {
     async redirect({ url, baseUrl }) {
       if (url.startsWith("/")) return `${baseUrl}${url}`;
       if (new URL(url).origin === baseUrl) return url;
-      return `${baseUrl}/`;
+      return `${baseUrl}/admin`; // Default to admin dashboard after successful sign-in
     },
   },
   session: {

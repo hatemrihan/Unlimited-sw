@@ -3,9 +3,50 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   images: {
     domains: [
+      'res.cloudinary.com',
       `${process.env.ALKADY_AWS_S3_BUCKET_NAME}.s3.${process.env.ALKADY_AWS_REGION}.amazonaws.com`,
     ],
-    qualities: [75, 85, 100],
+    unoptimized: true,
+    qualities: [50, 75, 85, 100],
+  },
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: https:",
+              "media-src 'self' https: data: blob:",
+              "font-src 'self' data:",
+              "connect-src 'self' https:",
+              "form-action 'self' https://accounts.google.com",
+              "frame-src 'self' https://accounts.google.com",
+            ].join('; '),
+          },
+        ],
+      },
+    ];
   },
 };
 
