@@ -97,9 +97,18 @@ function LoginContent() {
         setError(null)
         setLoading(true)
         try {
-            await signIn("google", {
+            const result = await signIn("google", {
                 callbackUrl: "/admin",
+                redirect: true,
             })
+
+            // If redirect:false was used, we'd handle errors here.
+            // With redirect:true, the browser navigates away entirely.
+            // If we reach this point, something went wrong.
+            if (result?.error) {
+                setError(ERROR_MESSAGES[result.error] || ERROR_MESSAGES.default)
+                setLoading(false)
+            }
         } catch {
             setError({
                 title: "تعذّر تسجيل الدخول",
