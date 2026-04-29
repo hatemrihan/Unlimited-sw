@@ -6,11 +6,14 @@ export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
   
   if (session && session.user) {
+    // Map the NextAuth isAdmin boolean to the RBAC 'admin' string
+    // @ts-ignore
+    const role = session.user.isAdmin ? 'admin' : null;
     return NextResponse.json(
-      { authenticated: true, role: session.user?.role ?? null },
+      { authenticated: true, role: role },
       { headers: { 'Cache-Control': 'no-store' } }
     );
-  } 
+  }
   
   // Restore Native Cookie Fallback resolving `api/admin/auth` static passwords
   const staticLegacyToken = request.cookies.get('adminAuthenticated')?.value;
