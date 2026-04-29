@@ -53,7 +53,6 @@ async function migrateData() {
       }],
       stock: Number,
       isActive: { type: Boolean, default: true },
-      isFeatured: { type: Boolean, default: false },
       order: { type: Number, default: 0 }
     }, { timestamps: true });
 
@@ -110,7 +109,6 @@ async function migrateData() {
           variants: product.variants || [],
           stock: product.stock,
           isActive: product.isActive !== false,
-          isFeatured: product.isFeatured || false,
           order: product.order || 0
         });
         await newProduct.save();

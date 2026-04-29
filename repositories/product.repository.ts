@@ -9,34 +9,26 @@ import { CreateProductInput, UpdateProductInput } from '../lib/schemas/product.s
 
 export interface IProductRepository {
   findAllActive(fields: string): Promise<Product[]>;
-  findFeatured(fields: string): Promise<Product[]>;
+
   findById(id: string, fields?: string): Promise<Product | null>;
   findAdminPage(query: object, skip: number, limit: number): Promise<Product[]>;
   countAdminPage(query: object): Promise<number>;
   create(data: CreateProductInput, session?: ClientSession): Promise<any>;
   updateById(id: string, data: UpdateProductInput): Promise<any>;
   deleteById(id: string): Promise<any>;
-  toggleFeatured(id: string, isFeatured: boolean): Promise<any>;
+
 }
 
 // ─── Implementation ───────────────────────────────────────────────────────────
 
 const PRODUCT_FIELDS =
   'name price originalPrice discount mainImage images videos description promoCode ' +
-  'variants stock isActive isFeatured order showOutOfStockBadge showPreorderBadge ' +
+  'variants stock isActive order showOutOfStockBadge showPreorderBadge ' +
   'customOutOfStockMessage category tags specifications shippingInfo faqs detailedDescription cityPricing';
 
 export class MongoProductRepository implements IProductRepository {
   async findAllActive(fields: string = PRODUCT_FIELDS): Promise<Product[]> {
     return ProductModel.find({ isActive: true })
-      .select(fields)
-      .sort({ order: 1 })
-      .lean()
-      .exec() as unknown as Product[];
-  }
-
-  async findFeatured(fields: string = PRODUCT_FIELDS): Promise<Product[]> {
-    return ProductModel.find({ isFeatured: true, isActive: true })
       .select(fields)
       .sort({ order: 1 })
       .lean()
@@ -79,13 +71,7 @@ export class MongoProductRepository implements IProductRepository {
     return ProductModel.findByIdAndDelete(id);
   }
 
-  async toggleFeatured(id: string, isFeatured: boolean): Promise<any> {
-    return ProductModel.findByIdAndUpdate(
-      id,
-      { isFeatured },
-      { new: true, runValidators: true }
-    );
-  }
+
 }
 
 // Singleton — reuse across requests (no re-instantiation per request)

@@ -24,7 +24,6 @@ export interface Product {
   }>;
   stock: number;
   isActive: boolean;
-  isFeatured: boolean;
   order: number;
   detailedDescription?: string;
   specifications?: string;
@@ -58,7 +57,6 @@ export const useProduct = (productId: string) => {
     variants: [],
     stock: 0,
     isActive: true,
-    isFeatured: false,
     order: 0,
     detailedDescription: '',
     specifications: '',

@@ -153,7 +153,7 @@ Manual invalidation via `invalidateProductCache(id?)` is called on every create/
 ```ts
 ProductSchema.index({ name: 'text', description: 'text' }); // Full-text search
 ProductSchema.index({ isActive: 1, order: 1 });              // Active product listing
-ProductSchema.index({ isFeatured: 1, isActive: 1, order: 1 }); // Featured listing
+ProductSchema.index({ isActive: 1, order: 1 }); // Regular listing
 ```
 
 ### Connection

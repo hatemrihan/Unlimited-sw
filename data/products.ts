@@ -239,7 +239,7 @@ export const STATIC_PRODUCTS: Product[] = [
     ],
     stock: Math.max(STOCK.P1_GRAY, STOCK.P1_BLACK),
     isActive: true,
-    isFeatured: true,
+
     order: 1,
     promoCode: '',
   },
@@ -297,7 +297,7 @@ export const STATIC_PRODUCTS: Product[] = [
     ],
     stock: Math.max(STOCK.P2_BLACK, STOCK.P2_GRAY),
     isActive: true,
-    isFeatured: false,
+
     order: 2,
     promoCode: '',
   },
@@ -352,7 +352,7 @@ export const STATIC_PRODUCTS: Product[] = [
     ],
     stock: STOCK.P3_BLACK,
     isActive: true,
-    isFeatured: false,
+
     order: 3,
     promoCode: '',
   },
@@ -388,7 +388,7 @@ export const STATIC_PRODUCTS: Product[] = [
     ],
     stock: STOCK.P4_WOOD,
     isActive: true,
-    isFeatured: false,
+
     order: 4,
     promoCode: '',
   },
@@ -409,8 +409,7 @@ export function getStaticProductById(idOrSlug: string): Product | undefined {
 }
 
 // ─── Only active products (mirrors getActiveProducts) ─────────
-export function getStaticActiveProducts(featuredOnly = false): Product[] {
-  return STATIC_PRODUCTS.filter(p =>
-    p.isActive && (!featuredOnly || p.isFeatured)
-  ).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+export function getStaticActiveProducts(): Product[] {
+  return STATIC_PRODUCTS.filter(p => p.isActive)
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 }

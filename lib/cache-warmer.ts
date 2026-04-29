@@ -5,7 +5,7 @@ import { cacheKeys } from './cache-keys';
 import dbConnect from './mongodb';
 import Product from '../models/product';
 
-const PRODUCT_FIELDS = 'name price originalPrice discount mainImage images videos description promoCode variants stock isActive isFeatured order showOutOfStockBadge showPreorderBadge category tags specifications shippingInfo faqs detailedDescription cityPricing';
+const PRODUCT_FIELDS = 'name price originalPrice discount mainImage images videos description promoCode variants stock isActive order showOutOfStockBadge showPreorderBadge category tags specifications shippingInfo faqs detailedDescription cityPricing';
 
 export async function warmCache() {
   if (process.env.NODE_ENV === 'development') {
@@ -24,26 +24,15 @@ export async function warmCache() {
       .lean()
       .exec();
     
-    // Pre-load featured products
-    const featuredProductsPromise = Product.find({ isFeatured: true, isActive: true })
-      .select(PRODUCT_FIELDS)
-      .sort({ order: 1 })
-      .lean()
-      .exec();
-    
-    // Execute both queries in parallel
-    const [allProducts, featuredProducts] = await Promise.all([
-      allProductsPromise,
-      featuredProductsPromise
-    ]);
+    // Execute query
+    const allProducts = await allProductsPromise;
     
     // Cache the results with 5-minute TTL
     apiCache.set(cacheKeys.products.all(), allProducts, CACHE_TTL.PRODUCTS);
-    apiCache.set(cacheKeys.products.featured(), featuredProducts, CACHE_TTL.PRODUCTS);
     
     const warmTime = Date.now() - startTime;
     if (process.env.NODE_ENV === 'development') {
-      console.log(`✅ Cache warmed in ${warmTime}ms — ${allProducts.length} products, ${featuredProducts.length} featured`);
+      console.log(`✅ Cache warmed in ${warmTime}ms — ${allProducts.length} products`);
     }
     
     return true;

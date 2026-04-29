@@ -21,7 +21,6 @@ export interface Product {
   }>;
   stock: number;
   isActive: boolean;
-  isFeatured: boolean;
   order: number;
 
   // Admin-controlled badges (only considered when stock === 0)
@@ -38,11 +37,9 @@ export interface Product {
     answer: string;
   }>;
 
-  // City-specific pricing
+  // Per-governorate shipping/COD overrides (product price comes from Product.price)
   cityPricing?: Array<{
-    cityName: string;
     governorate: string;
-    price: number;
     shippingCost?: number;
     codFee?: number;
     isActive: boolean;
@@ -133,12 +130,6 @@ const ProductSchema = new mongoose.Schema({
     default: true,
   },
   
-  // Whether product is featured
-  isFeatured: {
-    type: Boolean,
-    default: false,
-  },
-  
   // Order for displaying products
   order: {
     type: Number,
@@ -180,11 +171,9 @@ const ProductSchema = new mongoose.Schema({
     answer: { type: String, required: false },
   }],
 
-  // City-specific pricing
+  // Per-governorate shipping/COD overrides
   cityPricing: [{
-    cityName: { type: String, required: true },
     governorate: { type: String, required: true },
-    price: { type: Number, required: true, min: 0 },
     shippingCost: { type: Number, default: 0, min: 0 },
     codFee: { type: Number, default: 0, min: 0 },
     isActive: { type: Boolean, default: true },
@@ -197,7 +186,6 @@ const ProductSchema = new mongoose.Schema({
 // Create OPTIMIZED indexes for ultra-fast querying
 ProductSchema.index({ name: 'text', description: 'text' }); // For scalable search
 ProductSchema.index({ isActive: 1, order: 1 }); // For regular products
-ProductSchema.index({ isFeatured: 1, isActive: 1, order: 1 }); // For featured products
 
 
 // Export the model

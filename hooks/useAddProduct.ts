@@ -24,7 +24,6 @@ export const useAddProduct = () => {
     variants: [{ id: crypto.randomUUID(), name: '', stock: 0, price: 0, images: [], videos: [] }],
     stock: 0,
     isActive: true,
-    isFeatured: false,
     order: 0,
     detailedDescription: '',
     specifications: '',

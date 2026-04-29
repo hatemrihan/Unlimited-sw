@@ -20,11 +20,11 @@ interface AdminProductsResult {
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
- * Returns all active products (or featured-only).
+ * Returns all active products.
  * Cache → MongoDB fallback → write cache.
  */
-export async function getActiveProducts(featured = false): Promise<Product[]> {
-  const cacheKey = featured ? cacheKeys.products.featured() : cacheKeys.products.all();
+export async function getActiveProducts(): Promise<Product[]> {
+  const cacheKey = cacheKeys.products.all();
 
   // 1. Fresh cache — fastest path (sub-millisecond)
   const fresh = apiCache.get<Product[]>(cacheKey);
@@ -36,9 +36,7 @@ export async function getActiveProducts(featured = false): Promise<Product[]> {
     // Fire-and-forget refresh — user gets stale data with zero wait
     (async () => {
       try {
-        const fresh = featured
-          ? await productRepository.findFeatured()
-          : await productRepository.findAllActive();
+        const fresh = await productRepository.findAllActive();
         apiCache.set(cacheKey, fresh, CACHE_TTL.PRODUCTS);
       } catch {
         // Silent — stale data continues serving until next successful refresh
@@ -49,15 +47,13 @@ export async function getActiveProducts(featured = false): Promise<Product[]> {
 
   // 3. Complete cache miss (very first request or after full invalidation) — must hit DB
   try {
-    const products = featured
-      ? await productRepository.findFeatured()
-      : await productRepository.findAllActive();
+    const products = await productRepository.findAllActive();
     apiCache.set(cacheKey, products, CACHE_TTL.PRODUCTS);
     return products;
   } catch (err) {
     // ── Static fallback when MongoDB is unreachable ──────────────────
     console.warn('[product.service] MongoDB unavailable — serving static fallback products');
-    return getStaticActiveProducts(featured);
+    return getStaticActiveProducts();
   }
 }
 
@@ -114,9 +110,7 @@ export async function createProduct(data: CreateProductInput): Promise<any> {
     ? {
         ...data,
         cityPricing: [{
-          cityName:     'Cairo',
           governorate:  'Cairo',
-          price:        data.price,
           shippingCost: 50,
           codFee:       25,
           isActive:     true,
@@ -171,21 +165,6 @@ export async function deleteProduct(id: string): Promise<void> {
   }
 }
 
-/**
- * Toggles the isFeatured flag on a product.
- * Throws NotFoundError if no product matches.
- */
-export async function toggleProductFeatured(id: string, isFeatured: boolean): Promise<any> {
-  try {
-    const updated = await productRepository.toggleFeatured(id, isFeatured);
-    if (!updated) throw new NotFoundError('Product not found');
-    invalidateProductCache(id);
-    return updated;
-  } catch (err) {
-    if (err instanceof NotFoundError) throw err;
-    throw new DatabaseError(`Failed to toggle featured status: ${err instanceof Error ? err.message : String(err)}`);
-  }
-}
 
 /**
  * Fetches a single product by ID (used by admin [id] GET).

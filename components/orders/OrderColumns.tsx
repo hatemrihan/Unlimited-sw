@@ -1,7 +1,6 @@
 import React from 'react';
 import { ColumnDef } from "@tanstack/react-table";
 import { Order } from "@/hooks/useOrders";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowUpDown, Eye, MoreHorizontal } from "lucide-react";
 import {
@@ -17,9 +16,9 @@ import { toast } from 'sonner';
 const copyToClipboard = async (text: string, label: string) => {
   try {
     await navigator.clipboard.writeText(text);
-    toast.success(`Copied ${label}`);
+    toast.success(`تم نسخ ${label}`);
   } catch {
-    toast.error("Failed to copy to clipboard");
+    toast.error("فشل النسخ إلى الحافظة");
   }
 };
 
@@ -35,14 +34,16 @@ export const getOrderColumns = (
           (table.getIsSomePageRowsSelected() && "indeterminate")
         }
         onCheckedChange={(value: boolean) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
+        aria-label="تحديد الكل"
+        className="border-white/20 data-[state=checked]:bg-white data-[state=checked]:text-black"
       />
     ),
     cell: ({ row }) => (
       <Checkbox
         checked={row.getIsSelected()}
         onCheckedChange={(value: boolean) => row.toggleSelected(!!value)}
-        aria-label="Select row"
+        aria-label="تحديد الصف"
+        className="border-white/20 data-[state=checked]:bg-white data-[state=checked]:text-black mt-1"
       />
     ),
     enableSorting: false,
@@ -50,49 +51,53 @@ export const getOrderColumns = (
   },
   {
     accessorKey: "customer.name",
+    id: "customer_name",
     header: ({ column }) => {
       return (
-        <Button
-          variant="ghost"
+        <button
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="text-gray-900 p-0 hover:bg-transparent"
+          className="flex items-center gap-1.5 text-white/40 hover:text-white transition-colors"
         >
-          Customer
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
+          العميل
+          <ArrowUpDown className="h-3 w-3" />
+        </button>
       )
     },
     cell: ({ row }) => (
-      <div className="font-medium text-gray-900">{row.original.customer.name}</div>
+      <div className="font-medium text-[12px] text-white">{row.original.customer.name}</div>
     ),
   },
   {
     accessorKey: "orderId",
-    header: "Order ID",
+    id: "orderId",
+    header: "رقم الطلب",
     cell: ({ row }) => (
-      <div className="font-mono text-gray-900">{row.getValue("orderId")}</div>
+      <div className="font-mono text-[11px] text-white">{row.getValue("orderId")}</div>
     ),
   },
   {
     accessorKey: "customer.email",
-    header: "Email",
+    id: "customer_email",
+    header: "البريد الإلكتروني",
     cell: ({ row }) => (
-      <div className="text-gray-900">{row.original.customer.email}</div>
+      <div className="text-[12px] text-white">{row.original.customer.email || '-'}</div>
     ),
   },
   {
     accessorKey: "customer.phone",
-    header: "Phone",
+    id: "customer_phone",
+    header: "رقم الهاتف",
     cell: ({ row }) => (
-      <div className="text-gray-900">{row.original.customer.phone}</div>
+      <div className="text-[12px] text-white">{row.original.customer.phone}</div>
     ),
   },
   {
     accessorKey: "customer.address",
-    header: "Shipping Address",
+    id: "customer_address",
+    header: "العنوان",
     cell: ({ row }) => (
-      <div className="text-gray-900">
-        <div className="text-sm max-w-md whitespace-normal break-words" title={row.original.customer.address}>
+      <div className="text-[12px] text-white">
+        <div className="whitespace-normal leading-relaxed min-w-[200px]" title={row.original.customer.address}>
           {row.original.customer.address}
         </div>
       </div>
@@ -100,19 +105,20 @@ export const getOrderColumns = (
   },
   {
     accessorKey: "products",
-    header: "Products",
+    id: "products",
+    header: "المنتجات",
     cell: ({ row }) => {
       const products = row.original.products;
       return (
-        <div className="text-gray-900">
-          <div className="text-sm font-medium">{products.length} item(s)</div>
-          <div className="text-xs text-gray-500 max-w-sm">
+        <div>
+          <div className="text-[11px] font-medium text-white mb-1">{products.length} منتج</div>
+          <div className="text-[10px] text-white/90 max-w-[200px] space-y-1">
             {products.map((product, index) => (
-              <div key={`${product.productId}-${index}`} className="whitespace-normal break-words">
-                <div className="font-medium text-gray-800">{product.name}</div>
-                <div className="text-xs text-gray-500">
-                  {product.size && <span className="mr-2">Size: {product.size}</span>}
-                  <span className="font-semibold">Qty: {product.quantity}</span>
+              <div key={`${product.productId}-${index}`} className="flex items-center justify-between border-b border-white/[0.04] pb-1 last:border-0 last:pb-0">
+                <span className="truncate flex-1 ml-2" title={product.name}>{product.name}</span>
+                <div className="shrink-0 space-x-2 space-x-reverse text-white">
+                  {product.size && <span>مقاس: {product.size}</span>}
+                  <span className="text-white">كمية: {product.quantity}</span>
                 </div>
               </div>
             ))}
@@ -123,19 +129,20 @@ export const getOrderColumns = (
   },
   {
     accessorKey: "color",
-    header: "Color",
+    id: "color",
+    header: "اللون",
     cell: ({ row }) => {
       const products = row.original.products;
       return (
-        <div className="text-gray-900">
+        <div className="space-y-1">
           {products.map((product, index) => (
-            <div key={`${product.productId}-${index}`} className="mb-1">
+            <div key={`${product.productId}-${index}`}>
               {product.color ? (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm">
-                  🎨 {product.color.toUpperCase()}
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white/[0.1] text-white border border-white/[0.08]">
+                  {product.color}
                 </span>
               ) : (
-                <span className="text-gray-500 text-xs">-</span>
+                <span className="text-white/40 text-[10px]">-</span>
               )}
             </div>
           ))}
@@ -143,17 +150,17 @@ export const getOrderColumns = (
       );
     },
   },
-
   {
     accessorKey: "paymentMethod",
-    header: "Payment",
+    id: "paymentMethod",
+    header: "طريقة الدفع",
     cell: ({ row }) => {
       const method = row.getValue("paymentMethod") as Order['paymentMethod'];
       return (
-        <div className="text-gray-900">
-          <span className={`inline-flex px-2 py-1 text-xs rounded font-medium ${method === 'instaPay' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
+        <div>
+          <span className={`inline-flex px-2 py-0.5 text-[10px] rounded font-medium ${method === 'instaPay' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-white/[0.06] text-white/60 border border-white/[0.04]'
             }`}>
-            {method === 'instaPay' ? 'InstaPay' : 'Cash on Delivery'}
+            {method === 'instaPay' ? 'انستا باي' : 'الدفع عند الاستلام'}
           </span>
         </div>
       );
@@ -161,24 +168,25 @@ export const getOrderColumns = (
   },
   {
     accessorKey: "promoCode",
-    header: "Promo Code",
+    id: "promoCode",
+    header: "كود الخصم",
     cell: ({ row }) => {
       const order = row.original;
       return (
-        <div className="text-gray-900">
+        <div>
           {order.promoCode ? (
             <div>
-              <span className="inline-flex px-2 py-1 text-xs rounded bg-yellow-100 text-yellow-800 font-medium">
+              <span className="inline-flex px-2 py-0.5 text-[10px] rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 font-medium">
                 {order.promoCode}
               </span>
               {order.discountAmount && (
-                <div className="text-xs text-green-600 font-semibold mt-1">
-                  -L.E {order.discountAmount}
+                <div className="text-[10px] text-green-400 font-medium mt-1">
+                  - {order.discountAmount} ج.م
                 </div>
               )}
             </div>
           ) : (
-            <span className="text-gray-400 text-xs">No promo</span>
+            <span className="text-white/20 text-[10px]">-</span>
           )}
         </div>
       );
@@ -186,63 +194,63 @@ export const getOrderColumns = (
   },
   {
     accessorKey: "transactionScreenshot",
-    header: "Receipt",
+    id: "transactionScreenshot",
+    header: "الإيصال",
     cell: ({ row }) => {
       const order = row.original;
       if (order.paymentMethod === 'instaPay' && order.transactionScreenshot) {
         return (
-          <div className="text-gray-900">
-            <div className="flex items-center gap-2">
-              <a
-                href={order.transactionScreenshot}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => {
-                  try {
-                    new URL(order.transactionScreenshot!);
-                  } catch {
-                    e.preventDefault();
-                    toast.error("Invalid receipt URL provided.");
-                  }
-                }}
-                className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium text-sm transition-colors duration-150"
-              >
-                <Eye className="w-4 h-4" />
-                View Receipt
-              </a>
-            </div>
+          <div className="flex items-center gap-2">
+            <a
+              href={order.transactionScreenshot}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => {
+                try {
+                  new URL(order.transactionScreenshot!);
+                } catch {
+                  e.preventDefault();
+                  toast.error("رابط الإيصال غير صالح.");
+                }
+              }}
+              className="inline-flex items-center gap-1 text-[11px] text-blue-400 hover:text-blue-300 font-medium transition-colors"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              عرض
+            </a>
           </div>
         );
       }
       return (
-        <div className="text-gray-400 text-sm italic">
-          {order.paymentMethod === 'instaPay' ? 'No receipt uploaded' : 'Cash (No Receipt)'}
+        <div className="text-white/20 text-[10px] italic">
+          {order.paymentMethod === 'instaPay' ? 'لا يوجد إيصال' : '-'}
         </div>
       );
     },
   },
-
   {
     accessorKey: "totalAmount",
-    header: () => <div className="text-right text-gray-900 font-bold">Total</div>,
+    id: "totalAmount",
+    header: () => <div className="text-left">الإجمالي</div>,
     cell: ({ row }) => {
       const amount = parseFloat(row.getValue("totalAmount"));
       return (
-        <div className="text-right font-bold text-gray-900">
-          L.E {amount.toLocaleString()}
+        <div className="text-left font-medium text-[12px] text-white">
+          {amount.toLocaleString()} ج.م
         </div>
       );
     },
   },
   {
     accessorKey: "orderDate",
-    header: "Order Date",
+    id: "orderDate",
+    header: "التاريخ",
     cell: ({ row }) => {
       const rawDate = row.getValue("orderDate");
       const date = rawDate ? new Date(rawDate as string) : null;
       return (
-        <div className="text-gray-900 text-sm font-medium">
-          {date && !isNaN(date.getTime()) ? date.toLocaleDateString('en-US', {
+        <div className="text-[11px] text-white whitespace-nowrap">
+          {date && !isNaN(date.getTime()) ? date.toLocaleDateString('ar-EG', {
             month: 'short',
             day: 'numeric',
             year: 'numeric'
@@ -258,64 +266,64 @@ export const getOrderColumns = (
       const order = row.original;
 
       return (
-        <DropdownMenu>
+        <DropdownMenu dir="rtl">
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0 text-gray-900 hover:bg-gray-100 border border-transparent hover:border-gray-200">
-              <span className="sr-only">Open menu</span>
+            <button className="h-8 w-8 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.06] rounded transition-colors">
+              <span className="sr-only">فتح القائمة</span>
               <MoreHorizontal className="h-4 w-4" />
-            </Button>
+            </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="bg-white border-gray-200 shadow-lg">
-            <DropdownMenuLabel className="text-gray-900 font-bold">Actions</DropdownMenuLabel>
+          <DropdownMenuContent align="end" className="bg-[#1c1917] border-white/[0.08] shadow-xl min-w-[160px]">
+            <DropdownMenuLabel className="text-white/60 text-[11px]">الإجراءات</DropdownMenuLabel>
             <DropdownMenuItem
-              onClick={() => copyToClipboard(order.orderId, "Order ID")}
-              className="text-gray-700 hover:bg-gray-100 cursor-pointer"
+              onClick={() => copyToClipboard(order.orderId, "رقم الطلب")}
+              className="text-[12px] text-white hover:bg-white/[0.06] focus:bg-white/[0.06] cursor-pointer"
             >
-              Copy Order ID
+              نسخ رقم الطلب
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => copyToClipboard(order.customer.email, "Customer Email")}
-              className="text-gray-700 hover:bg-gray-100 cursor-pointer"
+              onClick={() => copyToClipboard(order.customer.email, "البريد الإلكتروني")}
+              className="text-[12px] text-white hover:bg-white/[0.06] focus:bg-white/[0.06] cursor-pointer"
             >
-              Copy Customer Email
+              نسخ البريد
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => copyToClipboard(order.customer.phone, "Customer Phone")}
-              className="text-gray-700 hover:bg-gray-100 cursor-pointer"
+              onClick={() => copyToClipboard(order.customer.phone, "رقم الهاتف")}
+              className="text-[12px] text-white hover:bg-white/[0.06] focus:bg-white/[0.06] cursor-pointer"
             >
-              Copy Customer Phone
+              نسخ الهاتف
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => copyToClipboard(order.customer.address, "Shipping Address")}
-              className="text-gray-700 hover:bg-gray-100 cursor-pointer"
+              onClick={() => copyToClipboard(order.customer.address, "العنوان")}
+              className="text-[12px] text-white hover:bg-white/[0.06] focus:bg-white/[0.06] cursor-pointer"
             >
-              Copy Shipping Address
+              نسخ العنوان
             </DropdownMenuItem>
 
             {order.transactionScreenshot && (
               <>
-                <DropdownMenuSeparator className="bg-gray-200" />
+                <DropdownMenuSeparator className="bg-white/[0.08]" />
                 <DropdownMenuItem
                   onClick={() => {
                      try {
                        const url = new URL(order.transactionScreenshot!);
                        window.open(url.href, '_blank');
                      } catch {
-                       toast.error("Invalid receipt URL provided.");
+                       toast.error("رابط الإيصال غير صالح.");
                      }
                   }}
-                  className="text-blue-600 hover:bg-blue-50 font-medium cursor-pointer"
+                  className="text-[12px] text-blue-400 hover:bg-blue-500/10 focus:bg-blue-500/10 cursor-pointer"
                 >
-                  View Payment Screenshot
+                  عرض الإيصال
                 </DropdownMenuItem>
               </>
             )}
-            <DropdownMenuSeparator className="bg-gray-200" />
+            <DropdownMenuSeparator className="bg-white/[0.08]" />
             <DropdownMenuItem
               onClick={() => openDeleteDialog(order)}
-              className="text-red-600 hover:bg-red-50 focus:bg-red-50 focus:text-red-700 font-bold cursor-pointer"
+              className="text-[12px] text-red-400 hover:bg-red-500/10 focus:bg-red-500/10 cursor-pointer"
             >
-              Delete Order
+              حذف الطلب
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

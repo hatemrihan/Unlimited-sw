@@ -16,9 +16,7 @@ const faqSchema = z.object({
 });
 
 const cityPricingSchema = z.object({
-  cityName:     z.string().min(1),
   governorate:  z.string().min(1),
-  price:        z.number().nonnegative(),
   shippingCost: z.number().nonnegative().optional(),
   codFee:       z.number().nonnegative().optional(),
   isActive:     z.boolean().default(true),
@@ -39,7 +37,6 @@ export const createProductSchema = z.object({
   variants:            z.array(variantSchema).default([]),
   stock:               z.number().int().nonnegative().default(0),
   isActive:            z.boolean().default(true),
-  isFeatured:          z.boolean().default(false),
   order:               z.number().int().default(0),
   detailedDescription: z.string().optional().default(''),
   specifications:      z.string().optional().default(''),

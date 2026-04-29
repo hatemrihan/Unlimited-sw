@@ -2,19 +2,24 @@ import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 
 // Admin emails array (for admin dashboard access)
-const adminEmails = ["hatemrihan100@gmail.com", "muhamed.alkady@gmail.com"];
+const adminEmails = ["hatemrihan100@gmail.com", "muhamed.alkady@gmail.com", "juwayriyahaminnoufaljee@gmail.com"];
 
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "missing-client-id",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "missing-client-secret",
+      authorization: {
+        params: {
+          prompt: "select_account",
+        },
+      },
     }),
   ],
   callbacks: {
-          async signIn({ user }) {
+    async signIn({ user }) {
       console.log("SignIn callback - User email:", user.email);
-      
+
       // Allow ALL users to sign in with Google (not just admins)
       if (user.email) {
         console.log("Valid email, allowing sign in for:", user.email);
@@ -54,13 +59,8 @@ export const authOptions: NextAuthOptions = {
       return `${baseUrl}/`;
     },
   },
-  // Remove custom pages - use NextAuth default sign-in page
-  // pages: {
-  //   signIn: "/admin/login",
-  //   error: "/admin/login",
-  // },
   session: {
     strategy: "jwt",
   },
-  debug: true, // Enable debug mode
+  debug: true,
 };
