@@ -7,8 +7,7 @@ export async function GET(request: NextRequest) {
   
   if (session && session.user) {
     // Map the NextAuth isAdmin boolean to the RBAC 'admin' string
-    // @ts-ignore
-    const role = session.user.isAdmin ? 'admin' : null;
+    const role = (session.user as any).isAdmin ? 'admin' : null;
     return NextResponse.json(
       { authenticated: true, role: role },
       { headers: { 'Cache-Control': 'no-store' } }
