@@ -22,10 +22,25 @@ export async function middleware(request: NextRequest) {
     }
 
     // Check B: NextAuth JWT session (Google OAuth)
-    const token = await getToken({
+    // NextAuth on Netlify Edge sometimes struggles to detect if the request is secure
+    // due to missing or altered x-forwarded-proto headers. We will explicitly check both.
+    const isSecure = request.url.startsWith('https://') || request.headers.get('x-forwarded-proto') === 'https';
+    const cookieName = isSecure ? '__Secure-next-auth.session-token' : 'next-auth.session-token';
+
+    let token = await getToken({
       req: request,
       secret: process.env.NEXTAUTH_SECRET,
+      cookieName: cookieName,
     });
+
+    // Fallback if the automatic detection failed (common on edge networks)
+    if (!token) {
+      token = await getToken({
+        req: request,
+        secret: process.env.NEXTAUTH_SECRET,
+        cookieName: isSecure ? 'next-auth.session-token' : '__Secure-next-auth.session-token',
+      });
+    }
 
     // Case 1: Not logged in at all
     if (!token) {
