@@ -5,7 +5,7 @@ import { cookies } from 'next/headers';
 
 export async function requireAdmin() {
   const session = await getServerSession(authOptions);
-  if (session && session.user?.role === 'admin') {
+  if (session && (session.user as any)?.isAdmin) {
     return null; // NextAuth admin — authorized
   }
 
@@ -14,11 +14,7 @@ export async function requireAdmin() {
   const legacyCookie = cookieStore.get('adminAuthenticated')?.value;
   const adminSecret = process.env.ADMIN_COOKIE_SECRET;
   
-  if (!adminSecret) {
-    throw new Error('ADMIN_COOKIE_SECRET is not set in environment variables');
-  }
-
-  if (legacyCookie === adminSecret) {
+  if (adminSecret && legacyCookie === adminSecret) {
     return null; // Cookie admin — authorized
   }
 
