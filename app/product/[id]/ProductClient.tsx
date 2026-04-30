@@ -87,9 +87,10 @@ export default function ProductClient({ product, allProducts }: Props) {
         price: selectedVariant?.price || product.price,
         variant: selectedVariant ? { name: selectedVariant.name, color: selectedVariant.name } : undefined,
       }, quantity);
-      setTimeout(() => { window.location.href = '/checkout'; }, 100);
+      router.push('/checkout');
     } catch (error) {
-      window.location.href = '/checkout';
+      console.error('Error in Buy Now:', error);
+      router.push('/checkout');
     }
   };
 
