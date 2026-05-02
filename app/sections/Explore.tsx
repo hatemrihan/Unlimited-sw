@@ -72,7 +72,7 @@ const Explore = () => {
                                 Wall-mounted pull-up bar +Wall-parallel bar
                             </h2>
                             <p className="text-2xl font-light text-white text-center">
-                                4,958 LE
+                                4,999 LE
                             </p>
                             <button
                                 onClick={handleAddToCart}
