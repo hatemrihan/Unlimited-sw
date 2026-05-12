@@ -5,6 +5,7 @@ import FeedbackFormLazy from "./sections/FeedbackFormLazy";
 import Footer from "./sections/Footer";
 import WhatsAppButton from "../components/WhatsAppButton";
 import Explore from "./sections/Explore";
+import { getActiveProducts } from "../services/product.service";
 
 export const metadata = {
   title: "Unlimited SW | Premium Calisthenics Equipment Egypt",
@@ -44,23 +45,18 @@ export const metadata = {
 };
 
 export default async function Home() {
-  const baseUrl = process.env.NODE_ENV === 'development' 
-    ? 'http://localhost:3000' 
-    : (process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || "https://unlimited-sw.com");
-
-  // Fetch products server-side — zero waterfall, instant render (first page only)
-  let initialProducts = [];
+  // Fetch products directly from database — NO self-referencing HTTP fetch.
+  // The old `fetch(baseUrl/api/products)` caused circular request failures on
+  // Vercel serverless, making MongoDB appear "down" and triggering static fallback.
+  let initialProducts: any[] = [];
   let initialHasMore = false;
 
   try {
-    const res = await fetch(`${baseUrl}/api/products?page=1&limit=6`, {
-      next: { revalidate: 60, tags: ['products'] }
-    });
-    const data = await res.json();
-    if (data.success && data.products) {
-      initialProducts = data.products;
-      initialHasMore = data.hasMore;
-    }
+    const allProducts = await getActiveProducts();
+    // Serialize for client: strip Mongoose internals, convert ObjectIds to strings
+    const serialized = JSON.parse(JSON.stringify(allProducts));
+    initialProducts = serialized.slice(0, 6);
+    initialHasMore = serialized.length > 6;
   } catch (error) {
     console.error('Failed to fetch initial products:', error);
   }
