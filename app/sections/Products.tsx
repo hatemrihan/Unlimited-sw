@@ -3,7 +3,6 @@
 import React, { useState, useMemo } from 'react';
 import { Product } from '../../models/product';
 import { useCart } from '../../contexts/CartContext';
-import { nameToSlug } from '../../data/products';
 import Image from "next/image";
 import Link from "next/link";
 // import { STATIC_PRODUCTS } from '../../data/products'; // Keeping for future reference as requested

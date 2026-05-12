@@ -7,7 +7,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Nav from '../sections/Nav';
 import Footer from '../sections/Footer';
 import { useCart } from '../../contexts/CartContext';
-import { nameToSlug } from '../../data/products';
 import {
   Breadcrumb,
   BreadcrumbItem,
