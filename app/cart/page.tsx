@@ -27,18 +27,37 @@ const CartPage = () => {
         // Fetch products from server
         const productPromises = productIds.map(async (id) => {
           try {
+            // For static IDs, we can't fetch by ID — we'll handle migration below
+            if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+              return { id, product: null, isLegacy: true };
+            }
             const response = await fetch(`/api/products/${id}`);
             if (response.ok) {
               const data = await response.json();
-              return { id, product: data.product };
+              return { id, product: data.product, isLegacy: false };
             }
           } catch (error) {
             console.error(`Failed to fetch product ${id}:`, error);
           }
-          return { id, product: null };
+          return { id, product: null, isLegacy: false };
         });
 
         const productResults = await Promise.all(productPromises);
+
+        // If any legacy static IDs exist, fetch the full product list to find matching MongoDB IDs
+        const hasLegacyIds = productResults.some(r => r.isLegacy);
+        let allDbProducts: any[] = [];
+        if (hasLegacyIds) {
+          try {
+            const allRes = await fetch('/api/products');
+            const allData = await allRes.json();
+            if (allData.success && allData.products) {
+              allDbProducts = allData.products;
+            }
+          } catch (e) {
+            console.error('Failed to fetch product list for legacy ID migration:', e);
+          }
+        }
 
         // Create a map of productId -> product for easy lookup
         const productMap: Record<string, any> = {};
@@ -53,11 +72,31 @@ const CartPage = () => {
         let needsSync = false;
 
         const validatedItems = cartState.items.map((item) => {
-          const product = productMap[item.id];
-          if (!product) return item; // Safety fallback
+          let currentId = item.id;
+
+          // 🔄 AUTO-MIGRATE: Upgrade legacy static IDs to real MongoDB ObjectIds
+          if (!currentId.match(/^[0-9a-fA-F]{24}$/)) {
+            const matchingDbProduct = allDbProducts.find(
+              (p: any) => p.name === item.name || p.name?.trim() === item.name?.trim()
+            );
+            if (matchingDbProduct && matchingDbProduct._id) {
+              const newId = matchingDbProduct._id.toString();
+              console.log(`🔄 [Cart Migration] Upgraded "${item.name}" from legacy ID "${currentId}" → "${newId}"`);
+              currentId = newId;
+              productMap[currentId] = matchingDbProduct;
+              needsSync = true;
+            } else {
+              // Product doesn't exist in DB at all — keep as-is, order service will handle gracefully
+              console.warn(`⚠️ [Cart] Product "${item.name}" has legacy ID "${currentId}" and no DB match found`);
+              return { ...item };
+            }
+          }
+
+          const product = productMap[currentId];
+          if (!product) return { ...item, id: currentId }; // Safety fallback
 
           const variantKey = item.variant?.name || 'default';
-          const priceKey = `${item.id}_${variantKey}`;
+          const priceKey = `${currentId}_${variantKey}`;
 
           let currentPrice = product.price || 0;
           let availableStock = typeof product.stock === 'number' ? product.stock : 0;
@@ -81,13 +120,14 @@ const CartPage = () => {
           if (validatedQuantity > availableStock) {
             validatedQuantity = availableStock;
             needsSync = true;
-          } else if (item.stock !== availableStock) {
-            // Background metadata optimization
+          } else if (item.stock !== availableStock || currentId !== item.id) {
+            // Background metadata optimization or ID migration happened
             needsSync = true;
           }
 
           return {
             ...item,
+            id: currentId, // Apply migrated ID
             quantity: validatedQuantity,
             stock: availableStock
           };
@@ -103,7 +143,7 @@ const CartPage = () => {
         // Intelligently overwrite the local storage cart gracefully
         if (needsSync && typeof syncItems === 'function') {
            syncItems(validatedItems);
-           console.log('🔄 Cart intelligently corrected due to background stock movements!');
+           console.log('🔄 Cart intelligently corrected (stock/price/ID migration applied)');
         }
 
       } catch (error) {

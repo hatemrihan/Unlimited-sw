@@ -88,6 +88,35 @@ export default function CheckoutPage() {
     setOrderError(null);
 
     try {
+      // 🛡️ LAYER 3: Last-resort migration for any legacy static product IDs
+      // If a user somehow reaches checkout with "static-product-1" in their cart,
+      // attempt to resolve it to a real MongoDB ObjectId before submitting.
+      let resolvedItems = cartItems;
+      const hasLegacyIds = cartItems.some((item: CartItem) => !item.id.match(/^[0-9a-fA-F]{24}$/));
+      
+      if (hasLegacyIds) {
+        try {
+          const allRes = await fetch('/api/products');
+          const allData = await allRes.json();
+          if (allData.success && allData.products) {
+            resolvedItems = cartItems.map((item: CartItem) => {
+              if (item.id.match(/^[0-9a-fA-F]{24}$/)) return item; // Already valid
+              const match = allData.products.find((p: any) => 
+                p.name === item.name || p.name?.trim() === item.name?.trim()
+              );
+              if (match?._id) {
+                console.log(`🛡️ [Checkout Guard] Last-resort migration: "${item.name}" → ${match._id}`);
+                return { ...item, id: match._id.toString() };
+              }
+              return item; // Keep as-is — order service Layer 1 will handle gracefully
+            });
+          }
+        } catch (migrationError) {
+          // Migration failed — proceed anyway, Layer 1 in orderCreationService will catch it
+          console.warn('⚠️ [Checkout Guard] Migration fetch failed, proceeding with existing IDs');
+        }
+      }
+
       const orderData = {
         customer: {
           name: `${formData.firstName.trim()} ${formData.lastName.trim()}`,
@@ -100,7 +129,7 @@ export default function CheckoutPage() {
           city: formData.city,
           governorate: selectedGovernorate?.governorate || ''
         },
-        products: cartItems.map((item: CartItem) => {
+        products: resolvedItems.map((item: CartItem) => {
           const variantKey = item.variant?.name || 'default';
           const priceKey = `${item.id}_${variantKey}`;
           const correctPrice = refreshedPrices[priceKey] || item.price;

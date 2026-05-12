@@ -4,6 +4,15 @@ import Order, { IOrder } from '../models/order';
 import Product from '../models/product';
 
 /**
+ * Validates whether a string is a valid MongoDB ObjectId (24-char hex).
+ * Used to guard against legacy static IDs like "static-product-1" that
+ * would crash Mongoose queries expecting real ObjectIds.
+ */
+function isValidObjectId(id: string): boolean {
+  return /^[0-9a-fA-F]{24}$/.test(id);
+}
+
+/**
  * Executes the Order creation and Stock decrement completely inside a unified
  * database Transaction boundaries guaranteeing all-or-nothing execution without
  * manual rollback drift.
@@ -21,11 +30,22 @@ export async function createOrderTransaction(orderData: any, newOrder: Partial<I
     await session.withTransaction(async () => {
       // 1. Validate and deduct stock for each product structurally locked inside the session
       for (const orderProduct of orderData.products) {
+        const productId = orderProduct.productId;
+
+        // 🛡️ GUARD: Skip stock decrement for non-MongoDB IDs (legacy static fallback products)
+        // These IDs (e.g. "static-product-1") don't exist in the database, so querying
+        // them would crash with "Cast to ObjectId failed". The order still completes —
+        // we just can't track stock for products that aren't in MongoDB.
+        if (!isValidObjectId(productId)) {
+          console.warn(`⚠️ [OrderService] Skipping stock decrement for legacy/static product ID: "${productId}" (${orderProduct.name}). This item is not in MongoDB.`);
+          continue;
+        }
+
         if (orderProduct.variant?.name) {
           // Atomic variant decrement with exact structural conditions
           const updateResult = await Product.findOneAndUpdate(
             {
-              _id: orderProduct.productId,
+              _id: productId,
               'variants.name': orderProduct.variant.name,
               'variants.stock': { $gte: orderProduct.quantity }
             },
@@ -42,7 +62,7 @@ export async function createOrderTransaction(orderData: any, newOrder: Partial<I
           // Atomic main stock decrement
           const updateResult = await Product.findOneAndUpdate(
             { 
-              _id: orderProduct.productId, 
+              _id: productId, 
               stock: { $gte: orderProduct.quantity } 
             },
             { 
