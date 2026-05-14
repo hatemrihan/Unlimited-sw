@@ -56,7 +56,7 @@ export async function createOrderTransaction(orderData: any, newOrder: Partial<I
           );
 
           if (!updateResult) {
-            throw new Error(`Insufficient stock or invalid variant constraint for ${orderProduct.name} (${orderProduct.variant.name}).`);
+            throw new Error(`للأسف الكمية المطلوبة من ${orderProduct.name} (${orderProduct.variant.name}) مش متوفرة دلوقتي. حد تاني طلبها قبلك بثواني!`);
           }
         } else {
           // Atomic main stock decrement
@@ -72,7 +72,7 @@ export async function createOrderTransaction(orderData: any, newOrder: Partial<I
           );
 
           if (!updateResult) {
-            throw new Error(`Insufficient baseline stock limits for ${orderProduct.name} due to concurrent order reservations.`);
+            throw new Error(`للأسف ${orderProduct.name} خلصت من الستوك! حد تاني طلبها قبلك بثواني. جرب تاني بعدين أو تواصل معانا.`);
           }
         }
       }
@@ -94,7 +94,7 @@ export async function createOrderTransaction(orderData: any, newOrder: Partial<I
 
     return { success: true, savedOrder };
   } catch (error: any) {
-    console.error('❌ Mongoose Transaction aborted gracefully:', error.message);
+    console.error('❌ الأوردر اتلغى بسبب مشكلة في الستوك:', error.message);
     return { success: false, error: error.message };
   } finally {
     await session.endSession();
