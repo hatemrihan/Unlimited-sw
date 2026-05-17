@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { STATIC_CITIES } from '../../../../data/checkout-cities';
 import dbConnect from '../../../../lib/mongodb';
-import CityPricing from '../../../../models/cityPricing';
 import Product from '../../../../models/product';
 import mongoose from 'mongoose';
 
+/**
+ * Checkout Cities API — Product-Level City Pricing ONLY
+ * 
+ * This endpoint builds the governorate list entirely from each product's
+ * own `cityPricing` array. The global CityPricing collection is NOT used.
+ * 
+ * Each product defines its own shipping cost and COD fee per governorate.
+ * If a product has no city pricing for a governorate, that governorate
+ * still appears (from other products) but with $0 shipping for that item.
+ */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const rawIds = searchParams.get('productIds')?.split(',').filter(Boolean) ?? [];
@@ -12,63 +20,56 @@ export async function GET(request: NextRequest) {
   // Filter out invalid ObjectIds before querying
   const productIds = rawIds.filter(id => mongoose.Types.ObjectId.isValid(id));
 
+  if (productIds.length === 0) {
+    return NextResponse.json({
+      success: true,
+      cities: [],
+      source: 'no_products'
+    });
+  }
+
   try {
     await dbConnect();
 
-    // Get all active governorates with default shipping/COD
-    const raw = await CityPricing.find({ isActive: true })
-      .select('governorate shippingCost codFee isActive')
-      .sort({ governorate: 1 })
-      .lean();
+    // Fetch ONLY the cityPricing from the products in the cart
+    const products = await Product.find(
+      { _id: { $in: productIds } },
+      { _id: 1, cityPricing: 1 }
+    ).lean();
 
-    // Deduplicate by governorate (lowercase key)
+    // Build governorate map entirely from product-level city pricing
     const govMap: Record<string, any> = {};
-    for (const doc of raw) {
-      const name = (doc.governorate || '').trim();
-      if (!name) continue;
 
-      const key = name.toLowerCase();
-      if (govMap[key]) continue;
+    for (const product of products) {
+      const pid = (product._id as any).toString();
+      if (!product.cityPricing || !Array.isArray(product.cityPricing)) continue;
 
-      govMap[key] = {
-        _id:          doc._id,
-        governorate:  name,
-        cityName:     name,        // backward-compatible alias
-        shippingCost: doc.shippingCost,
-        codFee:       doc.codFee,
-        isActive:     doc.isActive,
-        productPricing: {},
-      };
-    }
+      for (const cp of product.cityPricing) {
+        if (cp.isActive === false) continue; // Skip disabled governorates
 
-    // Overlay per-product shipping/COD (NOT price — price comes from Product.price)
-    if (productIds.length > 0) {
-      try {
-        const products = await Product.find(
-          { _id: { $in: productIds } },
-          { _id: 1, cityPricing: 1 }
-        ).lean();
+        const govName = (cp.governorate || '').trim();
+        if (!govName) continue;
 
-        for (const product of products) {
-          const pid = (product._id as any).toString();
-          if (!product.cityPricing || !Array.isArray(product.cityPricing)) continue;
+        const key = govName.toLowerCase();
 
-          for (const cp of product.cityPricing) {
-            const govName = (cp.governorate || '').trim();
-            const key = govName.toLowerCase();
-            if (!govMap[key]) continue;
-
-            // Only shipping/COD — product price is NOT stored here
-            govMap[key].productPricing[pid] = {
-              shippingCost: cp.shippingCost ?? 0,
-              codFee:       cp.codFee ?? 0,
-              isActive:     cp.isActive !== false,
-            };
-          }
+        // Initialize governorate entry if not seen yet
+        if (!govMap[key]) {
+          govMap[key] = {
+            governorate: govName,
+            cityName: govName,     // backward-compatible alias
+            shippingCost: 0,       // No global default — product-level only
+            codFee: 0,             // No global default — product-level only
+            isActive: true,
+            productPricing: {},
+          };
         }
-      } catch (productError) {
-        // Product overlay failed but governorate data is still valid
-        console.error('Product shipping overlay failed:', productError);
+
+        // Store per-product shipping/COD for this governorate
+        govMap[key].productPricing[pid] = {
+          shippingCost: cp.shippingCost ?? 0,
+          codFee: cp.codFee ?? 0,
+          isActive: cp.isActive !== false,
+        };
       }
     }
 
@@ -77,15 +78,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       cities,
-      source: 'mongodb'
+      source: 'product_city_pricing'
     });
 
   } catch (error) {
-    console.error('MongoDB governorate fetch failed, using static fallback:', error);
-    return NextResponse.json({
-      success: true,
-      cities: STATIC_CITIES,
-      source: 'static_fallback'
-    });
+    console.error('[Checkout Cities] MongoDB failed:', error);
+    return NextResponse.json(
+      { success: false, cities: [], error: 'فشل تحميل بيانات الشحن. جرب تاني.' },
+      { status: 503 }
+    );
   }
 }

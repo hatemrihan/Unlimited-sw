@@ -1,242 +1,226 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Product } from '../../models/product';
 import { useCart } from '../../contexts/CartContext';
 import Image from "next/image";
 import Link from "next/link";
-// import { STATIC_PRODUCTS } from '../../data/products'; // Keeping for future reference as requested
 
-const Products = ({ 
-  initialProducts = [], 
-  initialHasMore = false 
-}: { 
-  initialProducts: Product[]; 
+/**
+ * Products Section — Homepage product grid
+ * 
+ * Architecture:
+ * - Receives `initialProducts` from the Server Component (direct MongoDB, zero fetch)
+ * - Hydrates client-side, then does ONE background refresh to pick up real-time stock changes
+ * - "Load More" fetches additional pages from `/api/products` (MongoDB-only, no static fallback)
+ * - All product links use MongoDB `_id` — never slugs or static IDs
+ */
+
+interface ProductsProps {
+  initialProducts: Product[];
   initialHasMore?: boolean;
-}) => {
-  // Cart functionality
-  const { addItem } = useCart();
-  const [showCartNotification, setShowCartNotification] = useState<boolean>(false);
+}
 
-  // Pagination state
+const Products = ({ initialProducts = [], initialHasMore = false }: ProductsProps) => {
+  const router = useRouter();
+  const { addItem } = useCart();
+
+  // Product state — initialized from server, refreshed on mount
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
 
-  const isMounted = React.useRef(true);
-  
-  // Always fetch fresh data on mount to pick up stock/out-of-stock changes
-  React.useEffect(() => {
+  const isMounted = useRef(true);
+
+  // Background refresh on mount — picks up stock/price changes since server render
+  useEffect(() => {
     isMounted.current = true;
-    
-    const fetchFresh = async () => {
+
+    const refreshProducts = async () => {
       try {
-        const timestamp = new Date().getTime();
-        const res = await fetch(`/api/products?page=1&limit=6&t=${timestamp}`, {
-          cache: 'no-store'
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (isMounted.current && data.products) {
-            setProducts(data.products);
-            setHasMore(data.hasMore);
-          }
+        const res = await fetch(`/api/products?page=1&limit=6`, { cache: 'no-store' });
+        if (!res.ok) return; // Don't override good server data with an error
+        
+        const data = await res.json();
+        if (isMounted.current && data.success && data.products?.length > 0) {
+          setProducts(data.products);
+          setHasMore(data.hasMore);
         }
-      } catch (err) {
-        console.error("Mount fetch failed:", err);
+      } catch {
+        // Silent — keep using server-rendered data
       }
     };
 
-    fetchFresh();
+    refreshProducts();
     return () => { isMounted.current = false; };
   }, []);
 
-  // Load more function
-  const loadMore = async () => {
+  // ── Load More — paginated fetch ────────────────────────────────────────────
+  const loadMore = useCallback(async () => {
     if (isLoadingMore || !hasMore) return;
     setIsLoadingMore(true);
     setLoadMoreError(null);
+
     try {
       const nextPage = page + 1;
-      const timestamp = new Date().getTime();
-      const res = await fetch(`/api/products?page=${nextPage}&limit=6&t=${timestamp}`, {
-        cache: 'no-store'
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (isMounted.current) {
-          setProducts(prev => [...prev, ...data.products]);
-          setHasMore(data.hasMore);
-          setPage(nextPage);
-        }
+      const res = await fetch(`/api/products?page=${nextPage}&limit=6`, { cache: 'no-store' });
+
+      if (!res.ok) throw new Error('API returned error');
+
+      const data = await res.json();
+      if (isMounted.current && data.success) {
+        setProducts(prev => [...prev, ...(data.products || [])]);
+        setHasMore(data.hasMore);
+        setPage(nextPage);
       }
-    } catch (error) {
+    } catch {
       if (isMounted.current) {
-        setLoadMoreError('Failed to load more products. Please try again.');
+        setLoadMoreError('فشل تحميل المنتجات. جرب تاني.');
       }
     } finally {
-      if (isMounted.current) {
-        setIsLoadingMore(false);
-      }
+      if (isMounted.current) setIsLoadingMore(false);
     }
-  };
+  }, [isLoadingMore, hasMore, page]);
 
-  // Memoize stock calculation for O(1) lookups during render
+  // ── Stock Map — O(1) lookups during render ─────────────────────────────────
   const stockMap = useMemo(() => {
     const map = new Map<string, number>();
-    products.forEach(p => {
-      if (!p._id) return;
-      if (Array.isArray(p.variants) && p.variants.length > 0) {
-        map.set(
-          p._id,
-          p.variants.reduce((sum, v) => sum + (v.stock || 0), 0)
-        );
-      } else {
-        map.set(p._id, p.stock || 0);
-      }
-    });
+    for (const p of products) {
+      if (!p._id) continue;
+      const stock = (Array.isArray(p.variants) && p.variants.length > 0)
+        ? p.variants.reduce((sum, v) => sum + (v.stock || 0), 0)
+        : (p.stock || 0);
+      map.set(p._id, stock);
+    }
     return map;
   }, [products]);
 
-  const getAvailableStock = (productId: string): number => {
-    return stockMap.get(productId) || 0;
-  };
-
-  // Handle add to cart with beautiful animation
-  const handleAddToCart = (e: React.MouseEvent, product: Product) => {
-    e.preventDefault(); // Prevent Link navigation
+  // ── Buy Now — add to cart + go straight to checkout ────────────────────────
+  const handleBuyNow = useCallback((e: React.MouseEvent, product: Product) => {
+    e.preventDefault();
     e.stopPropagation();
-    
-    try {
-      const availableStock = getAvailableStock(product._id!);
-      
-      if (availableStock <= 0) return;
 
-      addItem({
-        id: product._id!,
-        name: product.name,
-        image: product.mainImage,
-        price: product.price,
-        stock: availableStock 
-      }, 1);
+    const stock = stockMap.get(product._id!) || 0;
+    if (stock <= 0) return;
 
-      setShowCartNotification(true);
+    addItem({
+      id: product._id!,
+      name: product.name,
+      image: product.mainImage,
+      price: product.price,
+      stock,
+    }, 1);
 
-      setTimeout(() => {
-        setShowCartNotification(false);
-      }, 3000);
-
-    } catch (error) {
-      console.error('Add to cart failed:', error);
-    }
-  };
+    router.push('/checkout');
+  }, [addItem, stockMap, router]);
 
   return (
-    <section className="relative bg-stone-900 text-[#b3b3b3] pt-24 pb-8 sm:pt-28 sm:pb-12 lg:pt-36 lg:pb-12 xl:pt-48 xl:pb-16" id="products">
+    <section
+      className="relative bg-stone-900 text-[#b3b3b3] pt-24 pb-8 sm:pt-28 sm:pb-12 lg:pt-36 lg:pb-12 xl:pt-48 xl:pb-16"
+      id="products"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
-      <div className="text-lg sm:text-xl font-bold tracking-[0.2em] uppercase mb-12 lg:mb-16 text-center text-[#b3b3b3]">
-        — OUR PRODUCTS
-      </div>
+        <div className="text-lg sm:text-xl font-bold tracking-[0.2em] uppercase mb-12 lg:mb-16 text-center text-[#b3b3b3]">
+          — OUR PRODUCTS
+        </div>
 
         {products.length > 0 ? (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
               {products.map((product, index) => {
-                const availableStock = getAvailableStock(product._id!);
-                
-                return (
-                <article key={product._id} className="h-full">
-                  <Link
-                    href={`/product/${product._id}`}
-                    className="group flex flex-col h-full"
-                  >
-                    {/* Product Image */}
-                    <div 
-                      className="mb-2 lg:mb-3 overflow-hidden bg-gray-800 max-w-[140px] sm:max-w-[160px] lg:max-w-[180px] mx-auto relative w-full"
-                      style={{ aspectRatio: '1080 / 1350' }}
-                    >
-                      <Image
-                        src={product.mainImage}
-                        alt={product.name}
-                        fill
-                        sizes="(max-width: 640px) 140px, (max-width: 1024px) 160px, 180px"
-                        className="object-cover group-hover:scale-105 transition-transform duration-300"
-                        priority={index < 3}
-                      />
-                      
-                      {/* Badges Container - Stacked Vertically */}
-                      <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
-                        {Number(product.discount) > 0 && !!product.originalPrice && (
-                          <div className="bg-stone-900 text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
-                            {product.discount}% OFF
-                          </div>
-                        )}
-                        
-                        {/* Custom badge — ALWAYS visible when set by admin */}
-                        {product.customOutOfStockMessage && (
-                          <div className="bg-stone-900 text-white px-1.5 py-0.5 text-[10px] font-medium uppercase w-fit" dir="auto">
-                            {product.customOutOfStockMessage}
-                          </div>
-                        )}
+                const availableStock = stockMap.get(product._id!) || 0;
 
-                        {/* Standard badges — only when stock=0 AND no custom message */}
-                        {availableStock === 0 && !product.customOutOfStockMessage && (
-                          product.showPreorderBadge ? (
-                            <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase w-fit">
-                              PREORDER
+                return (
+                  <article key={product._id} className="h-full">
+                    <Link
+                      href={`/product/${product._id}`}
+                      className="group flex flex-col h-full"
+                    >
+                      {/* Product Image */}
+                      <div
+                        className="mb-2 lg:mb-3 overflow-hidden bg-gray-800 max-w-[140px] sm:max-w-[160px] lg:max-w-[180px] mx-auto relative w-full"
+                        style={{ aspectRatio: '1080 / 1350' }}
+                      >
+                        <Image
+                          src={product.mainImage}
+                          alt={product.name}
+                          fill
+                          sizes="(max-width: 640px) 140px, (max-width: 1024px) 160px, 180px"
+                          className="object-cover group-hover:scale-105 transition-transform duration-300"
+                          priority={index < 3}
+                        />
+
+                        {/* Badges */}
+                        <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
+                          {Number(product.discount) > 0 && !!product.originalPrice && (
+                            <div className="bg-stone-900 text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
+                              {product.discount}% OFF
                             </div>
-                          ) : (
-                            <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase w-fit">
-                              OUT OF STOCK
+                          )}
+
+                          {product.customOutOfStockMessage && (
+                            <div className="bg-stone-900 text-white px-1.5 py-0.5 text-[10px] font-medium uppercase w-fit" dir="auto">
+                              {product.customOutOfStockMessage}
                             </div>
-                          )
-                        )}
+                          )}
+
+                          {availableStock === 0 && !product.customOutOfStockMessage && (
+                            product.showPreorderBadge ? (
+                              <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase w-fit">
+                                PREORDER
+                              </div>
+                            ) : (
+                              <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase w-fit">
+                                OUT OF STOCK
+                              </div>
+                            )
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    
-                    {/* Product Info */}
-                    <div className="text-center flex flex-col flex-grow">
-                      <h3 className="text-white text-xs sm:text-sm lg:text-base font-medium mb-1 group-hover:text-gray-300 transition-colors duration-300 line-clamp-2">
-                        {product.name}
-                      </h3>
-                      
-                      {/* Price */}
-                      <div className="mb-2">
-                        <span className="text-white font-bold text-sm lg:text-base">
-                          {product.price.toLocaleString()} L.E
-                        </span>
-                        {product.originalPrice && product.originalPrice > product.price && (
-                          <div className="text-gray-400 line-through text-xs lg:text-sm mt-1">
-                            {product.originalPrice.toLocaleString()} L.E
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* Add to Cart Button aligned to bottom */}
-                      <div className="mt-auto pt-4 pb-2">
-                        {availableStock > 0 ? (
-                          <button
-                            onClick={(e) => handleAddToCart(e, product)}
-                            className="inline-block pb-1 border-b border-[#b3b3b3] text-[#b3b3b3] hover:text-white hover:border-white uppercase tracking-[0.15em] text-[10px] sm:text-xs font-bold transition-colors duration-300"
-                          >
-                            ADD TO CART
-                          </button>
-                        ) : (
-                          <span className="inline-block pb-1 border-b border-stone-600 text-stone-600 uppercase tracking-[0.15em] text-[10px] sm:text-xs font-bold cursor-not-allowed">
-                            OUT OF STOCK
+
+                      {/* Product Info */}
+                      <div className="text-center flex flex-col flex-grow">
+                        <h3 className="text-white text-xs sm:text-sm lg:text-base font-medium mb-1 group-hover:text-gray-300 transition-colors duration-300 line-clamp-2">
+                          {product.name}
+                        </h3>
+
+                        <div className="mb-2">
+                          <span className="text-white font-bold text-sm lg:text-base">
+                            {product.price.toLocaleString()} L.E
                           </span>
-                        )}
+                          {product.originalPrice && product.originalPrice > product.price && (
+                            <div className="text-gray-400 line-through text-xs lg:text-sm mt-1">
+                              {product.originalPrice.toLocaleString()} L.E
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Buy Now */}
+                        <div className="mt-auto pt-4 pb-2">
+                          {availableStock > 0 ? (
+                            <button
+                              onClick={(e) => handleBuyNow(e, product)}
+                              className="inline-block pb-1 border-b border-[#b3b3b3] text-[#b3b3b3] hover:text-white hover:border-white uppercase tracking-[0.15em] text-[10px] sm:text-xs font-bold transition-colors duration-300"
+                            >
+                              BUY NOW
+                            </button>
+                          ) : (
+                            <span className="inline-block pb-1 border-b border-stone-600 text-stone-600 uppercase tracking-[0.15em] text-[10px] sm:text-xs font-bold cursor-not-allowed">
+                              OUT OF STOCK
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </Link>
-                </article>
-              )})}
+                    </Link>
+                  </article>
+                );
+              })}
             </div>
 
-            {/* Load More Button */}
+            {/* Load More */}
             {hasMore && (
               <div className="mt-12 text-center flex justify-center">
                 <button
@@ -246,8 +230,8 @@ const Products = ({
                 >
                   {isLoadingMore && (
                     <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
                   )}
                   {isLoadingMore ? 'LOADING...' : 'LOAD MORE'}
@@ -259,25 +243,18 @@ const Products = ({
             )}
           </>
         ) : (
-          /* Skeleton Loading or No Products State */
+          /* Skeleton placeholders while loading */
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
             {[...Array(6)].map((_, index) => (
               <div key={index} className="animate-pulse">
-                <div className="aspect-square mb-2 lg:mb-3 bg-gray-800 max-w-[140px] sm:max-w-[160px] lg:max-w-[180px] mx-auto rounded"></div>
+                <div className="aspect-square mb-2 lg:mb-3 bg-gray-800 max-w-[140px] sm:max-w-[160px] lg:max-w-[180px] mx-auto rounded" />
                 <div className="text-center">
-                  <div className="h-4 bg-gray-800 rounded mb-2 w-3/4 mx-auto"></div>
-                  <div className="h-4 bg-gray-800 rounded mb-2 w-1/2 mx-auto"></div>
-                  <div className="h-8 bg-gray-800 rounded w-20 mx-auto"></div>
+                  <div className="h-4 bg-gray-800 rounded mb-2 w-3/4 mx-auto" />
+                  <div className="h-4 bg-gray-800 rounded mb-2 w-1/2 mx-auto" />
+                  <div className="h-8 bg-gray-800 rounded w-20 mx-auto" />
                 </div>
               </div>
             ))}
-          </div>
-        )}
-
-        {/* Added to Cart Animation */}
-        {showCartNotification && (
-          <div className="fixed top-4 right-4 bg-stone-900 text-white px-6 py-3 rounded-lg z-50 animate-fade-in transition-opacity duration-300">
-            Added to cart!
           </div>
         )}
       </div>

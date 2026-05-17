@@ -1,25 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getStaticProductById } from '../../../../data/products';
+import { getProductById } from '../../../../services/product.service';
 
-// STATIC FALLBACK MODE — serving instantly without MongoDB
+// MongoDB ONLY — no static fallback
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   const { id } = await context.params;
 
-  const product = getStaticProductById(id);
+  try {
+    const product = await getProductById(id);
 
-  if (!product) {
+    return NextResponse.json({
+      success: true,
+      product,
+      cached: false,
+    });
+  } catch (error: any) {
+    const status = error.name === 'NotFoundError' ? 404 : 503;
     return NextResponse.json(
-      { success: false, error: 'Product not found' },
-      { status: 404 }
+      { success: false, error: error.message || 'المنتج مش موجود' },
+      { status }
     );
   }
-
-  return NextResponse.json({
-    success: true,
-    product,
-    cached: false,
-  });
 }

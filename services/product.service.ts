@@ -6,7 +6,8 @@ import { cacheKeys } from '../lib/cache-keys';
 import { NotFoundError, DatabaseError } from '../lib/errors';
 import { CreateProductInput, UpdateProductInput } from '../lib/schemas/product.schema';
 import { Product } from '../models/product';
-import { getStaticActiveProducts, getStaticProductById } from '../data/products';
+// Static product fallbacks have been permanently removed.
+// MongoDB is the ONLY source of truth. If it's down, we show the error — not fake data.
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface AdminProductsResult {
@@ -51,9 +52,8 @@ export async function getActiveProducts(): Promise<Product[]> {
     apiCache.set(cacheKey, products, CACHE_TTL.PRODUCTS);
     return products;
   } catch (err) {
-    // ── Static fallback when MongoDB is unreachable ──────────────────
-    console.warn('[product.service] MongoDB unavailable — serving static fallback products');
-    return getStaticActiveProducts();
+    console.error('[product.service] MongoDB unavailable:', err instanceof Error ? err.message : String(err));
+    throw new DatabaseError(`فشل تحميل المنتجات. جرب تاني بعد شوية.`);
   }
 }
 
@@ -183,9 +183,6 @@ export async function getProductById(id: string): Promise<any> {
     return product;
   } catch (err) {
     if (err instanceof NotFoundError) throw err;
-    // ── Static fallback when MongoDB is unreachable ──────────────────
-    const staticProduct = getStaticProductById(id);
-    if (staticProduct) return staticProduct;
-    throw new DatabaseError(`Failed to fetch product: ${err instanceof Error ? err.message : String(err)}`);
+    throw new DatabaseError(`فشل تحميل المنتج. جرب تاني بعد شوية.`);
   }
 }

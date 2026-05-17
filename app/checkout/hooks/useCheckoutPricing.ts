@@ -51,23 +51,18 @@ export function useCheckoutPricing({ cartItems, paymentMethod, cityName }: UseCh
   const selectedGovernorate = governorates.find(g => g.governorate === cityName);
   
   // ── Shipping & COD ─────────────────────────────────────────────────────
-  // Per-product shipping rates. Heavier/larger products cost more to ship.
-  // Falls back to the governorate's default rate when no product-specific rate exists.
+  // ONLY use product-level city pricing (from each product's cityPricing array).
+  // NEVER fall back to global CityPricing settings — those are admin defaults
+  // and should NOT override what's configured per product.
   let shippingCost = 0;
   let codFee = 0;
   
   if (selectedGovernorate) {
-    const baseShipping = selectedGovernorate.shippingCost || 0;
-    const baseCod = selectedGovernorate.codFee || 0;
-    
     cartItems.forEach(item => {
       const productSpecifics = selectedGovernorate.productPricing?.[item.id];
-      const itemShipping = (productSpecifics?.shippingCost != null && productSpecifics.shippingCost > 0)
-        ? productSpecifics.shippingCost
-        : baseShipping;
-      const itemCod = (productSpecifics?.codFee != null && productSpecifics.codFee > 0)
-        ? productSpecifics.codFee
-        : baseCod;
+      // Only charge what the product's own city pricing says
+      const itemShipping = productSpecifics?.shippingCost ?? 0;
+      const itemCod = productSpecifics?.codFee ?? 0;
       
       shippingCost += itemShipping * item.quantity;
       codFee += itemCod * item.quantity;

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { STATIC_PRODUCTS } from '../../../../data/products';
+import dbConnect from '../../../../lib/mongodb';
+import Product from '../../../../models/product';
+import mongoose from 'mongoose';
 
 export async function POST(request: NextRequest) {
   const { ids } = await request.json();
@@ -8,8 +10,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: 'Invalid product IDs' }, { status: 400 });
   }
 
-  // Serve from static data instantly
-  const products = STATIC_PRODUCTS.filter(p => ids.includes(p._id));
+  try {
+    await dbConnect();
 
-  return NextResponse.json({ success: true, products });
+    // Filter to valid ObjectIds only
+    const validIds = ids.filter(id => mongoose.Types.ObjectId.isValid(id));
+    
+    const products = await Product.find({ _id: { $in: validIds } }).lean();
+
+    return NextResponse.json({ success: true, products: JSON.parse(JSON.stringify(products)) });
+  } catch (error) {
+    console.error('[API /products/batch] MongoDB failed:', error);
+    return NextResponse.json(
+      { success: false, error: 'فشل تحميل المنتجات.' },
+      { status: 503 }
+    );
+  }
 }

@@ -1,14 +1,30 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { Product } from '../../../models/product';
 import Nav from '../../sections/Nav';
 import ProductDetailsTabs from './ProductDetailsTabs';
 import { useCart } from '../../../contexts/CartContext';
 import { motion, AnimatePresence } from 'motion/react';
 import Footer from '@/app/sections/Footer';
-import { nameToSlug } from '../../../data/products';
+
+/**
+ * ProductClient — Client-side product detail page
+ *
+ * Performance optimizations:
+ * - Uses next/image for automatic WebP, srcset, and lazy loading
+ * - Gallery scroll uses ref instead of document.querySelector
+ * - Related products use router.push for client-side navigation (no full reload)
+ * - Memoized computed values (displayMedia, currentStock, displayPrice)
+ * 
+ * Bug fixes applied:
+ * - Quantity capped by live stock (was unbounded)
+ * - Buy Now no longer navigates on addItem failure
+ * - Stock passed to addItem for CartContext enforcement
+ * - Variant comparison by name instead of reference equality
+ */
 
 type Variant = {
   name: string;
@@ -19,7 +35,7 @@ type Variant = {
 
 interface Props {
   product: Product;
-  allProducts: Product[];
+  relatedProducts: Product[];
 }
 
 // Helper — detect video URLs
@@ -27,23 +43,10 @@ const isVideoUrl = (url: string) =>
   url.includes('.mp4') || url.includes('.mov') || url.includes('.avi') ||
   url.includes('.webm') || url.includes('video/upload');
 
-// Build the media array for display (variant images first, then product images + videos)
-function getDisplayMedia(product: Product, selectedVariant: Variant | null): string[] {
-  let media: string[] = [];
-  if (selectedVariant?.images && selectedVariant.images.length > 0) {
-    media = selectedVariant.images;
-  } else {
-    media = [product.mainImage, ...(product.images || [])].filter(Boolean);
-  }
-  if (product.videos && product.videos.length > 0) {
-    media = [...media, ...product.videos];
-  }
-  return media;
-}
-
-export default function ProductClient({ product, allProducts }: Props) {
+export default function ProductClient({ product, relatedProducts }: Props) {
   const router = useRouter();
   const { addItem } = useCart();
+  const galleryRef = useRef<HTMLDivElement>(null);
 
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(
     product.variants && product.variants.length > 0 ? product.variants[0] : null
@@ -53,46 +56,100 @@ export default function ProductClient({ product, allProducts }: Props) {
   const [showCartNotification, setShowCartNotification] = useState(false);
   const [cartNotificationKey, setCartNotificationKey] = useState(0);
 
-  // Animation refs
-  const imagesRef = React.useRef(null);
-  const infoRef = React.useRef(null);
-  const relatedRef = React.useRef(null);
+  // ── Computed values (memoized) ─────────────────────────────────────────────
+  const currentStock = useMemo(() => {
+    return selectedVariant ? selectedVariant.stock : product.stock;
+  }, [selectedVariant, product.stock]);
 
-  const isOutOfStock = selectedVariant ? selectedVariant.stock <= 0 : product.stock <= 0;
-  const allMedia = getDisplayMedia(product, selectedVariant);
+  const displayPrice = useMemo(() => {
+    return (selectedVariant?.price && selectedVariant.price > 0)
+      ? selectedVariant.price
+      : product.price;
+  }, [selectedVariant, product.price]);
 
-  const handleAddToCart = () => {
+  const isOutOfStock = currentStock <= 0;
+
+  const allMedia = useMemo(() => {
+    let media: string[] = [];
+    if (selectedVariant?.images && selectedVariant.images.length > 0) {
+      media = selectedVariant.images;
+    } else {
+      media = [product.mainImage, ...(product.images || [])].filter(Boolean);
+    }
+    if (product.videos && product.videos.length > 0) {
+      media = [...media, ...product.videos];
+    }
+    return media;
+  }, [selectedVariant, product.mainImage, product.images, product.videos]);
+
+  // ── Cart actions ───────────────────────────────────────────────────────────
+  const buildCartItem = useCallback(() => ({
+    id: product._id!,
+    name: product.name,
+    image: product.mainImage,
+    price: displayPrice,
+    stock: currentStock,
+    variant: selectedVariant
+      ? { name: selectedVariant.name, color: selectedVariant.name }
+      : undefined,
+  }), [product._id, product.name, product.mainImage, displayPrice, currentStock, selectedVariant]);
+
+  const handleAddToCart = useCallback(() => {
     try {
-      addItem({
-        id: product._id!,
-        name: product.name,
-        image: product.mainImage,
-        price: selectedVariant?.price || product.price,
-        variant: selectedVariant ? { name: selectedVariant.name, color: selectedVariant.name } : undefined,
-      }, quantity);
+      addItem(buildCartItem(), quantity, currentStock);
       setCartNotificationKey(prev => prev + 1);
       setShowCartNotification(true);
       setTimeout(() => setShowCartNotification(false), 3000);
     } catch (error) {
       console.error('Error adding to cart:', error);
     }
-  };
+  }, [addItem, buildCartItem, quantity, currentStock]);
 
-  const handleBuyNow = () => {
+  const handleBuyNow = useCallback(() => {
     try {
-      addItem({
-        id: product._id!,
-        name: product.name,
-        image: product.mainImage,
-        price: selectedVariant?.price || product.price,
-        variant: selectedVariant ? { name: selectedVariant.name, color: selectedVariant.name } : undefined,
-      }, quantity);
+      addItem(buildCartItem(), quantity, currentStock);
       router.push('/checkout');
     } catch (error) {
       console.error('Error in Buy Now:', error);
-      router.push('/checkout');
+      // Don't navigate on error — item wasn't added
     }
-  };
+  }, [addItem, buildCartItem, quantity, currentStock, router]);
+
+  // ── Quantity controls (stock-bounded) ──────────────────────────────────────
+  const decrementQty = useCallback(() => {
+    setQuantity(prev => Math.max(1, prev - 1));
+  }, []);
+
+  const incrementQty = useCallback(() => {
+    setQuantity(prev => {
+      const max = currentStock > 0 ? currentStock : 1;
+      return Math.min(prev + 1, max);
+    });
+  }, [currentStock]);
+
+  // ── Gallery scroll via ref ─────────────────────────────────────────────────
+  const scrollToImage = useCallback((index: number) => {
+    if (galleryRef.current) {
+      galleryRef.current.scrollTo({
+        left: index * galleryRef.current.clientWidth,
+        behavior: 'smooth',
+      });
+    }
+    setCurrentImageIndex(index);
+  }, []);
+
+  const handleGalleryScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const container = e.currentTarget;
+    const newIndex = Math.round(container.scrollLeft / container.clientWidth);
+    setCurrentImageIndex(newIndex);
+  }, []);
+
+  // ── Variant selection ──────────────────────────────────────────────────────
+  const selectVariant = useCallback((variant: Variant) => {
+    setSelectedVariant(variant);
+    setQuantity(1);
+    setCurrentImageIndex(0);
+  }, []);
 
   return (
     <>
@@ -106,7 +163,6 @@ export default function ProductClient({ product, allProducts }: Props) {
 
               {/* Left Side - Images */}
               <motion.div
-                ref={imagesRef}
                 className="space-y-4"
                 initial={{ opacity: 0, x: -50 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -120,29 +176,34 @@ export default function ProductClient({ product, allProducts }: Props) {
                 >
                   {/* Horizontal Scrollable Gallery */}
                   <div
+                    ref={galleryRef}
                     className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide"
                     style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch', msOverflowStyle: 'none', scrollbarWidth: 'none' }}
-                    onScroll={(e) => {
-                      const container = e.currentTarget;
-                      const newIndex = Math.round(container.scrollLeft / container.clientWidth);
-                      setCurrentImageIndex(newIndex);
-                    }}
+                    onScroll={handleGalleryScroll}
                   >
                     {allMedia.map((media, index) => (
                       <div
-                        key={index}
-                        className="flex-shrink-0 w-full bg-gray-800 overflow-hidden"
+                        key={`${media}-${index}`}
+                        className="flex-shrink-0 w-full bg-gray-800 overflow-hidden relative"
                         style={{ scrollSnapAlign: 'start', aspectRatio: '1080 / 1350', maxWidth: '1080px', maxHeight: '1350px' }}
                       >
                         {isVideoUrl(media) ? (
-                          <video src={media} className="w-full h-full object-cover" controls preload="metadata" playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : (
-                          <img
+                          <video
                             src={media}
-                            alt={`${product.name} ${index + 1}`}
                             className="w-full h-full object-cover"
-                            loading={index === 0 ? 'eager' : 'lazy'}
+                            controls
+                            preload="metadata"
+                            playsInline
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        ) : (
+                          <Image
+                            src={media}
+                            alt={`${product.name} - image ${index + 1}`}
+                            fill
+                            sizes="(max-width: 768px) 100vw, 50vw"
+                            className="object-cover"
+                            priority={index === 0}
                           />
                         )}
                       </div>
@@ -151,7 +212,7 @@ export default function ProductClient({ product, allProducts }: Props) {
 
                   {/* Image Counter */}
                   {allMedia.length > 1 && (
-                    <div className="absolute bottom-6 right-4 bg-black/70 text-white px-2 py-1 rounded-full text-sm">
+                    <div className="absolute bottom-6 right-4 bg-black/70 text-white px-2 py-1 rounded-full text-sm" aria-live="polite">
                       {currentImageIndex + 1} / {allMedia.length}
                     </div>
                   )}
@@ -162,18 +223,19 @@ export default function ProductClient({ product, allProducts }: Props) {
                   <div className="hidden lg:grid grid-cols-4 gap-2">
                     {allMedia.map((media, index) => (
                       <button
-                        key={index}
-                        onClick={() => {
-                          const gallery = document.querySelector('.flex.overflow-x-auto') as HTMLElement | null;
-                          if (gallery) gallery.scrollTo({ left: index * gallery.clientWidth, behavior: 'smooth' });
-                          setCurrentImageIndex(index);
-                        }}
+                        key={`thumb-${index}`}
+                        onClick={() => scrollToImage(index)}
+                        aria-label={`View image ${index + 1} of ${allMedia.length}`}
                         className={`aspect-square overflow-hidden bg-gray-800 border-2 transition-colors duration-300 rounded-lg ${currentImageIndex === index ? 'border-white' : 'border-transparent hover:border-gray-400'}`}
                       >
                         {isVideoUrl(media) ? (
-                          <video src={media} className="w-full h-full object-cover" preload="metadata" playsInline muted />
+                          <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+                            <svg className="w-8 h-8 text-white/60" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M8 5v14l11-7z" />
+                            </svg>
+                          </div>
                         ) : (
-                          <img src={media} alt={`${product.name} ${index + 1}`} className="w-full h-full object-cover" />
+                          <img src={media} alt={`${product.name} thumbnail ${index + 1}`} className="w-full h-full object-cover" loading="lazy" />
                         )}
                       </button>
                     ))}
@@ -183,7 +245,6 @@ export default function ProductClient({ product, allProducts }: Props) {
 
               {/* Right Side - Product Info */}
               <motion.div
-                ref={infoRef}
                 className="space-y-3"
                 initial={{ opacity: 0, x: 50 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -195,12 +256,12 @@ export default function ProductClient({ product, allProducts }: Props) {
                   <div className="flex items-center justify-center space-x-2 mb-2">
                     {product.discount && product.discount > 0 && product.originalPrice ? (
                       <>
-                        <span className="text-base lg:text-lg font-bold">{product.price.toLocaleString()} LE</span>
+                        <span className="text-base lg:text-lg font-bold">{displayPrice.toLocaleString()} LE</span>
                         <span className="text-sm text-gray-400 line-through">{product.originalPrice.toLocaleString()} LE</span>
                         <span className="bg-red-600 text-white px-1.5 py-0.5 text-xs font-medium rounded">{product.discount}% OFF</span>
                       </>
                     ) : (
-                      <span className="text-base lg:text-lg font-bold">{product.price.toLocaleString()} LE</span>
+                      <span className="text-base lg:text-lg font-bold">{displayPrice.toLocaleString()} LE</span>
                     )}
                     {/* Custom badge — always visible when set by admin */}
                     {product.customOutOfStockMessage && (
@@ -217,16 +278,22 @@ export default function ProductClient({ product, allProducts }: Props) {
                 {product.variants && product.variants.length > 0 && (
                   <div>
                     <label className="text-xs font-medium mb-2 flex items-center justify-center">Color</label>
-                    <div className="flex flex-wrap gap-2 items-center justify-center">
-                      {product.variants.map((variant, index) => (
-                        <button
-                          key={index}
-                          onClick={() => { setSelectedVariant(variant); setQuantity(1); setCurrentImageIndex(0); }}
-                          className={`px-3 py-1.5 border text-xs font-medium transition-colors duration-300 ${selectedVariant === variant ? 'bg-white text-black border-white' : 'bg-transparent text-white border-white hover:bg-white hover:text-black'}`}
-                        >
-                          {variant.name}
-                        </button>
-                      ))}
+                    <div className="flex flex-wrap gap-2 items-center justify-center" role="radiogroup" aria-label="Product color options">
+                      {product.variants.map((variant, index) => {
+                        const isSelected = selectedVariant?.name === variant.name;
+                        return (
+                          <button
+                            key={index}
+                            onClick={() => selectVariant(variant)}
+                            role="radio"
+                            aria-checked={isSelected}
+                            aria-label={`Color: ${variant.name}${variant.stock <= 0 ? ' (out of stock)' : ''}`}
+                            className={`px-3 py-1.5 border text-xs font-medium transition-colors duration-300 ${isSelected ? 'bg-white text-black border-white' : 'bg-transparent text-white border-white hover:bg-white hover:text-black'}`}
+                          >
+                            {variant.name}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -235,10 +302,40 @@ export default function ProductClient({ product, allProducts }: Props) {
                 <div>
                   <label className="flex items-center justify-center text-xs font-medium mb-2">Quantity</label>
                   <div className="flex items-center space-x-3 justify-center">
-                    <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="text-white hover:bg-white hover:text-black transition-colors duration-300 flex items-center justify-center text-sm font-bold">-</button>
-                    <span className="text-sm font-medium w-6 text-center">{quantity}</span>
-                    <button onClick={() => setQuantity(quantity + 1)} className="text-white hover:bg-white hover:text-black transition-colors duration-300 flex items-center justify-center text-sm font-bold">+</button>
+                    <button
+                      onClick={decrementQty}
+                      disabled={quantity <= 1}
+                      aria-label="Decrease quantity"
+                      className={`w-8 h-8 flex items-center justify-center text-sm font-bold transition-colors duration-300 ${
+                        quantity <= 1
+                          ? 'text-white/30 cursor-not-allowed'
+                          : 'text-white hover:bg-white hover:text-black'
+                      }`}
+                    >
+                      -
+                    </button>
+                    <span className="text-sm font-medium w-8 text-center tabular-nums" aria-live="polite" aria-label={`Quantity: ${quantity}`}>
+                      {quantity}
+                    </span>
+                    <button
+                      onClick={incrementQty}
+                      disabled={!isOutOfStock && quantity >= currentStock}
+                      aria-label="Increase quantity"
+                      className={`w-8 h-8 flex items-center justify-center text-sm font-bold transition-colors duration-300 ${
+                        !isOutOfStock && quantity >= currentStock
+                          ? 'text-white/30 cursor-not-allowed'
+                          : 'text-white hover:bg-white hover:text-black'
+                      }`}
+                    >
+                      +
+                    </button>
                   </div>
+                  {/* Stock indicator */}
+                  {!isOutOfStock && currentStock <= 5 && (
+                    <p className="text-center text-amber-400 text-xs mt-1">
+                      Only {currentStock} left in stock
+                    </p>
+                  )}
                 </div>
 
                 {/* Action Buttons */}
@@ -247,8 +344,20 @@ export default function ProductClient({ product, allProducts }: Props) {
                     <button disabled className="w-full bg-gray-700 border border-gray-600 text-gray-400 px-4 py-2 text-xs font-bold uppercase tracking-wider cursor-not-allowed opacity-60">Out of Stock</button>
                   ) : (
                     <>
-                      <button onClick={handleAddToCart} className="w-full bg-transparent border border-white text-white px-4 py-2 text-xs font-bold uppercase tracking-wider hover:bg-white hover:text-black transition-all duration-300">Add to cart</button>
-                      <button onClick={handleBuyNow} className="w-full bg-white text-black px-4 py-2 text-xs font-bold uppercase tracking-wider hover:bg-gray-100 transition-colors duration-300">Buy it now</button>
+                      <button
+                        onClick={handleAddToCart}
+                        aria-label={`Add ${product.name} to cart`}
+                        className="w-full bg-transparent border border-white text-white px-4 py-2 text-xs font-bold uppercase tracking-wider hover:bg-white hover:text-black transition-all duration-300"
+                      >
+                        Add to cart
+                      </button>
+                      <button
+                        onClick={handleBuyNow}
+                        aria-label={`Buy ${product.name} now`}
+                        className="w-full bg-white text-black px-4 py-2 text-xs font-bold uppercase tracking-wider hover:bg-gray-100 transition-colors duration-300"
+                      >
+                        Buy it now
+                      </button>
                     </>
                   )}
                 </div>
@@ -258,49 +367,63 @@ export default function ProductClient({ product, allProducts }: Props) {
             </div>
 
             {/* Related Products */}
-            <motion.div
-              ref={relatedRef}
-              className="mt-20 lg:mt-26"
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-            >
-              <motion.h2
-                className="text-lg sm:text-xl lg:text-2xl font-bold text-center mb-16 lg:mb-20 uppercase tracking-wider text-[#b3b3b3]"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.6, delay: 0.4 }}
-              >
-                MIGHT ALSO LIKE
-              </motion.h2>
-
+            {relatedProducts.length > 0 && (
               <motion.div
-                className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.6, delay: 0.6 }}
+                className="mt-20 lg:mt-26"
+                initial={{ opacity: 0, y: 50 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.2 }}
               >
-                {allProducts.filter(p => p._id !== product._id).slice(0, 6).map((relatedProduct) => (
-                  <div
-                    key={relatedProduct._id}
-                    className="group cursor-pointer"
-                    onClick={() => window.location.href = `/product/${nameToSlug(relatedProduct.name)}`}
-                  >
-                    <div className="aspect-square mb-2 lg:mb-3 overflow-hidden bg-gray-800 max-w-[140px] sm:max-w-[160px] lg:max-w-[180px] mx-auto">
-                      {isVideoUrl(relatedProduct.mainImage) ? (
-                        <video src={relatedProduct.mainImage} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" preload="metadata" playsInline muted />
-                      ) : (
-                        <img src={relatedProduct.mainImage} alt={relatedProduct.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                      )}
+                <motion.h2
+                  className="text-lg sm:text-xl lg:text-2xl font-bold text-center mb-16 lg:mb-20 uppercase tracking-wider text-[#b3b3b3]"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.6, delay: 0.4 }}
+                >
+                  MIGHT ALSO LIKE
+                </motion.h2>
+
+                <motion.div
+                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.6, delay: 0.6 }}
+                >
+                  {relatedProducts.filter(p => p._id !== product._id).slice(0, 6).map((relatedProduct) => (
+                    <div
+                      key={relatedProduct._id}
+                      className="group cursor-pointer"
+                      onClick={() => router.push(`/product/${relatedProduct._id}`)}
+                      role="link"
+                      aria-label={`View ${relatedProduct.name}`}
+                    >
+                      <div className="aspect-square mb-2 lg:mb-3 overflow-hidden bg-gray-800 max-w-[140px] sm:max-w-[160px] lg:max-w-[180px] mx-auto relative">
+                        {isVideoUrl(relatedProduct.mainImage) ? (
+                          <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+                            <svg className="w-10 h-10 text-white/60" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M8 5v14l11-7z" />
+                            </svg>
+                          </div>
+                        ) : (
+                          <Image
+                            src={relatedProduct.mainImage}
+                            alt={relatedProduct.name}
+                            fill
+                            sizes="(max-width: 640px) 140px, (max-width: 1024px) 160px, 180px"
+                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                          />
+                        )}
+                      </div>
+                      <div className="text-center">
+                        <h3 className="text-[#b3b3b3] text-xs sm:text-sm lg:text-base font-medium mb-1 group-hover:text-[#b3b3b3]/70 transition-colors duration-300 line-clamp-2">{relatedProduct.name}</h3>
+                        <p className="text-[#b3b3b3] font-bold text-sm lg:text-base tabular-nums">{relatedProduct.price.toLocaleString()} L.E</p>
+                      </div>
                     </div>
-                    <div className="text-center">
-                      <h3 className="text-[#b3b3b3] text-xs sm:text-sm lg:text-base font-medium mb-1 group-hover:text-[#b3b3b3]/70 transition-colors duration-300 line-clamp-2">{relatedProduct.name}</h3>
-                      <p className="text-[#b3b3b3] font-bold text-sm lg:text-base">{relatedProduct.price.toLocaleString()} L.E</p>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </motion.div>
               </motion.div>
-            </motion.div>
+            )}
 
           </div>
         </div>
@@ -313,6 +436,8 @@ export default function ProductClient({ product, allProducts }: Props) {
               initial={{ y: -50, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: -50, opacity: 0 }}
+              role="status"
+              aria-live="polite"
               className="fixed top-4 right-4 bg-black text-white px-6 py-3 rounded-lg z-50"
             >
               Added to cart!

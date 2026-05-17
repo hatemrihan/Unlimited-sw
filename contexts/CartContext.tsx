@@ -144,44 +144,80 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const loadCartSafe = async () => {
       try {
         const savedCart = localStorage.getItem('cart');
-        if (savedCart) {
-          const items: CartItem[] = JSON.parse(savedCart);
+        if (!savedCart) return;
 
-          // Fetch the live dynamic product list from MongoDB
-          const response = await fetch('/api/products');
-          const data = await response.json();
-          if (!data.success || !data.products) {
-            dispatch({ type: 'LOAD_CART', payload: items });
+        let items: CartItem[];
+        try {
+          items = JSON.parse(savedCart);
+          if (!Array.isArray(items)) {
+            console.warn('[Cart] localStorage had non-array cart data — resetting');
+            localStorage.removeItem('cart');
             return;
           }
-          
-          const liveProducts = data.products;
+        } catch {
+          console.warn('[Cart] localStorage had corrupt cart JSON — resetting');
+          localStorage.removeItem('cart');
+          return;
+        }
 
-          // Build a live price map and migration mapping
-          const livePriceMap: Record<string, number> = {};
-          liveProducts.forEach((p: any) => {
-            if (p._id) {
-              livePriceMap[p._id.toString()] = p.price;
-              if (p.variants && Array.isArray(p.variants)) {
-                p.variants.forEach((v: any) => {
-                  if (v.price && v.price > 0) {
-                    livePriceMap[`${p._id}_${v.name}`] = v.price;
-                  }
-                });
-              }
+        // Filter out items missing required fields
+        items = items.filter(item => item.id && item.name && typeof item.price === 'number');
+
+        if (items.length === 0) {
+          dispatch({ type: 'LOAD_CART', payload: [] });
+          return;
+        }
+
+        // Fetch the live product list from MongoDB for price/ID validation
+        let liveProducts: any[] = [];
+        try {
+          const response = await fetch('/api/products?limit=200');
+          const data = await response.json();
+          if (data.success && Array.isArray(data.products)) {
+            liveProducts = data.products;
+          }
+        } catch {
+          // API failed — load cart as-is (cart page will re-validate)
+          dispatch({ type: 'LOAD_CART', payload: items });
+          return;
+        }
+
+        if (liveProducts.length === 0) {
+          dispatch({ type: 'LOAD_CART', payload: items });
+          return;
+        }
+
+        // Build live price map for fast lookups
+        const livePriceMap: Record<string, number> = {};
+        liveProducts.forEach((p: any) => {
+          if (p._id) {
+            const pid = p._id.toString();
+            livePriceMap[pid] = p.price;
+            if (Array.isArray(p.variants)) {
+              p.variants.forEach((v: any) => {
+                if (typeof v.price === 'number' && v.price > 0) {
+                  livePriceMap[`${pid}_${v.name}`] = v.price;
+                }
+              });
             }
-          });
+          }
+        });
 
-          // Overwrite stale prices and auto-migrate legacy static IDs to Mongo ObjectIds
-          const sanitizedItems = items.map(item => {
+        // Sanitize every cart item: migrate legacy IDs & refresh prices
+        const sanitizedItems = items
+          .map(item => {
             let actualId = item.id;
-            
-            // Auto-Migrator: if cart item has a static ID, find the MongoDB _id via name matching
-            if (actualId.startsWith('static-')) {
-              const matchingLiveProduct = liveProducts.find((lp: any) => lp.name === item.name);
-              if (matchingLiveProduct && matchingLiveProduct._id) {
-                console.log(`[Cart Migrator] Upgraded legacy ID for ${item.name} -> ${matchingLiveProduct._id}`);
+
+            // Auto-Migrate: if cart item has a non-MongoDB ID, find via name matching
+            if (!/^[0-9a-fA-F]{24}$/.test(actualId)) {
+              const matchingLiveProduct = liveProducts.find(
+                (lp: any) => lp.name?.trim().toLowerCase() === item.name?.trim().toLowerCase()
+              );
+              if (matchingLiveProduct?._id) {
                 actualId = matchingLiveProduct._id.toString();
+              } else {
+                // Product not found in DB — remove from cart
+                return null;
               }
             }
 
@@ -190,24 +226,20 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const liveBasePrice = livePriceMap[actualId];
             const freshPrice = liveVariantPrice ?? liveBasePrice;
 
-            if (freshPrice !== undefined && freshPrice !== item.price) {
-              console.warn(`[Cart] Stale price detected for ${item.name}: was ${item.price}, updated to ${freshPrice}`);
-            }
-
             return {
               ...item,
-              id: actualId, // Auto-migrated ID injected safely
+              id: actualId,
               price: freshPrice ?? item.price,
             };
-          });
+          })
+          .filter((item): item is CartItem => item !== null);
 
-          dispatch({ type: 'LOAD_CART', payload: sanitizedItems });
-        }
+        dispatch({ type: 'LOAD_CART', payload: sanitizedItems });
       } catch (error) {
-        // Failed to load from localStorage or API
+        console.error('[Cart] Failed to load cart from localStorage:', error);
       }
     };
-    
+
     loadCartSafe();
   }, []);
 

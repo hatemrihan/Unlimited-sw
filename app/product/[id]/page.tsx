@@ -1,7 +1,6 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import ProductClient from './ProductClient';
-import { STATIC_PRODUCTS, getStaticProductById, nameToSlug } from '../../../data/products';
 
 import dbConnect from '../../../lib/mongodb';
 import ProductModel from '../../../models/product';
@@ -10,63 +9,54 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-// ─── Direct Server-side data ────────────────────────────────────────────────
-async function fetchProduct(id: string) {
+// ─── Shared product fetch — called once, reused by metadata + render ─────────
+// Next.js automatically deduplicates fetch() calls in server components,
+// but raw Mongoose queries don't benefit from that. We use a module-level
+// cache per-request via React.cache() to avoid double DB hits.
+import { cache } from 'react';
+
+const getProduct = cache(async (id: string) => {
   try {
-    if (process.env.MONGO_BYPASS !== 'true') {
-      await dbConnect();
-      // First try to find by MongoDB ID Document
-      if (id.match(/^[0-9a-fA-F]{24}$/)) {
-        const dbProduct = await ProductModel.findById(id).lean();
-        if (dbProduct) return dbProduct as any;
-      } else {
-        // Find by name matching the slug fallback if requested by slug
-        const dbProduct = await ProductModel.findOne({ 
-          // Very basic fuzzy match if needed, but normally we rely on ID now
-          $or: [
-            { name: { $regex: new RegExp(id.replace(/-/g, '.*'), 'i') } }
-          ]
-        }).lean();
-        if (dbProduct) return dbProduct as any;
-      }
+    await dbConnect();
+
+    // Valid MongoDB ObjectId → find by _id
+    if (id.match(/^[0-9a-fA-F]{24}$/)) {
+      const dbProduct = await ProductModel.findById(id).lean();
+      if (dbProduct) return dbProduct as any;
     }
+
+    // Not a valid ObjectId → product not found (no static fallback)
+    return null;
   } catch (error) {
     console.error(`MongoDB fetch failed for product ${id}:`, error);
+    return null;
   }
-  
-  // Return static product instantly without any network request overhead
-  return getStaticProductById(id) || null;
-}
+});
 
-/** Fetches related products instantly */
+/** Fetches related products from MongoDB ONLY — sorted by admin order */
 async function fetchRelatedProducts(excludeId: string) {
   try {
-    if (process.env.MONGO_BYPASS !== 'true') {
-      await dbConnect();
-      const dbProducts = await ProductModel.find({ 
-        _id: { $ne: excludeId },
-        isActive: true
-      })
-      .limit(4)
-      .lean();
-      
-      if (dbProducts && dbProducts.length > 0) {
-        return dbProducts as any[];
-      }
-    }
-  } catch(err) {
-    console.log('Using static related products');
-  }
+    await dbConnect();
+    const dbProducts = await ProductModel.find({
+      _id: { $ne: excludeId },
+      isActive: true
+    })
+    .select('name price originalPrice discount mainImage images stock variants showPreorderBadge showOutOfStockBadge customOutOfStockMessage')
+    .sort({ order: 1 })
+    .limit(4)
+    .lean();
 
-  return STATIC_PRODUCTS
-    .filter(p => nameToSlug(p.name) !== excludeId && p._id !== excludeId)
-    .slice(0, 4);
+    return (dbProducts || []) as any[];
+  } catch (err) {
+    console.error('Failed to fetch related products:', err);
+    return [];
+  }
 }
 
 // ─── Dynamic metadata ─────────────────────────────────────────────────────────
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  const product = await fetchProduct(id);
+  const product = await getProduct(id); // Uses React.cache — no double DB hit
 
   if (!product) return { title: 'Product Not Found | Unlimited SW' };
 
@@ -91,11 +81,15 @@ export default async function ProductPage({ params }: Props) {
   const { id } = await params;
 
   const [product, relatedProducts] = await Promise.all([
-    fetchProduct(id),
+    getProduct(id), // Same React.cache instance — free if metadata already fetched it
     fetchRelatedProducts(id),
   ]);
 
   if (!product) notFound();
 
-  return <ProductClient product={product} allProducts={relatedProducts} />;
+  // Serialize for client — strip Mongoose internals
+  const serializedProduct = JSON.parse(JSON.stringify(product));
+  const serializedRelated = JSON.parse(JSON.stringify(relatedProducts));
+
+  return <ProductClient product={serializedProduct} relatedProducts={serializedRelated} />;
 }
