@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 // FULL QUALITY IMAGES - No compression or quality loss!
 import oneImage from '@/public/images/all-grayy/1763900966157-avnq5qjndt.png';
 import twoImage from '@/public/images/all-grayy/1763901202402-bdlfhcw2tbu.png';
@@ -11,17 +11,8 @@ import twoImage from '@/public/images/all-grayy/1763901202402-bdlfhcw2tbu.png';
 const COMPONENT_VERSION = '2.0';
 
 const Explore = () => {
-    const router = useRouter();
     const containerRef = useRef<HTMLDivElement>(null);
     const [sliderPos, setSliderPos] = useState(50); // Percentage (0-100)
-    const [isAddingToCart, setIsAddingToCart] = useState(false);
-
-    // Handle Add to Cart button click
-    const handleAddToCart = () => {
-        setIsAddingToCart(true);
-        // Navigate to specific product page
-        router.push('/product/wall-mounted-pull-up-bar-wall-parallel-bar');
-    };
 
     // Handle slider drag
     const handlePointerDown = (e: React.PointerEvent) => {
@@ -72,15 +63,14 @@ const Explore = () => {
                                 Wall-mounted pull-up bar +Wall-parallel bar
                             </h2>
                             <p className="text-2xl font-light text-white text-center">
-                                4,999 LE
+                                5400 LE
                             </p>
-                            <button
-                                onClick={handleAddToCart}
-                                disabled={isAddingToCart}
-                                className="w-full py-3 text-sm font-medium tracking-wide transition-colors bg-white hover:bg-white/90 text-black disabled:opacity-50 disabled:cursor-not-allowed"
+                            <Link
+                                href="/product/69df958953ccc60ae476918d"
+                                className="w-full py-3 text-sm font-medium tracking-wide transition-colors bg-white hover:bg-white/90 text-black flex items-center justify-center"
                             >
-                                {isAddingToCart ? 'Loading...' : 'Buy Now'}
-                            </button>
+                                Buy Now
+                            </Link>
                             <div className="space-y-2 text-xs text-white/50 text-center max-w-sm">
                                 <p className="font-medium text-white/70">GRAY/BLACK.</p>
                                 <p>Wall-parallel bar support made of strong 3 mm heavy-duty steel with high-quality paint finish.</p>
@@ -148,13 +138,12 @@ const Explore = () => {
                             <p className="text-xl font-light text-white text-center">
                                 4,999 LE
                             </p>
-                            <button
-                                onClick={handleAddToCart}
-                                disabled={isAddingToCart}
-                                className="w-full py-2.5 text-xs font-medium tracking-wide transition-colors bg-white hover:bg-white/90 text-black disabled:opacity-50 disabled:cursor-not-allowed"
+                            <Link
+                                href="/product/69df958953ccc60ae476918d"
+                                className="w-full py-2.5 text-xs font-medium tracking-wide transition-colors bg-white hover:bg-white/90 text-black flex items-center justify-center"
                             >
-                                {isAddingToCart ? 'Loading...' : 'Buy Now'}
-                            </button>
+                                Buy Now
+                            </Link>
                             <div className="space-y-1 text-[10px] text-white/50 text-center max-w-xs">
                                 <p className="font-medium text-white/70">GRAY/BLACK.</p>
                                 <p>Wall-parallel bar support made of strong 3 mm heavy-duty steel with high-quality paint finish.</p>

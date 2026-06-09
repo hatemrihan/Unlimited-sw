@@ -39,7 +39,7 @@ export class MongoProductRepository implements IProductRepository {
     await dbConnect();
     return ProductModel.find({ isActive: true })
       .select(fields)
-      .sort({ order: 1 })
+      .sort({ price: 1 })
       .lean()
       .exec() as unknown as Product[];
   }
@@ -55,7 +55,7 @@ export class MongoProductRepository implements IProductRepository {
     await dbConnect();
     return ProductModel.find(query)
       .select(PRODUCT_FIELDS + ' createdAt updatedAt')
-      .sort({ createdAt: -1 })
+      .sort({ price: 1 })
       .skip(skip)
       .limit(limit)
       .lean()
