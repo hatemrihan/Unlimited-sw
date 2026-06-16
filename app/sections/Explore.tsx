@@ -63,7 +63,7 @@ const Explore = () => {
                                 Wall-mounted pull-up bar +Wall-parallel bar
                             </h2>
                             <p className="text-2xl font-light text-white text-center">
-                                5400 LE
+                                5,400 LE
                             </p>
                             <Link
                                 href="/product/69df958953ccc60ae476918d"
@@ -136,7 +136,7 @@ const Explore = () => {
                                 Wall-mounted pull-up bar +Wall-parallel bar
                             </h2>
                             <p className="text-xl font-light text-white text-center">
-                                4,999 LE
+                                5,400 LE
                             </p>
                             <Link
                                 href="/product/69df958953ccc60ae476918d"
