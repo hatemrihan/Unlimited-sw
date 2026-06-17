@@ -6,6 +6,8 @@ import { useSession } from 'next-auth/react';
 import { ArrowRight, Loader2, Check, ChevronLeft, Plus } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 
+import ImageOrderManager from '@/components/ImageOrderManager';
+import VariantImageManager from '@/components/VariantImageManager';
 import FileUpload from '@/components/FileUpload';
 import ProtectedAdminRoute from '@/components/auth/protected-admin-route';
 import SidebarNav from '../../sections/SideBarNav';
@@ -290,44 +292,15 @@ export default function EditProductPage() {
 
                       {/* Step 3: Media */}
                       {activeStepId === 'media' && (
-                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                          <p className="text-[13px] text-white/50 mb-6 font-medium">الصور والفيديوهات الخاصة بالمنتج الأساسي</p>
-
-                          {(product.mainImage || product.images.length > 0 || (product.videos && product.videos.length > 0)) && (
-                            <div className="flex flex-wrap gap-4 mb-8 bg-white/[0.02] p-5 rounded-xl border border-white/[0.05]">
-                              {product.mainImage && (
-                                <div className="relative group w-28 h-28">
-                                  <img src={product.mainImage} alt="الرئيسية" className="w-full h-full object-cover rounded-xl border-2 border-white/40" />
-                                  <span className="absolute bottom-1 right-1 bg-white text-black text-[10px] px-2 py-0.5 rounded shadow font-bold">الرئيسية</span>
-                                </div>
-                              )}
-                              {product.images.map((img, idx) => (
-                                <div key={idx} className="relative group w-28 h-28">
-                                  <img src={img} alt="" className="w-full h-full object-cover rounded-xl border border-white/[0.12]" />
-                                  <button onClick={() => updateField("images", product.images.filter((_, i) => i !== idx))} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 text-sm flex items-center justify-center shadow">×</button>
-                                </div>
-                              ))}
-                              {product.videos?.map((vid, idx) => (
-                                <div key={idx} className="relative group w-28 h-28">
-                                  <video src={vid} className="w-full h-full object-cover rounded-xl border border-white/[0.12]" muted />
-                                  <button onClick={() => updateField("videos", product.videos?.filter((_, i) => i !== idx) || [])} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 text-sm flex items-center justify-center shadow">×</button>
-                                  <div className="absolute bottom-1 right-1 bg-black/80 text-white text-[10px] px-2 py-0.5 rounded">فيديو</div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                          <div className="bg-black/30 border border-white/[0.08] p-5 rounded-xl">
-                            <FileUpload
-                              label="رفع وسائط (صورة/فيديو)"
-                              accept="image/*,video/*"
-                              onUpload={(url: string, isVideo?: boolean) => {
-                                if (!product.mainImage && !isVideo) updateField("mainImage", url);
-                                else if (isVideo) updateField("videos", [...(product.videos || []), url]);
-                                else updateField("images", [...product.images, url]);
-                              }}
-                            />
-                          </div>
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                          <ImageOrderManager
+                            mainImage={product.mainImage}
+                            images={product.images}
+                            videos={product.videos}
+                            onMainImageChange={(url) => updateField("mainImage", url)}
+                            onImagesChange={(imgs) => updateField("images", imgs)}
+                            onVideosChange={(vids) => updateField("videos", vids)}
+                          />
                         </div>
                       )}
 
@@ -360,30 +333,14 @@ export default function EditProductPage() {
 
                                 <div className="border-t border-white/[0.05] pt-5 flex items-center justify-between">
                                   <div className="flex-1">
-                                    <p className="text-[12px] text-white/60 mb-3 font-medium">صور خاصة بهذا المتغير</p>
-                                    <div className="flex items-center gap-3">
-                                      {variant.images?.map((img, i) => (
-                                        <div key={i} className="relative w-12 h-12">
-                                          <img src={img} className="w-full h-full object-cover rounded-lg border border-white/20" alt="" />
-                                          <button onClick={() => {
-                                            const newVariants = [...product.variants];
-                                            newVariants[index].images = variant.images?.filter((_, idx) => idx !== i);
-                                            updateField("variants", newVariants);
-                                          }} className="absolute -top-1.5 -right-1.5 bg-red-500 rounded-full w-4 h-4 text-[10px] text-white flex items-center justify-center shadow">×</button>
-                                        </div>
-                                      ))}
-                                      <div className="scale-90 origin-right">
-                                        <FileUpload
-                                          label="رفع صورة"
-                                          accept="image/*"
-                                          onUpload={(url: string) => {
-                                            const newVariants = [...product.variants];
-                                            newVariants[index] = { ...variant, images: [...(variant.images || []), url] };
-                                            updateField("variants", newVariants);
-                                          }}
-                                        />
-                                      </div>
-                                    </div>
+                                    <VariantImageManager
+                                  images={variant.images || []}
+                                  onImagesChange={(newImages) => {
+                                    const newVariants = [...product.variants];
+                                    newVariants[index] = { ...variant, images: newImages };
+                                    updateField("variants", newVariants);
+                                  }}
+                                />
                                   </div>
 
                                   {product.variants.length > 1 && (

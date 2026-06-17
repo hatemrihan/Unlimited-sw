@@ -218,6 +218,39 @@ export const useProduct = (productId: string) => {
     }));
   };
 
+  // ─── Image ordering helpers ───────────────────────────────────────────
+
+  const moveImage = (fromIndex: number, toIndex: number) => {
+    setProduct(prev => {
+      const newImages = [...prev.images];
+      const [moved] = newImages.splice(fromIndex, 1);
+      newImages.splice(toIndex, 0, moved);
+      return { ...prev, images: newImages };
+    });
+  };
+
+  const replaceImage = (index: number, newUrl: string) => {
+    setProduct(prev => {
+      const newImages = [...prev.images];
+      newImages[index] = newUrl;
+      return { ...prev, images: newImages };
+    });
+  };
+
+  const swapMainImage = (imageIndex: number) => {
+    setProduct(prev => {
+      const oldMain = prev.mainImage;
+      const newMain = prev.images[imageIndex];
+      const newImages = [...prev.images];
+      if (oldMain) {
+        newImages[imageIndex] = oldMain;
+      } else {
+        newImages.splice(imageIndex, 1);
+      }
+      return { ...prev, mainImage: newMain, images: newImages };
+    });
+  };
+
   return { 
     product, 
     loading, 
@@ -229,6 +262,9 @@ export const useProduct = (productId: string) => {
     removeVariant,
     updateFaq,
     addFaq,
-    removeFaq
+    removeFaq,
+    moveImage,
+    replaceImage,
+    swapMainImage
   };
 };
