@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 
 import ImageOrderManager from '@/components/ImageOrderManager';
 import VariantImageManager from '@/components/VariantImageManager';
-import FileUpload from '@/components/FileUpload';
 import ProtectedAdminRoute from '@/components/auth/protected-admin-route';
 import SidebarNav from '../../sections/SideBarNav';
 import { useProduct } from '@/hooks/useProduct';
@@ -164,10 +163,10 @@ export default function EditProductPage() {
                                 className="w-full flex items-center gap-4 text-right group"
                               >
                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border-2 transition-all duration-300 z-10 ${isActive
-                                    ? 'border-white bg-white text-black'
-                                    : isCompleted
-                                      ? 'border-green-500 bg-stone-900 text-green-500'
-                                      : 'border-white/20 bg-stone-900 text-white/40 group-hover:border-white/40'
+                                  ? 'border-white bg-white text-black'
+                                  : isCompleted
+                                    ? 'border-green-500 bg-stone-900 text-green-500'
+                                    : 'border-white/20 bg-stone-900 text-white/40 group-hover:border-white/40'
                                   }`}>
                                   {isCompleted ? <Check className="w-4 h-4" strokeWidth={3} /> : <span className="text-[11px] font-bold">{step.num}</span>}
                                 </div>
@@ -334,13 +333,13 @@ export default function EditProductPage() {
                                 <div className="border-t border-white/[0.05] pt-5 flex items-center justify-between">
                                   <div className="flex-1">
                                     <VariantImageManager
-                                  images={variant.images || []}
-                                  onImagesChange={(newImages) => {
-                                    const newVariants = [...product.variants];
-                                    newVariants[index] = { ...variant, images: newImages };
-                                    updateField("variants", newVariants);
-                                  }}
-                                />
+                                      images={variant.images || []}
+                                      onImagesChange={(newImages) => {
+                                        const newVariants = [...product.variants];
+                                        newVariants[index] = { ...variant, images: newImages };
+                                        updateField("variants", newVariants);
+                                      }}
+                                    />
                                   </div>
 
                                   {product.variants.length > 1 && (
