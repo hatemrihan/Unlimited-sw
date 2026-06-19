@@ -3,5 +3,4 @@ export const adminEmails = process.env.ADMIN_EMAILS
   : [
     "hatemrihan100@gmail.com",
     "muhamed.alkady@gmail.com",
-    "noshasami12@gmail.com"
   ];
