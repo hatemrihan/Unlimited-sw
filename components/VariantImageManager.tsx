@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useCallback } from "react";
-import { GripVertical, Replace, Trash2 } from "lucide-react";
+import { GripVertical, Replace, Trash2, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import FileUpload from "./FileUpload";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -116,6 +117,7 @@ const VariantImageManager: React.FC<VariantImageManagerProps> = ({
                 onClick={(e) => {
                   e.stopPropagation();
                   onImagesChange(images.filter((_, idx) => idx !== i));
+                  toast.success('تم حذف الصورة');
                 }}
                 className="p-1 bg-red-500/40 hover:bg-red-500/60 rounded transition-colors"
                 title="حذف"
@@ -150,6 +152,7 @@ const VariantImageManager: React.FC<VariantImageManagerProps> = ({
               newImages[replacingIndex] = url;
               onImagesChange(newImages);
               setReplacingIndex(null);
+              toast.success(`تم استبدال الصورة رقم ${replacingIndex + 1}`);
             }}
           />
           <button

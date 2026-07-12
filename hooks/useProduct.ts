@@ -94,12 +94,12 @@ export const useProduct = (productId: string) => {
           
           setProduct(fetchedProduct);
         } else {
-          toast.error('Failed to load product data');
+          toast.error('فشل تحميل بيانات المنتج');
           router.push('/admin#products');
         }
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') return;
-        toast.error('Error loading product data');
+        toast.error('خطأ في تحميل بيانات المنتج');
         router.push('/admin#products');
       } finally {
         setLoading(false);
@@ -115,32 +115,33 @@ export const useProduct = (productId: string) => {
 
   const updateProduct = async () => {
     if (!product.name || !product.mainImage || !product.description) {
-      toast.error('Please fill in all required fields (Name, Main Image, Description)');
+      toast.error('يرجى ملء جميع الحقول المطلوبة (الاسم، الصورة الرئيسية، الوصف)');
       return;
     }
 
     if (!product.variants || product.variants.length === 0) {
-      toast.error('Please add at least one equipment variant');
+      toast.error('يرجى إضافة متغير واحد على الأقل');
       return;
     }
 
     if ((product.discount || 0) > 100 || (product.discount || 0) < 0) {
-      toast.error('Discount must be between 0 and 100');
+      toast.error('الخصم يجب أن يكون بين 0 و 100');
       return;
     }
 
     if ((product.originalPrice || 0) <= 0) {
-      toast.error('Please enter a valid original price');
+      toast.error('يرجى إدخال سعر أصلي صحيح');
       return;
     }
 
     const hasEmptyVariantName = product.variants.some(v => !v.name.trim());
     if (hasEmptyVariantName) {
-      toast.error('All variants must have a name');
+      toast.error('جميع المتغيرات يجب أن تحتوي على اسم');
       return;
     }
 
     setSavingProduct(true);
+    const savingToastId = toast.loading('جاري حفظ التعديلات...');
     try {
 
       const finalPrice = calculateFinalPrice(product.originalPrice || 0, product.discount);
@@ -156,15 +157,15 @@ export const useProduct = (productId: string) => {
       });
 
       if (response.ok) {
-        toast.success('Product updated successfully!');
+        toast.success('تم تحديث المنتج بنجاح!', { id: savingToastId });
         router.push('/admin#products');
       } else {
         const errorData = await response.json();
-        toast.error('Failed to update product: ' + (errorData.error || 'Unknown error'));
+        toast.error('فشل تحديث المنتج: ' + (errorData.error || 'خطأ غير معروف'), { id: savingToastId });
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      toast.error('Error updating product: ' + message);
+      const message = error instanceof Error ? error.message : 'خطأ غير معروف';
+      toast.error('خطأ في تحديث المنتج: ' + message, { id: savingToastId });
     } finally {
       setSavingProduct(false);
     }
@@ -178,6 +179,17 @@ export const useProduct = (productId: string) => {
     setProduct(prev => {
       const newVariants = [...prev.variants];
       newVariants[index] = variant;
+      return { ...prev, variants: newVariants };
+    });
+  };
+
+  // Dedicated updater for variant images that avoids stale closure issues.
+  // Unlike updateVariant which receives a pre-built variant object (potentially stale),
+  // this reads prev.variants[index] inside the functional updater.
+  const updateVariantImages = (index: number, images: string[]) => {
+    setProduct(prev => {
+      const newVariants = [...prev.variants];
+      newVariants[index] = { ...prev.variants[index], images };
       return { ...prev, variants: newVariants };
     });
   };
@@ -258,6 +270,7 @@ export const useProduct = (productId: string) => {
     updateProduct,
     updateField,
     updateVariant,
+    updateVariantImages,
     addVariant,
     removeVariant,
     updateFaq,

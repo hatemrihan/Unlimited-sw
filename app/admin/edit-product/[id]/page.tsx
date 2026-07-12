@@ -38,7 +38,7 @@ export default function EditProductPage() {
 
   const {
     product, loading, savingProduct, updateProduct: handleUpdateProduct,
-    updateField, updateVariant, addVariant, removeVariant, updateFaq, addFaq, removeFaq
+    updateField, updateVariant, updateVariantImages, addVariant, removeVariant, updateFaq, addFaq, removeFaq
   } = useProduct(productId);
 
   const currentStepIndex = STEPS.findIndex(s => s.id === activeStepId);
@@ -334,11 +334,7 @@ export default function EditProductPage() {
                                   <div className="flex-1">
                                     <VariantImageManager
                                       images={variant.images || []}
-                                      onImagesChange={(newImages) => {
-                                        const newVariants = [...product.variants];
-                                        newVariants[index] = { ...variant, images: newImages };
-                                        updateField("variants", newVariants);
-                                      }}
+                                      onImagesChange={(newImages) => updateVariantImages(index, newImages)}
                                     />
                                   </div>
 

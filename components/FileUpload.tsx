@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import { toast } from 'sonner';
 
 interface FileUploadProps {
   onUpload: (url: string, isVideo?: boolean) => void;
@@ -80,13 +81,13 @@ const FileUpload: React.FC<FileUploadProps> = ({
         });
         
         onUpload(data.url, isVideoFile);
-        alert('✅ File uploaded successfully to AWS S3!');
+        toast.success('تم رفع الملف بنجاح');
       } else {
         throw new Error(data?.error || `Upload failed with status ${response.status}`);
       }
     } catch (error) {
       console.error('💥 Error uploading file:', error);
-      alert(`Error uploading file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`فشل رفع الملف: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
     } finally {
       setUploading(false);
     }
