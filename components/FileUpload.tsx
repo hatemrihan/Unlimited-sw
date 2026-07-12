@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { toast } from 'sonner';
 
 interface FileUploadProps {
@@ -11,15 +11,16 @@ interface FileUploadProps {
   className?: string;
 }
 
-const FileUpload: React.FC<FileUploadProps> = ({ 
-  onUpload, 
-  currentUrl, 
-  label, 
+const FileUpload: React.FC<FileUploadProps> = ({
+  onUpload,
+  currentUrl,
+  label,
   accept = "image/*,video/*,.mp4,.mov,.avi,.webm",
   className = ""
 }) => {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Handle file selection - Upload to AWS S3
   const handleFileSelect = async (file: File) => {
@@ -36,12 +37,12 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
     try {
       // Detect if file is video or image
-      const isVideo = file.type.startsWith('video/') || 
-                   file.name.toLowerCase().includes('.mp4') ||
-                   file.name.toLowerCase().includes('.mov') ||
-                   file.name.toLowerCase().includes('.avi') ||
-                   file.name.toLowerCase().includes('.webm');
-      
+      const isVideo = file.type.startsWith('video/') ||
+        file.name.toLowerCase().includes('.mp4') ||
+        file.name.toLowerCase().includes('.mov') ||
+        file.name.toLowerCase().includes('.avi') ||
+        file.name.toLowerCase().includes('.webm');
+
       const resourceType = isVideo ? 'video' : 'image';
 
       console.log('📹 File type check:', {
@@ -55,31 +56,31 @@ const FileUpload: React.FC<FileUploadProps> = ({
       // Upload to AWS S3 via our API endpoint
       const formData = new FormData();
       formData.append('file', file);
-      
-      console.log('☁️ Uploading to AWS S3...');
-      const response = await fetch('/api/s3-upload', { 
-        method: 'POST', 
-        body: formData 
+
+      console.log('☁️ Uploading to AWS S3... YA KEBER');
+      const response = await fetch('/api/s3-upload', {
+        method: 'POST',
+        body: formData
       });
-      
+
       console.log('📡 S3 upload status:', response.status);
       const data = await response.json();
-      
+
       if (response.ok && data.url) {
         // Determine if it's a video based on resource_type or file type
-        const isVideoFile = data.resource_type === 'video' || 
-                           file.type.startsWith('video/') ||
-                           data.url.includes('.mp4') || 
-                           data.url.includes('.mov') || 
-                           data.url.includes('.webm');
-        
-        console.log('✅ S3 upload complete:', { 
-          url: data.url, 
-          resource_type: data.resource_type, 
-          file_type: file.type, 
-          isVideo: isVideoFile 
+        const isVideoFile = data.resource_type === 'video' ||
+          file.type.startsWith('video/') ||
+          data.url.includes('.mp4') ||
+          data.url.includes('.mov') ||
+          data.url.includes('.webm');
+
+        console.log('✅ S3 upload complete: YA KEBEER', {
+          url: data.url,
+          resource_type: data.resource_type,
+          file_type: file.type,
+          isVideo: isVideoFile
         });
-        
+
         onUpload(data.url, isVideoFile);
         toast.success('تم رفع الملف بنجاح');
       } else {
@@ -97,7 +98,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-    
+
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
       handleFileSelect(files[0]);
@@ -124,19 +125,22 @@ const FileUpload: React.FC<FileUploadProps> = ({
     }
   };
 
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
+
   return (
     <div className={className}>
       <label className="block text-sm font-medium text-black dark:text-white mb-2">
         {label}
       </label>
-      
+
       {/* Upload Area */}
       <div
-        className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors duration-300 ${
-          dragOver 
-            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+        className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors duration-300 ${dragOver
+            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
             : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
-        }`}
+          }`}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -151,16 +155,16 @@ const FileUpload: React.FC<FileUploadProps> = ({
             {/* Preview uploaded file */}
             <div className="mb-4">
               {currentUrl.includes('.mp4') || currentUrl.includes('.mov') || currentUrl.includes('.avi') || currentUrl.includes('.webm') || currentUrl.includes('video') ? (
-                <video 
-                  src={currentUrl} 
+                <video
+                  src={currentUrl}
                   className="max-w-full h-32 mx-auto rounded-lg object-cover"
                   controls
                   preload="metadata"
                 />
               ) : (
-                <img 
-                  src={currentUrl} 
-                  alt="Preview" 
+                <img
+                  src={currentUrl}
+                  alt="Preview"
                   className="max-w-full h-32 mx-auto rounded-lg object-cover"
                 />
               )}
@@ -168,7 +172,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
             <p className="text-green-600 dark:text-green-400 text-sm mb-2">✅ File uploaded</p>
             <button
               type="button"
-              onClick={() => document.getElementById(`file-input-${label}`)?.click()}
+              onClick={triggerFileInput}
               className="bg-black border border-white text-white px-4 py-2 rounded-lg transition-colors duration-300"
             >
               Change File
@@ -192,17 +196,17 @@ const FileUpload: React.FC<FileUploadProps> = ({
             )}
             <button
               type="button"
-              onClick={() => document.getElementById(`file-input-${label}`)?.click()}
+              onClick={triggerFileInput}
               className="mt-4 bg-black border border-white text-white px-4 py-2 rounded-lg transition-colors duration-300"
             >
               Choose File
             </button>
           </div>
         )}
-        
-        {/* Hidden file input */}
+
+        {/* Hidden file input — using ref instead of getElementById to avoid duplicate ID collisions */}
         <input
-          id={`file-input-${label}`}
+          ref={fileInputRef}
           type="file"
           accept={accept}
           onChange={handleInputChange}
@@ -214,6 +218,3 @@ const FileUpload: React.FC<FileUploadProps> = ({
 };
 
 export default FileUpload;
-
-
-
