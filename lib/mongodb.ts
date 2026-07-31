@@ -13,7 +13,7 @@ declare global {
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/alkadyy-dev';
 
 if (process.env.NODE_ENV === 'development') {
-  console.log(`MongoDB: ${process.env.MONGODB_URI ? 'Atlas configured' : 'Using local fallback'}`);
+  console.log(`MongoDB: ${process.env.MONGODB_URI ? 'Atlass configured' : 'Using local fallback'}`);
 }
 
 if (!MONGODB_URI) {
@@ -38,7 +38,7 @@ async function dbConnect() {
       bufferCommands: false,
       maxPoolSize: 10,
       serverSelectionTimeoutMS: 10000, // Time to wait for Atlas to respond on cold start
-      socketTimeoutMS: 45000, 
+      socketTimeoutMS: 45000,
       connectTimeoutMS: 10000,
       family: 4, // Use IPv4, skip trying IPv6
       retryWrites: true,
