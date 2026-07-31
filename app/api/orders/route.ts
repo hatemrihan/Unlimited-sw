@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../lib/mongodb';
 import Order from '../../../models/order';
-import { validatePromo } from '../../../services/promoService';
 import { createOrderTransaction, resolveVariantName } from '../../../services/orderCreationService';
+import { computeOrderPricing, findPricingMismatches, ServerPricing } from '../../../services/orderPricingService';
 import { dispatchOrderPostProcessing } from '../../../services/emailQueueService';
 import { logger } from '../../../utils/logger';
 import { requireAdmin } from '../../../lib/requireAdmin';
@@ -11,6 +11,48 @@ const MONGO_BYPASS = process.env.MONGO_BYPASS === 'true';
 
 // Ensure Node runtime for Nodemailer
 export const runtime = 'nodejs';
+
+/**
+ * Prices an order from the database and checks the browser's claims against it.
+ * Returns either the authoritative pricing or the response to send back.
+ */
+async function priceOrder(
+  orderData: any
+): Promise<{ pricing: ServerPricing } | { response: NextResponse }> {
+  const pricingResult = await computeOrderPricing(orderData);
+
+  if (!pricingResult.success || !pricingResult.pricing) {
+    return {
+      response: NextResponse.json(
+        { success: false, error: pricingResult.error || 'Failed to price this order. Please refresh and try again.' },
+        { status: 400 }
+      ),
+    };
+  }
+
+  // A disagreement means either tampering or a stale page. Either way the
+  // customer must not be charged a number they never saw, so refuse rather
+  // than silently substituting our own total.
+  const mismatches = findPricingMismatches(orderData, pricingResult.pricing);
+  if (mismatches.length > 0) {
+    logger.warn('💰 Order pricing mismatch — rejecting', {
+      mismatches,
+      customerEmail: orderData.customer?.email,
+    });
+    return {
+      response: NextResponse.json(
+        {
+          success: false,
+          error: 'الأسعار اتغيرت. من فضلك حدّث الصفحة وراجع الطلب قبل ما تكمل.',
+          code: 'PRICING_MISMATCH',
+        },
+        { status: 409 }
+      ),
+    };
+  }
+
+  return { pricing: pricingResult.pricing };
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -112,28 +154,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Handle promo code if provided
-    let promoDiscount = 0;
-    if (!MONGO_BYPASS) {
-      if (orderData.promoCode && orderData.promoCode.trim()) {
-        try {
-          logger.info('🎫 Processing promo code natively:', orderData.promoCode);
-          const promoResponse = await validatePromo(orderData.promoCode, orderData.subtotal);
+    // 💰 Recompute every monetary field from MongoDB. The request body's price,
+    // subtotal, shippingCost, codFee and totalAmount are treated as claims to be
+    // checked, never as inputs — otherwise a crafted POST buys anything for 1 EGP.
+    const priced = MONGO_BYPASS ? { pricing: null } : await priceOrder(orderData);
+    if ('response' in priced) return priced.response;
 
-          if (promoResponse.success && promoResponse.promo) {
-            promoDiscount = promoResponse.promo.discount;
-            // Note constraint: incrementPromoUsage is handled robustly within the createOrderTransaction bounds downstream
-          }
-        } catch (promoError) {
-          // Continue with order creation even if promo fails
-          logger.warn('🎫 Promo Engine warning:', promoError);
-        }
-      }
-    }
+    const pricing = priced.pricing;
+    const promoDiscount = pricing?.discountAmount || 0;
 
-    // Calculate final amounts
-    const subtotalAfterDiscount = Math.max(0, orderData.subtotal - promoDiscount);
-    const finalTotal = subtotalAfterDiscount + orderData.shippingCost + (orderData.codFee || 0);
+    // Server-computed money, keyed by line so each product row gets its own price.
+    const serverPriceByLine = new Map(
+      (pricing?.lines || []).map(line => [`${line.productId}::${line.variantName ?? ''}`, line.price])
+    );
+    const finalTotal = pricing ? pricing.totalAmount : Number(orderData.totalAmount) || 0;
 
     // Create order object
     const newOrder: any = {
@@ -146,14 +180,17 @@ export async function POST(request: NextRequest) {
 
       products: orderData.products.map((product: unknown) => {
         const prod = product as any; // Type assertion for now
+        // Record the variant the stock engine will actually decrement, so
+        // cancellations can restock the right element.
+        const variantName = resolveVariantName(prod);
+        const serverPrice = serverPriceByLine.get(`${prod.productId || ''}::${variantName ?? ''}`);
         return {
           productId: prod.productId || '',
           name: prod.name || '',
-          price: Number(prod.price) || 0,
+          // Always the database's price, never the body's.
+          price: serverPrice ?? (Number(prod.price) || 0),
           quantity: Number(prod.quantity) || 1,
-          // Record the variant the stock engine will actually decrement, so
-          // cancellations can restock the right element.
-          variantName: resolveVariantName(prod),
+          variantName,
           size: prod.size || undefined,
           color: prod.color || undefined,
           image: prod.image || ''
@@ -162,11 +199,11 @@ export async function POST(request: NextRequest) {
       paymentMethod: orderData.paymentMethod,
       transactionScreenshot: orderData.transactionScreenshot || undefined,
       totalAmount: Number(finalTotal) || 0,
-      subtotal: Number(orderData.subtotal) || 0,
-      shippingCost: Number(orderData.shippingCost) || 0,
-      promoCode: orderData.promoCode?.trim() || undefined,
+      subtotal: pricing ? pricing.subtotal : Number(orderData.subtotal) || 0,
+      shippingCost: pricing ? pricing.shippingCost : Number(orderData.shippingCost) || 0,
+      promoCode: (pricing ? pricing.promoCode : orderData.promoCode?.trim()) || undefined,
       discountAmount: promoDiscount || 0,
-      codFee: Number(orderData.codFee) || 0,
+      codFee: pricing ? pricing.codFee : Number(orderData.codFee) || 0,
       status: 'pending',
       notes: orderData.notes?.trim() || undefined,
       orderDate: new Date()
