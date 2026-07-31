@@ -5,6 +5,7 @@ import { validatePromo } from '../../../services/promoService';
 import { createOrderTransaction } from '../../../services/orderCreationService';
 import { dispatchOrderPostProcessing } from '../../../services/emailQueueService';
 import { logger } from '../../../utils/logger';
+import { requireAdmin } from '../../../lib/requireAdmin';
 
 const MONGO_BYPASS = process.env.MONGO_BYPASS === 'true';
 
@@ -289,6 +290,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const authError = await requireAdmin();
+    if (authError) return authError;
     await dbConnect();
 
     const url = new URL(request.url);

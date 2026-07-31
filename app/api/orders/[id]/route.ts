@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../../lib/mongodb';
 import Order from '../../../../models/order';
+import { requireAdmin } from '../../../../lib/requireAdmin';
 
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authError = await requireAdmin();
+    if (authError) return authError;
     const params = await context.params;
     const { id } = params;
 
@@ -56,6 +59,8 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authError = await requireAdmin();
+    if (authError) return authError;
     const params = await context.params;
     const { id } = params;
 
