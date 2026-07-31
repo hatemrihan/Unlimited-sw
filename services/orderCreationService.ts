@@ -1,17 +1,8 @@
 import mongoose from 'mongoose';
 import dbConnect from '../lib/mongodb';
 import Order, { IOrder } from '../models/order';
-import Product from '../models/product';
 import { invalidateProductCache } from '../lib/cache';
-
-/**
- * Validates whether a string is a valid MongoDB ObjectId (24-char hex).
- * Used to guard against legacy static IDs like "static-product-1" that
- * would crash Mongoose queries expecting real ObjectIds.
- */
-function isValidObjectId(id: string): boolean {
-  return /^[0-9a-fA-F]{24}$/.test(id);
-}
+import { reserveStock, isValidProductId } from './inventory.service';
 
 /**
  * Resolves the variant name for an order line item.
@@ -45,66 +36,26 @@ export async function createOrderTransaction(orderData: any, newOrder: Partial<I
       // let bookkeeping accumulate across attempts.
       touchedProductIds.clear();
 
-      // 1. Validate and deduct stock for each product structurally locked inside the session
+      // 1. Reserve stock for every line, structurally locked inside the session.
+      // 🛡️ Non-MongoDB IDs (legacy static fallback products) are skipped: they
+      // don't exist in the database, so querying them would crash. The order
+      // still completes — we just can't track stock for items not in MongoDB.
       for (const orderProduct of orderData.products) {
-        const productId = orderProduct.productId;
-
-        // 🛡️ GUARD: Skip stock decrement for non-MongoDB IDs (legacy static fallback products)
-        // These IDs (e.g. "static-product-1") don't exist in the database, so querying
-        // them would crash with "Cast to ObjectId failed". The order still completes —
-        // we just can't track stock for products that aren't in MongoDB.
-        if (!isValidObjectId(productId)) {
-          console.warn(`⚠️ [OrderService] Skipping stock decrement for legacy/static product ID: "${productId}" (${orderProduct.name}). This item is not in MongoDB.`);
-          continue;
+        if (!isValidProductId(orderProduct.productId)) {
+          console.warn(`⚠️ [OrderService] Skipping stock decrement for legacy/static product ID: "${orderProduct.productId}" (${orderProduct.name}). This item is not in MongoDB.`);
         }
-
-        const variantName = resolveVariantName(orderProduct);
-
-        if (variantName) {
-          // $elemMatch binds both conditions to the SAME variant element. Without it,
-          // `variants.name` can match one element while `variants.stock` is satisfied
-          // by a different one — selling an out-of-stock variant and debiting another.
-          const updateResult = await Product.findOneAndUpdate(
-            {
-              _id: productId,
-              variants: {
-                $elemMatch: { name: variantName, stock: { $gte: orderProduct.quantity } }
-              }
-            },
-            {
-              // Keep the denormalized product.stock mirror in lockstep with the
-              // variant sum it mirrors, in the same atomic update.
-              $inc: {
-                'variants.$.stock': -orderProduct.quantity,
-                stock: -orderProduct.quantity
-              }
-            },
-            { new: true, session }
-          );
-
-          if (!updateResult) {
-            throw new Error(`للأسف الكمية المطلوبة من ${orderProduct.name} (${variantName}) مش متوفرة دلوقتي. حد تاني طلبها قبلك بثواني!`);
-          }
-        } else {
-          // Atomic main stock decrement
-          const updateResult = await Product.findOneAndUpdate(
-            {
-              _id: productId,
-              stock: { $gte: orderProduct.quantity }
-            },
-            {
-              $inc: { stock: -orderProduct.quantity }
-            },
-            { new: true, session }
-          );
-
-          if (!updateResult) {
-            throw new Error(`للأسف ${orderProduct.name} خلصت من الستوك! حد تاني طلبها قبلك بثواني. جرب تاني بعدين أو تواصل معانا.`);
-          }
-        }
-
-        touchedProductIds.add(String(productId));
       }
+
+      const reserved = await reserveStock(
+        orderData.products.map((p: any) => ({
+          productId: p.productId,
+          variantName: resolveVariantName(p),
+          quantity: p.quantity,
+          name: p.name,
+        })),
+        session
+      );
+      reserved.forEach(id => touchedProductIds.add(id));
 
       // 2. Commit Order Payload identically across the session
       const [order] = await Order.create([newOrder], { session });

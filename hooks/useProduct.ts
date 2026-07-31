@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { calculateFinalPrice } from '@/utils/pricing';
 import { toast } from 'sonner';
@@ -70,6 +70,11 @@ export const useProduct = (productId: string) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [savingProduct, setSavingProduct] = useState<boolean>(false);
 
+  // Stock as it was when this page loaded, per variant name. Used as the
+  // optimistic-lock precondition so saving the form cannot silently erase an
+  // order that decremented stock while the admin was editing.
+  const loadedStockRef = useRef<Map<string, number>>(new Map());
+
   useEffect(() => {
     const controller = new AbortController();
 
@@ -92,6 +97,10 @@ export const useProduct = (productId: string) => {
              ...f, id: f._id || f.id || crypto.randomUUID() 
           })) || [];
           
+          loadedStockRef.current = new Map(
+            fetchedProduct.variants.map((v: ProductVariant) => [v.name, Number(v.stock) || 0])
+          );
+
           setProduct(fetchedProduct);
         } else {
           toast.error('فشل تحميل بيانات المنتج');
@@ -112,6 +121,49 @@ export const useProduct = (productId: string) => {
 
     return () => controller.abort();
   }, [productId]);
+
+  /**
+   * Applies stock edits one variant at a time through the optimistically-locked
+   * stock endpoint, using the values this page loaded as the precondition.
+   * Returns an error message if any change was rejected, null on success.
+   */
+  const saveStockChanges = async (): Promise<string | null> => {
+    const changed = product.variants.filter(v => {
+      const loaded = loadedStockRef.current.get(v.name);
+      const next = Number(v.stock) || 0;
+      // A variant the page never loaded is new: the PUT just created it at 0,
+      // so any stock the admin typed still has to be applied.
+      return loaded === undefined ? next !== 0 : loaded !== next;
+    });
+
+    for (const variant of changed) {
+      const loaded = loadedStockRef.current.get(variant.name);
+      const next = Number(variant.stock) || 0;
+
+      const response = await fetch(`/api/admin/products/${productId}/stock`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          loaded === undefined
+            ? { variantName: variant.name, delta: next }
+            : { variantName: variant.name, expected: loaded, next }
+        ),
+      });
+
+      if (response.status === 409) {
+        return `المخزون الخاص بـ "${variant.name}" اتغير أثناء التعديل (طلب جديد على الأرجح). حدّث الصفحة وحاول تاني.`;
+      }
+
+      if (!response.ok) {
+        return `فشل تحديث مخزون "${variant.name}".`;
+      }
+
+      // Keep the baseline current so a retry does not re-send a stale precondition.
+      loadedStockRef.current.set(variant.name, Number(variant.stock) || 0);
+    }
+
+    return null;
+  };
 
   const updateProduct = async () => {
     if (!product.name || !product.mainImage || !product.description) {
@@ -145,8 +197,9 @@ export const useProduct = (productId: string) => {
     try {
 
       const finalPrice = calculateFinalPrice(product.originalPrice || 0, product.discount);
-      const totalStock = product.variants.reduce((sum, v) => sum + (v.stock || 0), 0);
-      const payload = { ...product, price: finalPrice, stock: totalStock };
+      // Stock is deliberately NOT part of this payload — the server ignores it
+      // and it goes through the optimistically-locked stock endpoint below.
+      const payload = { ...product, price: finalPrice };
 
       const response = await fetch(`/api/admin/products/${productId}`, {
         method: 'PUT',
@@ -157,6 +210,11 @@ export const useProduct = (productId: string) => {
       });
 
       if (response.ok) {
+        const stockError = await saveStockChanges();
+        if (stockError) {
+          toast.error(stockError, { id: savingToastId, duration: 8000 });
+          return;
+        }
         toast.success('تم تحديث المنتج بنجاح!', { id: savingToastId });
         router.push('/admin#products');
       } else {
