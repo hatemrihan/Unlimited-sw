@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
+import { unstable_cache } from 'next/cache';
 import { productRepository } from '../repositories/product.repository';
+import { PRODUCTS_TAG, productTag } from '../lib/product-tags';
 import { apiCache, invalidateProductCache } from '../lib/cache';
 import { CACHE_TTL } from '../lib/cache-ttl';
 import { cacheKeys } from '../lib/cache-keys';
@@ -21,38 +23,37 @@ interface AdminProductsResult {
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
+ * Reads all active products through Next's Data Cache, tagged so that
+ * revalidateTag(PRODUCTS_TAG) purges it for EVERY serverless instance at once.
+ * The per-process Map cannot do that — see lib/product-tags.ts.
+ */
+const readActiveProductsCached = unstable_cache(
+  async () => productRepository.findAllActive(),
+  ['products:all'],
+  { tags: [PRODUCTS_TAG], revalidate: CACHE_TTL.PRODUCTS / 1000 }
+);
+
+/**
  * Returns all active products.
- * Cache → MongoDB fallback → write cache.
+ * Shared Data Cache → MongoDB. Falls back to the in-process cache only to ride
+ * out a database outage.
  */
 export async function getActiveProducts(): Promise<Product[]> {
   const cacheKey = cacheKeys.products.all();
 
-  // 1. Fresh cache — fastest path (sub-millisecond)
-  const fresh = apiCache.get<Product[]>(cacheKey);
-  if (fresh && Array.isArray(fresh)) return fresh;
-
-  // 2. Stale-while-revalidate — serve expired data immediately, refresh in background
-  const stale = apiCache.getStale<Product[]>(cacheKey, CACHE_TTL.STALE_GRACE);
-  if (stale && Array.isArray(stale)) {
-    // Fire-and-forget refresh — user gets stale data with zero wait
-    (async () => {
-      try {
-        const fresh = await productRepository.findAllActive();
-        apiCache.set(cacheKey, fresh, CACHE_TTL.PRODUCTS);
-      } catch {
-        // Silent — stale data continues serving until next successful refresh
-      }
-    })();
-    return stale;
-  }
-
-  // 3. Complete cache miss (very first request or after full invalidation) — must hit DB
   try {
-    const products = await productRepository.findAllActive();
+    const products = await readActiveProductsCached();
+    // Kept purely as an outage cushion for the catch below, not as a read path.
     apiCache.set(cacheKey, products, CACHE_TTL.PRODUCTS);
-    return products;
+    return products as Product[];
   } catch (err) {
     console.error('[product.service] MongoDB unavailable:', err instanceof Error ? err.message : String(err));
+
+    // Database is down. Serving recently-cached data beats serving an error,
+    // but only within STALE_GRACE — past that the numbers are too old to trust.
+    const stale = apiCache.getStale<Product[]>(cacheKey, CACHE_TTL.STALE_GRACE);
+    if (stale && Array.isArray(stale)) return stale;
+
     throw new DatabaseError(`فشل تحميل المنتجات. جرب تاني بعد شوية.`);
   }
 }
@@ -212,16 +213,24 @@ export async function deleteProduct(id: string): Promise<void> {
 export async function getProductById(id: string): Promise<any> {
   const cacheKey = cacheKeys.products.detail(id);
 
-  const cached = apiCache.get<any>(cacheKey);
-  if (cached) return cached;
-
   try {
-    const product = await productRepository.findById(id);
+    // Tagged per product, so an edit or an order purges just this entry —
+    // across every instance, not only the one that served the request.
+    const product = await unstable_cache(
+      async () => productRepository.findById(id),
+      ['product:detail', id],
+      { tags: [PRODUCTS_TAG, productTag(id)], revalidate: CACHE_TTL.PRODUCT_DETAIL / 1000 }
+    )();
+
     if (!product) throw new NotFoundError('Product not found');
     apiCache.set(cacheKey, product, CACHE_TTL.PRODUCT_DETAIL);
     return product;
   } catch (err) {
     if (err instanceof NotFoundError) throw err;
+
+    const stale = apiCache.getStale<any>(cacheKey, CACHE_TTL.STALE_GRACE);
+    if (stale) return stale;
+
     throw new DatabaseError(`فشل تحميل المنتج. جرب تاني بعد شوية.`);
   }
 }

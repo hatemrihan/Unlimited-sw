@@ -14,7 +14,7 @@ jest.mock('../lib/mongodb', () => ({ __esModule: true, default: jest.fn().mockRe
 
 import Product from '../models/product';
 import Order from '../models/order';
-import { createOrderTransaction, resolveVariantName } from '../services/orderCreationService';
+import { createOrderTransaction, resolveVariantName, resolveLegacyProductIds } from '../services/orderCreationService';
 
 jest.setTimeout(120_000);
 
@@ -191,6 +191,53 @@ describe('transaction rollback', () => {
     expect(after.variants[0].stock).toBe(10);
     expect(after.stock).toBe(10);
     expect(await Order.countDocuments({})).toBe(0);
+  });
+});
+
+describe('legacy product id migration', () => {
+  it('rewrites a legacy id to the real product when the name matches exactly one product', async () => {
+    const product = await seedProduct({ name: 'Legacy Hoodie', stock: 10, variants: [{ name: 'Red', stock: 10 }] });
+
+    const orderData = {
+      products: [{ productId: 'static-product-1', name: 'Legacy Hoodie', price: 100, quantity: 2, variant: { name: 'Red' } }],
+    };
+
+    const unresolved = await resolveLegacyProductIds(orderData);
+
+    expect(unresolved).toHaveLength(0);
+    expect(orderData.products[0].productId).toBe(String(product._id));
+
+    // And the migrated payload then decrements normally.
+    const result = await placeOrder(orderData.products);
+    expect(result.success).toBe(true);
+    const after = await Product.findById(product._id);
+    expect(after.variants[0].stock).toBe(8);
+  });
+
+  it('reports a legacy id whose name matches nothing', async () => {
+    const orderData = { products: [{ productId: 'static-product-9', name: 'Ghost Product', quantity: 1 }] };
+    const unresolved = await resolveLegacyProductIds(orderData);
+    expect(unresolved).toHaveLength(1);
+    expect(orderData.products[0].productId).toBe('static-product-9');
+  });
+
+  it('refuses to guess when two products share the name', async () => {
+    await seedProduct({ name: 'Duplicate Name', stock: 5, variants: [] });
+    await seedProduct({ name: 'Duplicate Name', stock: 5, variants: [] });
+
+    const orderData = { products: [{ productId: 'static-product-2', name: 'Duplicate Name', quantity: 1 }] };
+    const unresolved = await resolveLegacyProductIds(orderData);
+
+    expect(unresolved).toHaveLength(1);
+    expect(orderData.products[0].productId).toBe('static-product-2');
+  });
+
+  it('leaves valid ids untouched and does nothing when there are none', async () => {
+    const product = await seedProduct({ stock: 5, variants: [] });
+    const orderData = { products: [{ productId: String(product._id), name: 'Test Hoodie', quantity: 1 }] };
+
+    expect(await resolveLegacyProductIds(orderData)).toHaveLength(0);
+    expect(orderData.products[0].productId).toBe(String(product._id));
   });
 });
 

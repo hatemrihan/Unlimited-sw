@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import dbConnect from '../lib/mongodb';
 import Order from '../models/order';
 import { invalidateProductCache } from '../lib/cache';
+import { revalidateProducts } from '../lib/product-tags';
 import { resolveVariantName } from './orderCreationService';
 import { reserveStock, releaseStock, InsufficientStockError, StockLine } from './inventory.service';
 
@@ -61,7 +62,10 @@ export async function restoreStockForOrder(orderId: string, options: { newStatus
 
     if (!order) return { success: false, notFound: true as const };
 
-    for (const productId of touched) invalidateProductCache(productId);
+    for (const productId of touched) {
+      invalidateProductCache(productId);
+      await revalidateProducts(productId);
+    }
     return { success: true as const, order };
   } catch (error: any) {
     console.error('❌ [StockRestoration] Failed to restore stock:', error.message);
@@ -101,7 +105,10 @@ export async function reapplyStockForOrder(orderId: string, newStatus: string) {
 
     if (!order) return { success: false as const, notFound: true as const };
 
-    for (const productId of touched) invalidateProductCache(productId);
+    for (const productId of touched) {
+      invalidateProductCache(productId);
+      await revalidateProducts(productId);
+    }
     return { success: true as const, order };
   } catch (error: any) {
     const insufficient = error instanceof InsufficientStockError;
@@ -139,7 +146,10 @@ export async function deleteOrderWithStockRestoration(orderId: string) {
 
     if (!found) return { success: false as const, notFound: true as const };
 
-    for (const productId of touched) invalidateProductCache(productId);
+    for (const productId of touched) {
+      invalidateProductCache(productId);
+      await revalidateProducts(productId);
+    }
     return { success: true as const };
   } catch (error: any) {
     console.error('❌ [StockRestoration] Failed to delete order with restock:', error.message);

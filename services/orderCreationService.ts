@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import dbConnect from '../lib/mongodb';
 import Order, { IOrder } from '../models/order';
 import { invalidateProductCache } from '../lib/cache';
+import { revalidateProducts } from '../lib/product-tags';
 import { reserveStock, isValidProductId } from './inventory.service';
 
 /**
@@ -13,6 +14,50 @@ import { reserveStock, isValidProductId } from './inventory.service';
  */
 export function resolveVariantName(orderProduct: any): string | undefined {
   return orderProduct?.variant?.name ?? orderProduct?.size ?? undefined;
+}
+
+/**
+ * Rewrites legacy/static product ids in an order payload to the real MongoDB id,
+ * matching on product name exactly as the cart's client-side migration does.
+ *
+ * Without this, a customer whose cart still holds a pre-migration id has their
+ * order rejected outright. With it, the common case (the product still exists
+ * under the same name) just works, and only a genuinely unresolvable line is
+ * refused. Mutates `orderData.products` in place and returns the lines it could
+ * not resolve.
+ */
+export async function resolveLegacyProductIds(orderData: any): Promise<any[]> {
+  const legacyLines = (orderData?.products || []).filter((p: any) => !isValidProductId(p.productId));
+  if (legacyLines.length === 0) return [];
+
+  await dbConnect();
+  const Product = (await import('../models/product')).default;
+
+  const candidates = await Product.find(
+    { name: { $in: legacyLines.map((p: any) => p.name).filter(Boolean) } },
+    { _id: 1, name: 1 }
+  ).lean();
+
+  // Count names so an ambiguous match is never guessed at.
+  const byName = new Map<string, any[]>();
+  for (const candidate of candidates as any[]) {
+    const key = String(candidate.name || '').trim().toLowerCase();
+    byName.set(key, [...(byName.get(key) || []), candidate]);
+  }
+
+  const unresolved: any[] = [];
+
+  for (const line of legacyLines) {
+    const matches = byName.get(String(line.name || '').trim().toLowerCase()) || [];
+    if (matches.length === 1) {
+      console.warn(`ℹ️ [OrderService] Migrated legacy product id "${line.productId}" → ${matches[0]._id} by name ("${line.name}").`);
+      line.productId = String(matches[0]._id);
+    } else {
+      unresolved.push(line);
+    }
+  }
+
+  return unresolved;
 }
 
 /**
@@ -77,7 +122,8 @@ export async function createOrderTransaction(orderData: any, newOrder: Partial<I
     // 4. The transaction committed, so every cached copy of these products is stale.
     // Invalidate now, otherwise the storefront advertises sold-out stock for minutes.
     for (const productId of touchedProductIds) {
-      invalidateProductCache(productId);
+      invalidateProductCache(productId);          // this instance
+      await revalidateProducts(productId);        // every other instance
     }
 
     return { success: true, savedOrder };

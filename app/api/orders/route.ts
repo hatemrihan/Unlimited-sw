@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../lib/mongodb';
 import Order from '../../../models/order';
-import { createOrderTransaction, resolveVariantName } from '../../../services/orderCreationService';
+import { createOrderTransaction, resolveVariantName, resolveLegacyProductIds } from '../../../services/orderCreationService';
 import { computeOrderPricing, findPricingMismatches, ServerPricing } from '../../../services/orderPricingService';
 import { dispatchOrderPostProcessing } from '../../../services/emailQueueService';
 import { logger } from '../../../utils/logger';
@@ -12,9 +12,15 @@ const MONGO_BYPASS = process.env.MONGO_BYPASS === 'true';
 // MONGO_BYPASS accepts orders and returns success while writing nothing and
 // decrementing nothing — every order placed under it is silently lost. That is
 // a maintenance-mode tool, never a production one.
-if (MONGO_BYPASS && process.env.NODE_ENV === 'production') {
-  throw new Error(
-    'MONGO_BYPASS is enabled in a production build. Orders would be accepted and silently discarded. Unset MONGO_BYPASS before deploying.'
+//
+// This refuses the ORDER, not the build: throwing at module scope would break
+// `next build` itself and take the whole site down, which is a worse failure
+// than the one it guards against.
+const BYPASS_FORBIDDEN = MONGO_BYPASS && process.env.NODE_ENV === 'production';
+
+if (BYPASS_FORBIDDEN) {
+  console.error(
+    '🚨 MONGO_BYPASS is enabled in production. Orders will be REFUSED rather than silently discarded. Unset MONGO_BYPASS.'
   );
 }
 
@@ -65,6 +71,18 @@ async function priceOrder(
 
 export async function POST(request: NextRequest) {
   try {
+    // Refusing is recoverable; accepting and discarding is not.
+    if (BYPASS_FORBIDDEN) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'الطلبات متوقفة مؤقتاً للصيانة. جرب تاني بعد شوية أو تواصل معانا.',
+          code: 'ORDERS_DISABLED',
+        },
+        { status: 503 }
+      );
+    }
+
     // Connect to database
     if (!MONGO_BYPASS) await dbConnect();
 
@@ -161,6 +179,25 @@ export async function POST(request: NextRequest) {
         },
         { status: 400 }
       );
+    }
+
+    // A cart saved before the static-fallback removal can still hold a
+    // non-MongoDB product id. Migrate it by name the way the cart does, so
+    // those customers complete their order instead of hitting a hard error.
+    if (!MONGO_BYPASS) {
+      const unresolved = await resolveLegacyProductIds(orderData);
+      if (unresolved.length > 0) {
+        const names = unresolved.map((line: any) => line.name || 'منتج').join('، ');
+        logger.warn('🧭 Order rejected: unresolvable legacy product ids', { names });
+        return NextResponse.json(
+          {
+            success: false,
+            error: `المنتجات دي مش متاحة للطلب دلوقتي: ${names}. من فضلك حدّث الصفحة والسلة وجرب تاني.`,
+            code: 'UNKNOWN_PRODUCT',
+          },
+          { status: 400 }
+        );
+      }
     }
 
     // 💰 Recompute every monetary field from MongoDB. The request body's price,

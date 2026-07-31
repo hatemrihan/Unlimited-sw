@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '../../../../../../lib/requireAdmin';
 import { invalidateProductCache } from '../../../../../../lib/cache';
+import { revalidateProducts } from '../../../../../../lib/product-tags';
 import { adjustStock, getAvailability, StockConflictError } from '../../../../../../services/inventory.service';
 
 /**
@@ -79,6 +80,7 @@ export async function PATCH(
     );
 
     invalidateProductCache(id);
+    await revalidateProducts(id);
 
     return NextResponse.json({ success: true, stock: result });
   } catch (error) {
