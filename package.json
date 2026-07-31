@@ -7,7 +7,10 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "setup:mongo": "node scripts/setup-mongodb.js"
+    "setup:mongo": "node scripts/setup-mongodb.js",
+    "test": "jest",
+    "stock:drift": "node scripts/reconcile-stock.js",
+    "stock:reconcile": "node scripts/reconcile-stock.js --apply"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.914.0",

@@ -50,3 +50,8 @@ scripts/**
 *test*.ts
 simple-test.js
 server.js
+
+# ...but the inventory regression suite and the reconciliation script are
+# deliverables the team has to be able to run, so they belong in the repo.
+!__tests__/**
+!scripts/reconcile-stock.js
