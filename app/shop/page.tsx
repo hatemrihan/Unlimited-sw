@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Nav from '../sections/Nav';
 import Footer from '../sections/Footer';
@@ -163,6 +164,7 @@ export default function Shop() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const { addItem } = useCart();
+  const router = useRouter();
   const [showCartNotification, setShowCartNotification] = useState(false);
   const [cartNotificationKey, setCartNotificationKey] = useState(0);
 
@@ -213,6 +215,15 @@ export default function Shop() {
   const handleAddToCart = (product: Product) => {
     const stock = getAvailableStock(product);
     if (stock <= 0) return;
+
+    // Adding a variant product from the grid picks no variant, so the order
+    // would decrement the aggregate mirror rather than the variant the customer
+    // receives — and the cart could hold the "same" product twice. Send them to
+    // the product page to choose.
+    if (Array.isArray(product.variants) && product.variants.length > 0) {
+      router.push(`/product/${product._id}`);
+      return;
+    }
 
     addItem({
       id: product._id,

@@ -37,12 +37,14 @@ export async function createOrderTransaction(orderData: any, newOrder: Partial<I
       touchedProductIds.clear();
 
       // 1. Reserve stock for every line, structurally locked inside the session.
-      // 🛡️ Non-MongoDB IDs (legacy static fallback products) are skipped: they
-      // don't exist in the database, so querying them would crash. The order
-      // still completes — we just can't track stock for items not in MongoDB.
+      // 🛡️ A non-MongoDB ID (legacy static fallback product) cannot have its
+      // stock tracked. Static fallbacks are gone, so such an ID now means a
+      // stale cart, not a real product — reject rather than sell untracked
+      // inventory the warehouse doesn't know about.
       for (const orderProduct of orderData.products) {
         if (!isValidProductId(orderProduct.productId)) {
-          console.warn(`⚠️ [OrderService] Skipping stock decrement for legacy/static product ID: "${orderProduct.productId}" (${orderProduct.name}). This item is not in MongoDB.`);
+          console.warn(`⚠️ [OrderService] Rejecting order: legacy/static product ID "${orderProduct.productId}" (${orderProduct.name}) is not in MongoDB.`);
+          throw new Error(`المنتج ${orderProduct.name} مش متاح للطلب دلوقتي. من فضلك حدّث الصفحة والسلة وجرب تاني.`);
         }
       }
 

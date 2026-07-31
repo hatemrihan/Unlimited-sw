@@ -106,6 +106,15 @@ const Products = ({ initialProducts = [], initialHasMore = false }: ProductsProp
     const stock = stockMap.get(product._id!) || 0;
     if (stock <= 0) return;
 
+    // A product with variants has no meaningful "add one of it" — the grid
+    // would add it with no variant, which decrements the aggregate mirror
+    // instead of the variant the customer actually gets. Send them to the
+    // product page to pick one.
+    if (Array.isArray(product.variants) && product.variants.length > 0) {
+      router.push(`/product/${product._id}`);
+      return;
+    }
+
     addItem({
       id: product._id!,
       name: product.name,

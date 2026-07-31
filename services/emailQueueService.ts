@@ -4,6 +4,38 @@ import Product from '../models/product';
 import { logger } from '../utils/logger';
 import { resolveVariantName } from './orderCreationService';
 
+/** Remaining units at or below this trigger a 'stock' notification for the admin. */
+const LOW_STOCK_THRESHOLD = 3;
+
+/**
+ * Emits a 'stock' notification for every line whose remaining stock just crossed
+ * the low-stock threshold. The Notification model has always had a 'stock' type
+ * and the admin UI already renders it — nothing ever created one.
+ */
+async function createLowStockNotifications(stockLevels: any[]) {
+  const low = stockLevels.filter(
+    level => typeof level.remainingStock === 'number' && level.remainingStock <= LOW_STOCK_THRESHOLD
+  );
+
+  for (const level of low) {
+    const label = level.variantName ? `${level.productName} (${level.variantName})` : level.productName;
+    await Notification.create({
+      type: 'stock',
+      title: level.remainingStock <= 0 ? `Out of stock: ${label}` : `Low stock: ${label}`,
+      message:
+        level.remainingStock <= 0
+          ? `${label} is now out of stock.`
+          : `${label} has only ${level.remainingStock} left.`,
+      data: {
+        productName: level.productName,
+        variantName: level.variantName,
+        remainingStock: level.remainingStock,
+        threshold: LOW_STOCK_THRESHOLD,
+      },
+    });
+  }
+}
+
 /**
  * Handles all peripheral asynchronous events triggered post-Order creation.
  * Throws execution straight onto the Node event loop skipping wire blocks, 
@@ -47,6 +79,8 @@ async function processAsyncRoutines(savedOrder: any, orderData: any) {
             }
           }
         }
+
+        await createLowStockNotifications(stockLevels);
 
         await Notification.create({
           type: 'order',

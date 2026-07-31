@@ -57,6 +57,14 @@ export const useAddProduct = () => {
       return;
     }
 
+    // Duplicate names corrupt inventory: `variants.$` always targets the first
+    // match, so one of the two never moves.
+    const variantNames = product.variants.map(v => v.name.trim().toLowerCase());
+    if (new Set(variantNames).size !== variantNames.length) {
+      toast.error('Variant names must be unique');
+      return;
+    }
+
     setSavingProduct(true);
     try {
       const finalPrice = calculateFinalPrice(product.originalPrice || 0, product.discount);

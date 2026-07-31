@@ -194,6 +194,26 @@ describe('transaction rollback', () => {
   });
 });
 
+describe('legacy product ids', () => {
+  it('rejects an order for a non-MongoDB product id instead of selling untracked stock', async () => {
+    const product = await seedProduct({ stock: 10, variants: [{ name: 'Red', stock: 10 }] });
+
+    const result = await placeOrder([
+      { productId: String(product._id), name: 'Test Hoodie', price: 100, quantity: 1, variant: { name: 'Red' } },
+      { productId: 'static-product-1', name: 'Legacy Item', price: 100, quantity: 1 },
+    ]);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Legacy Item');
+
+    // The valid line must be rolled back with it.
+    const after = await Product.findById(product._id);
+    expect(after.variants[0].stock).toBe(10);
+    expect(after.stock).toBe(10);
+    expect(await Order.countDocuments({})).toBe(0);
+  });
+});
+
 describe('variant-less products', () => {
   it('decrements product.stock and rejects when it would go negative', async () => {
     const product = await seedProduct({ stock: 3, variants: [] });

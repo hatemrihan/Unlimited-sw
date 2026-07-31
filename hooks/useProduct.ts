@@ -186,6 +186,14 @@ export const useProduct = (productId: string) => {
       return;
     }
 
+    // Duplicate names corrupt inventory: `variants.$` always targets the first
+    // match, so one of the two never moves.
+    const variantNames = product.variants.map(v => v.name.trim().toLowerCase());
+    if (new Set(variantNames).size !== variantNames.length) {
+      toast.error('أسماء المتغيرات لازم تكون مختلفة عن بعضها');
+      return;
+    }
+
     const hasEmptyVariantName = product.variants.some(v => !v.name.trim());
     if (hasEmptyVariantName) {
       toast.error('جميع المتغيرات يجب أن تحتوي على اسم');

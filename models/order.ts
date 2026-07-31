@@ -98,9 +98,8 @@ OrderSchema.pre('save', function(next) {
   next();
 });
 
-// Force model recreation to clear any cached schemas
-if (mongoose.models.Order) {
-  delete mongoose.models.Order;
-}
-
-export default mongoose.model<IOrder>('Order', OrderSchema);
+// Standard Mongoose model cache, matching models/product.ts. Deleting and
+// re-registering on every module load rebuilds the schema constantly in a hot
+// serverless environment and defeats the cache entirely.
+export default (mongoose.models.Order as mongoose.Model<IOrder>) ||
+  mongoose.model<IOrder>('Order', OrderSchema);

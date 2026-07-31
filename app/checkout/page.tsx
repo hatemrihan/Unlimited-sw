@@ -14,6 +14,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const [paymentSettings, setPaymentSettings] = useState({ codEnabled: true, instaPayEnabled: true });
   const [orderError, setOrderError] = useState<string | null>(null);
+  const [stockWarning, setStockWarning] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { state, clearCart } = useCart();
@@ -56,6 +57,50 @@ export default function CheckoutPage() {
     setPaymentSettings({ codEnabled: true, instaPayEnabled: true });
     // No need to override formData since both are enabled
   }, [setFormData]);
+
+  // Check availability on mount so a customer learns an item is gone before
+  // filling in the whole form, not after submitting it. Advisory only — the
+  // order transaction is still the authority.
+  useEffect(() => {
+    if (cartItems.length === 0) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const response = await fetch('/api/cart/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: cartItems.map(item => ({
+              productId: item.id,
+              variantName: item.variant?.name,
+              quantity: item.quantity,
+            })),
+          }),
+        });
+
+        if (!response.ok || cancelled) return;
+
+        const data = await response.json();
+        if (cancelled || data.allAvailable) return;
+
+        const unavailable = (data.lines || []).filter((line: any) => !line.ok);
+        const names = unavailable
+          .map((line: any) => {
+            const item = cartItems.find(i => i.id === line.productId);
+            return `${item?.name || 'منتج'}${line.variantName ? ` (${line.variantName})` : ''}`;
+          })
+          .join('، ');
+
+        setStockWarning(`الكميات المتاحة اتغيرت: ${names}. راجع السلة قبل ما تكمل.`);
+      } catch {
+        // Advisory check — a failure here must not block the form.
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [cartItems]);
 
   if (!state) {
     return (
@@ -210,6 +255,15 @@ export default function CheckoutPage() {
             <div className="mb-8 p-4 bg-red-900 border border-red-600 text-red-300 rounded">
               <h3 className="font-medium mb-2 text-white">Order Submission Failed</h3>
               <p className="text-red-300">{orderError}</p>
+            </div>
+          )}
+
+          {stockWarning && (
+            <div className="mb-8 p-4 bg-amber-900/60 border border-amber-600 rounded" dir="rtl">
+              <p className="text-amber-200">{stockWarning}</p>
+              <Link href="/cart" className="mt-2 inline-block underline text-amber-100">
+                رجوع للسلة
+              </Link>
             </div>
           )}
 

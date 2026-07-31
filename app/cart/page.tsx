@@ -24,7 +24,6 @@ import { useCart, CartItem } from '../../contexts/CartContext';
 // ── Constants ────────────────────────────────────────────────────────────────
 const MONGODB_ID_REGEX = /^[0-9a-fA-F]{24}$/;
 const PRODUCTS_API_TIMEOUT = 8000; // 8s timeout for product fetches
-const MAX_FALLBACK_STOCK = 999;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function priceKey(itemId: string, variantName?: string): string {
@@ -131,6 +130,9 @@ const CartPage = () => {
         // ── Step 4: Validate every cart item ────────────────────────────────
         const prices: Record<string, number> = {};
         let needsSync = false;
+        // Set when any line's availability could not be confirmed against the
+        // database. Checkout stays blocked while true.
+        let validationFailed = false;
 
         const validated = cartState.items.map(item => {
           let resolvedId = item.id;
@@ -153,14 +155,19 @@ const CartPage = () => {
 
           const product = productMap[resolvedId];
 
-          // Product fetch failed (network error) — keep item with best-effort data
+          // Product fetch failed (network error). We do NOT know this item's
+          // stock, and guessing lets an unavailable item through to checkout —
+          // block instead.
           if (!product) {
+            validationFailed = true;
             return { ...item, id: resolvedId };
           }
 
           // ── Resolve live price & stock ─────────────────────────────────
           let livePrice = product.price ?? 0;
-          let liveStock = typeof product.stock === 'number' ? product.stock : MAX_FALLBACK_STOCK;
+          // Unknown stock is treated as none. Inventing a ceiling here is what
+          // let sold-out items reach the checkout form.
+          let liveStock = typeof product.stock === 'number' ? product.stock : 0;
 
           if (item.variant && Array.isArray(product.variants)) {
             const variantMatch = product.variants.find(
@@ -210,6 +217,10 @@ const CartPage = () => {
         }
 
         setRefreshedPrices(prices);
+
+        if (validationFailed) {
+          setRefreshError('مش قادرين نتأكد من توفر بعض المنتجات دلوقتي. حدّث الصفحة قبل ما تكمل الطلب.');
+        }
 
         // Sync corrected items back to CartContext → localStorage
         if (needsSync && typeof syncItems === 'function') {
@@ -261,7 +272,9 @@ const CartPage = () => {
       return;
     }
 
-    const maxStock = item.stock ?? MAX_FALLBACK_STOCK;
+    // Unknown stock caps at the current quantity rather than an invented
+    // ceiling — the server is the authority, the UI must not guess upward.
+    const maxStock = item.stock ?? item.quantity;
     updateQuantity(item.id, item.variant, Math.min(newQuantity, maxStock), item.stock);
   }, [cartState.items, removeItem, updateQuantity]);
 
@@ -467,9 +480,13 @@ const CartPage = () => {
                     </div>
                   </div>
 
+                  {/* Blocked while availability is unconfirmed — sending an
+                      unvalidated cart to checkout is what produced the
+                      "sold out" failures at the final step. */}
                   <button
                     onClick={() => router.push('/checkout')}
-                    className="w-full bg-transparent border border-white text-white py-4 font-bold uppercase tracking-wider hover:bg-white hover:text-black transition-colors duration-300"
+                    disabled={!!refreshError || loading}
+                    className="w-full bg-transparent border border-white text-white py-4 font-bold uppercase tracking-wider hover:bg-white hover:text-black transition-colors duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-white"
                   >
                     PROCEED TO CHECKOUT
                   </button>

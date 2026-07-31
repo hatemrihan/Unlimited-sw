@@ -10,6 +10,22 @@ const variantSchema = z.object({
   videos: z.array(z.string()).optional(),
 });
 
+/**
+ * Variant names must be unique within a product. `variants.$` targets the first
+ * matching element, so two variants called "Black" means every decrement and
+ * restock hits the same one while the other drifts — corrupted inventory that
+ * is very hard to trace back.
+ */
+const variantsSchema = z
+  .array(variantSchema)
+  .refine(
+    variants => {
+      const names = variants.map(v => v.name.trim().toLowerCase());
+      return new Set(names).size === names.length;
+    },
+    { message: 'Variant names must be unique within a product' }
+  );
+
 const faqSchema = z.object({
   question: z.string().optional(),
   answer:   z.string().optional(),
@@ -34,7 +50,7 @@ export const createProductSchema = z.object({
   videos:              z.array(z.string()).default([]),
   description:         z.string().min(1, 'Description is required'),
   promoCode:           z.string().optional().default(''),
-  variants:            z.array(variantSchema).default([]),
+  variants:            variantsSchema.default([]),
   stock:               z.number().int().nonnegative().default(0),
   isActive:            z.boolean().default(true),
   order:               z.number().int().default(0),

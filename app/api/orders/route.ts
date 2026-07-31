@@ -9,6 +9,15 @@ import { requireAdmin } from '../../../lib/requireAdmin';
 
 const MONGO_BYPASS = process.env.MONGO_BYPASS === 'true';
 
+// MONGO_BYPASS accepts orders and returns success while writing nothing and
+// decrementing nothing — every order placed under it is silently lost. That is
+// a maintenance-mode tool, never a production one.
+if (MONGO_BYPASS && process.env.NODE_ENV === 'production') {
+  throw new Error(
+    'MONGO_BYPASS is enabled in a production build. Orders would be accepted and silently discarded. Unset MONGO_BYPASS before deploying.'
+  );
+}
+
 // Ensure Node runtime for Nodemailer
 export const runtime = 'nodejs';
 

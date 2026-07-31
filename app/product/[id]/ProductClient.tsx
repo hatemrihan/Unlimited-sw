@@ -89,9 +89,10 @@ export default function ProductClient({ product, relatedProducts }: Props) {
     image: product.mainImage,
     price: displayPrice,
     stock: currentStock,
-    variant: selectedVariant
-      ? { name: selectedVariant.name, color: selectedVariant.name }
-      : undefined,
+    // `color` is left unset: there is no separate colour field on a variant, and
+    // duplicating the name into it puts garbage in the order record and breaks
+    // variant matching in the cart.
+    variant: selectedVariant ? { name: selectedVariant.name } : undefined,
   }), [product._id, product.name, product.mainImage, displayPrice, currentStock, selectedVariant]);
 
   const handleAddToCart = useCallback(() => {
