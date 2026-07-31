@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../../lib/mongodb';
 import Order from '../../../../models/order';
 import { requireAdmin } from '../../../../lib/requireAdmin';
+import {
+  restoreStockForOrder,
+  reapplyStockForOrder,
+  deleteOrderWithStockRestoration,
+} from '../../../../services/stockRestorationService';
 
 export async function PATCH(
   request: NextRequest,
@@ -27,7 +32,41 @@ export async function PATCH(
       );
     }
 
-    // Update order status
+    const existing = await Order.findById(id).select('status stockRestored');
+    if (!existing) {
+      return NextResponse.json(
+        { success: false, error: 'Order not found' },
+        { status: 404 }
+      );
+    }
+
+    // Cancelling releases the reserved stock; un-cancelling re-reserves it.
+    // Both run inside a transaction that also writes the new status, so the
+    // order's status and the inventory can never disagree.
+    if (status === 'cancelled' && existing.status !== 'cancelled') {
+      const result = await restoreStockForOrder(id, { newStatus: status });
+      if (!result.success) {
+        return NextResponse.json(
+          { success: false, error: result.error || 'Failed to cancel order and restore stock' },
+          { status: 500 }
+        );
+      }
+      return NextResponse.json({ success: true, order: result.order });
+    }
+
+    if (status !== 'cancelled' && existing.status === 'cancelled') {
+      const result = await reapplyStockForOrder(id, status);
+      if (!result.success) {
+        // 409: the admin needs to know inventory moved on, not that we failed.
+        return NextResponse.json(
+          { success: false, error: result.error || 'Failed to re-reserve stock for this order' },
+          { status: result.insufficient ? 409 : 500 }
+        );
+      }
+      return NextResponse.json({ success: true, order: result.order });
+    }
+
+    // Status change with no inventory consequence.
     const updatedOrder = await Order.findByIdAndUpdate(
       id,
       { status },
@@ -66,13 +105,21 @@ export async function DELETE(
 
     await dbConnect();
 
-    // Delete the order from the database
-    const deletedOrder = await Order.findByIdAndDelete(id);
+    // Deleting an order that still holds stock must return it first, or the
+    // inventory is burned with no record left to reconcile against.
+    const result = await deleteOrderWithStockRestoration(id);
 
-    if (!deletedOrder) {
+    if (result.notFound) {
       return NextResponse.json(
         { success: false, error: 'Order not found' },
         { status: 404 }
+      );
+    }
+
+    if (!result.success) {
+      return NextResponse.json(
+        { success: false, error: result.error || 'Failed to delete order' },
+        { status: 500 }
       );
     }
 
@@ -89,4 +136,3 @@ export async function DELETE(
     );
   }
 }
-

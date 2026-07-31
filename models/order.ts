@@ -30,6 +30,8 @@ export interface IOrder extends Document {
   promoCode?:string;
   discountAmount?: number;  
   status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+  /** Idempotency guard: true once this order's stock has been returned to inventory. */
+  stockRestored?: boolean;
   notes?: string;
   orderDate: Date;
   createdAt: Date;
@@ -76,6 +78,8 @@ const OrderSchema = new Schema({
     enum: ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'],
     default: 'pending'
   },
+  // Idempotency guard for stock restoration — never restock the same order twice.
+  stockRestored: { type: Boolean, default: false },
   notes: { type: String },
   orderDate: { type: Date, default: Date.now }
 }, {
