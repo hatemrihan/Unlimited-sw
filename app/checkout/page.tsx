@@ -139,6 +139,9 @@ export default function CheckoutPage() {
             name: item.name,
             price: correctPrice,
             quantity: item.quantity,
+            // Explicit variant identity for the stock engine. `size`/`color` stay
+            // for display and for the server's legacy fallback.
+            variant: item.variant?.name ? { name: item.variant.name, color: item.variant.color } : undefined,
             size: item.variant?.name || undefined,
             color: item.variant?.color || undefined,
             image: item.image
