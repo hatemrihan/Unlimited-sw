@@ -60,11 +60,23 @@ class PerformanceCache {
    * Returns stale (expired) data if it exists, WITHOUT deleting it.
    * Used for stale-while-revalidate: caller serves stale data immediately
    * and triggers a background refresh.
-   * Returns null only if the key never existed.
+   *
+   * `maxStaleMs` caps how far past expiry the data may be served. Beyond that
+   * the entry is dropped and the caller must hit the database — otherwise a
+   * background refresh that keeps failing serves stale stock indefinitely.
    */
-  getStale<T>(key: string): T | null {
+  getStale<T>(key: string, maxStaleMs?: number): T | null {
     const entry = this.cache.get(key);
     if (!entry) return null;
+
+    if (maxStaleMs !== undefined) {
+      const staleFor = Date.now() - entry.timestamp - entry.ttl;
+      if (staleFor > maxStaleMs) {
+        this.cache.delete(key);
+        return null;
+      }
+    }
+
     return entry.data as T;
   }
 

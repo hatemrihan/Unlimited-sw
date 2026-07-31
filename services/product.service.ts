@@ -32,7 +32,7 @@ export async function getActiveProducts(): Promise<Product[]> {
   if (fresh && Array.isArray(fresh)) return fresh;
 
   // 2. Stale-while-revalidate — serve expired data immediately, refresh in background
-  const stale = apiCache.getStale<Product[]>(cacheKey);
+  const stale = apiCache.getStale<Product[]>(cacheKey, CACHE_TTL.STALE_GRACE);
   if (stale && Array.isArray(stale)) {
     // Fire-and-forget refresh — user gets stale data with zero wait
     (async () => {
@@ -135,12 +135,51 @@ export async function createProduct(data: CreateProductInput): Promise<any> {
 }
 
 /**
+ * Removes every stock field from a product update.
+ *
+ * The admin edit form posts the entire variants array that the browser loaded
+ * minutes earlier, plus a browser-computed total. Writing that back erases any
+ * order that decremented stock in between — a classic lost update, and one that
+ * silently un-sells real orders.
+ *
+ * Stock changes go through PATCH /api/admin/products/:id/stock instead, which
+ * is optimistically locked. Here we keep whatever the database currently holds,
+ * matching variants by name so renames, additions and removals still work.
+ */
+async function stripStockFromUpdate(id: string, data: UpdateProductInput): Promise<UpdateProductInput> {
+  const { stock: _ignoredStock, ...rest } = data as any;
+
+  if (!Array.isArray((rest as any).variants)) {
+    return rest as UpdateProductInput;
+  }
+
+  const current = await productRepository.findById(id);
+  const currentStockByName = new Map<string, number>(
+    ((current as any)?.variants || []).map((v: any) => [v.name, Number(v.stock) || 0])
+  );
+
+  const variants = (rest as any).variants.map((v: any) => ({
+    ...v,
+    // A brand-new variant starts at 0 and is stocked via the stock endpoint.
+    stock: currentStockByName.get(v.name) ?? 0,
+  }));
+
+  return {
+    ...(rest as any),
+    variants,
+    // Keep the mirror consistent with the variants that survived the edit.
+    stock: variants.reduce((sum: number, v: any) => sum + (Number(v.stock) || 0), 0),
+  } as UpdateProductInput;
+}
+
+/**
  * Updates an existing product by ID.
  * Throws NotFoundError if no product matches.
  */
 export async function updateProduct(id: string, data: UpdateProductInput): Promise<any> {
   try {
-    const updated = await productRepository.updateById(id, data);
+    const safe = await stripStockFromUpdate(id, data);
+    const updated = await productRepository.updateById(id, safe);
     if (!updated) throw new NotFoundError('Product not found');
     invalidateProductCache(id);
     return updated;
