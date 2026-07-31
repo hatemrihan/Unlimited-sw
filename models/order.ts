@@ -5,6 +5,8 @@ export interface IOrderProduct {
   name: string;
   price: number;
   quantity: number;
+  /** Canonical variant identity — the value stock was decremented against. */
+  variantName?: string;
   size?: string;
   color?: string;
   image: string;
@@ -39,6 +41,9 @@ const OrderProductSchema = new Schema({
   name: { type: String, required: true },
   price: { type: Number, required: true },
   quantity: { type: Number, required: true },
+  // Persisted so a cancelled order can be restocked and sales can be audited
+  // per-variant. `size` is the legacy flattened form and is kept for display.
+  variantName: { type: String },
   size: { type: String },
   color: { type: String },
   image: { type: String, required: true }

@@ -2,6 +2,7 @@ import { sendOrderConfirmationEmail, sendAdminNotificationEmail } from '../lib/e
 import Notification from '../models/notification';
 import Product from '../models/product';
 import { logger } from '../utils/logger';
+import { resolveVariantName } from './orderCreationService';
 
 /**
  * Handles all peripheral asynchronous events triggered post-Order creation.
@@ -28,7 +29,8 @@ async function processAsyncRoutines(savedOrder: any, orderData: any) {
           const product = productMap.get(orderProduct.productId?.toString());
           if (product) {
             if (product.variants && product.variants.length > 0) {
-              const variant = product.variants.find((v: any) => v.name === orderProduct.variant?.name);
+              const orderedVariantName = resolveVariantName(orderProduct);
+              const variant = product.variants.find((v: any) => v.name === orderedVariantName);
               if (variant) {
                 stockLevels.push({
                   productName: product.name,

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../lib/mongodb';
 import Order from '../../../models/order';
 import { validatePromo } from '../../../services/promoService';
-import { createOrderTransaction } from '../../../services/orderCreationService';
+import { createOrderTransaction, resolveVariantName } from '../../../services/orderCreationService';
 import { dispatchOrderPostProcessing } from '../../../services/emailQueueService';
 import { logger } from '../../../utils/logger';
 import { requireAdmin } from '../../../lib/requireAdmin';
@@ -151,6 +151,9 @@ export async function POST(request: NextRequest) {
           name: prod.name || '',
           price: Number(prod.price) || 0,
           quantity: Number(prod.quantity) || 1,
+          // Record the variant the stock engine will actually decrement, so
+          // cancellations can restock the right element.
+          variantName: resolveVariantName(prod),
           size: prod.size || undefined,
           color: prod.color || undefined,
           image: prod.image || ''

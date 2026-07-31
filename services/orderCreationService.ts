@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import dbConnect from '../lib/mongodb';
 import Order, { IOrder } from '../models/order';
 import Product from '../models/product';
+import { invalidateProductCache } from '../lib/cache';
 
 /**
  * Validates whether a string is a valid MongoDB ObjectId (24-char hex).
@@ -10,6 +11,17 @@ import Product from '../models/product';
  */
 function isValidObjectId(id: string): boolean {
   return /^[0-9a-fA-F]{24}$/.test(id);
+}
+
+/**
+ * Resolves the variant name for an order line item.
+ *
+ * Checkout flattens the variant into `size`/`color`, while newer clients send an
+ * explicit `variant` object. Accept both — the `??` fallback is a permanent
+ * safety net for cached bundles and in-flight carts, not a temporary shim.
+ */
+export function resolveVariantName(orderProduct: any): string | undefined {
+  return orderProduct?.variant?.name ?? orderProduct?.size ?? undefined;
 }
 
 /**
@@ -22,12 +34,17 @@ export async function createOrderTransaction(orderData: any, newOrder: Partial<I
 
   // Establish standard session wrapper preventing manual drift
   const session = await mongoose.startSession();
-  
+  const touchedProductIds = new Set<string>();
+
   try {
     let savedOrder: any;
-    
+
     // Mount the operation sequence natively via withTransaction protecting concurrent threads
     await session.withTransaction(async () => {
+      // withTransaction may re-run this body after a transient error, so never
+      // let bookkeeping accumulate across attempts.
+      touchedProductIds.clear();
+
       // 1. Validate and deduct stock for each product structurally locked inside the session
       for (const orderProduct of orderData.products) {
         const productId = orderProduct.productId;
@@ -41,32 +58,42 @@ export async function createOrderTransaction(orderData: any, newOrder: Partial<I
           continue;
         }
 
-        if (orderProduct.variant?.name) {
-          // Atomic variant decrement with exact structural conditions
+        const variantName = resolveVariantName(orderProduct);
+
+        if (variantName) {
+          // $elemMatch binds both conditions to the SAME variant element. Without it,
+          // `variants.name` can match one element while `variants.stock` is satisfied
+          // by a different one — selling an out-of-stock variant and debiting another.
           const updateResult = await Product.findOneAndUpdate(
             {
               _id: productId,
-              'variants.name': orderProduct.variant.name,
-              'variants.stock': { $gte: orderProduct.quantity }
+              variants: {
+                $elemMatch: { name: variantName, stock: { $gte: orderProduct.quantity } }
+              }
             },
             {
-              $inc: { 'variants.$.stock': -orderProduct.quantity }
+              // Keep the denormalized product.stock mirror in lockstep with the
+              // variant sum it mirrors, in the same atomic update.
+              $inc: {
+                'variants.$.stock': -orderProduct.quantity,
+                stock: -orderProduct.quantity
+              }
             },
             { new: true, session }
           );
 
           if (!updateResult) {
-            throw new Error(`للأسف الكمية المطلوبة من ${orderProduct.name} (${orderProduct.variant.name}) مش متوفرة دلوقتي. حد تاني طلبها قبلك بثواني!`);
+            throw new Error(`للأسف الكمية المطلوبة من ${orderProduct.name} (${variantName}) مش متوفرة دلوقتي. حد تاني طلبها قبلك بثواني!`);
           }
         } else {
           // Atomic main stock decrement
           const updateResult = await Product.findOneAndUpdate(
-            { 
-              _id: productId, 
-              stock: { $gte: orderProduct.quantity } 
+            {
+              _id: productId,
+              stock: { $gte: orderProduct.quantity }
             },
-            { 
-              $inc: { stock: -orderProduct.quantity } 
+            {
+              $inc: { stock: -orderProduct.quantity }
             },
             { new: true, session }
           );
@@ -75,6 +102,8 @@ export async function createOrderTransaction(orderData: any, newOrder: Partial<I
             throw new Error(`للأسف ${orderProduct.name} خلصت من الستوك! حد تاني طلبها قبلك بثواني. جرب تاني بعدين أو تواصل معانا.`);
           }
         }
+
+        touchedProductIds.add(String(productId));
       }
 
       // 2. Commit Order Payload identically across the session
@@ -91,6 +120,12 @@ export async function createOrderTransaction(orderData: any, newOrder: Partial<I
         );
       }
     });
+
+    // 4. The transaction committed, so every cached copy of these products is stale.
+    // Invalidate now, otherwise the storefront advertises sold-out stock for minutes.
+    for (const productId of touchedProductIds) {
+      invalidateProductCache(productId);
+    }
 
     return { success: true, savedOrder };
   } catch (error: any) {
