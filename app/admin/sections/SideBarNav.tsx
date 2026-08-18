@@ -6,7 +6,7 @@ import Image from "next/image";
 import {
   LayoutDashboard, Package, ShoppingCart, Mail, Star, Users,
   Tag, Settings, ChevronDown, ChevronRight, Store, LogOut,
-  Bell, MapPin, CreditCard,
+  Bell, MapPin, CreditCard, TrendingUp,
 } from "lucide-react";
 
 // ─── Navigation Config (Arabic) ──────────────────────────────
@@ -22,6 +22,7 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { title: "لوحة التحكم", section: "dashboard", icon: LayoutDashboard },
   // { title: "الإشعارات", section: "notifications", icon: Bell },
+  { title: "مسار التحويل", section: "funnel", icon: TrendingUp },
   { title: "الطلبات", section: "orders", icon: ShoppingCart },
   { title: "المنتجات", section: "products", icon: Package },
   { title: "أكواد الخصم", section: "promo", icon: Tag },
