@@ -10,6 +10,7 @@ import { useCheckoutPricing } from './hooks/useCheckoutPricing';
 import { useCheckoutForm } from './hooks/useCheckoutForm';
 import { City } from './types';
 import { newClientOrderId } from '../../lib/clientOrderId';
+import { track, getSessionId, isEnabled } from '../../analytics/client/track';
 
 /**
  * One way of writing an amount, across the whole checkout.
@@ -117,6 +118,28 @@ export default function CheckoutPage() {
       cancelled = true;
     };
   }, [setFormData]);
+
+  /**
+   * InitiateCheckout — someone reached the form with something in their cart.
+   *
+   * Fired once, on the first render that has items, and guarded by a ref rather
+   * than by an empty dependency array: the cart arrives asynchronously from
+   * localStorage, so an effect that runs on mount alone would fire before there
+   * is anything to report and record a checkout of zero items. Without the ref,
+   * depending on the cart would fire again on every quantity change.
+   */
+  const checkoutTracked = useRef(false);
+  useEffect(() => {
+    if (checkoutTracked.current || cartItems.length === 0) return;
+
+    checkoutTracked.current = true;
+    track('InitiateCheckout', {
+      itemCount: cartItems.reduce((sum, item) => sum + item.quantity, 0),
+      value: cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
+      currency: 'EGP',
+      source: 'client',
+    });
+  }, [cartItems]);
 
   // Check availability on mount so a customer learns an item is gone before
   // filling in the whole form, not after submitting it. Advisory only — the
@@ -245,7 +268,11 @@ export default function CheckoutPage() {
         // it, setting its own — two clocks for one fact, where the customer's
         // is the one that can be wrong or lied about. Removed so nobody later
         // "fixes" the server by trusting it.
-        clientOrderId: clientOrderIdRef.current
+        clientOrderId: clientOrderIdRef.current,
+        // Lets the funnel join this purchase back to the browsing that led to
+        // it. Omitted when tracking is off or storage is blocked — the server
+        // records the purchase either way, and only the join is lost.
+        sessionId: isEnabled() ? getSessionId() : undefined
       };
 
       const response = await fetch('/api/orders', {

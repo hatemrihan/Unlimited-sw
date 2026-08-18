@@ -83,6 +83,16 @@ export const getNavItems = (router: ReturnType<typeof useRouter>) => [
     onClick: () => router.push('/admin#orders')
   },
   {
+    label: '📈 Funnel',
+    href: '/admin#funnel',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
+      </svg>
+    ),
+    onClick: () => router.push('/admin#funnel')
+  },
+  {
     label: '💳 Payment Settings',
     href: '/admin/payment-settings',
     icon: (

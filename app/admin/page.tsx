@@ -15,6 +15,7 @@ import Reviews from './sections/reviews';
 import Notifications from './sections/notifications';
 import Contacts from './sections/contacts';
 import PaymentSettings from './sections/paymentSettings';
+import Funnel from './sections/funnel';
 import Cities from './sections/cities';
 import { useSession } from 'next-auth/react';
 
@@ -287,7 +288,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.replace('#', '');
-      const validSections = ['dashboard', 'notifications', 'reviews', 'products', 'promo', 'orders', 'contacts', 'payment', 'governorates'];
+      const validSections = ['dashboard', 'notifications', 'reviews', 'products', 'promo', 'orders', 'contacts', 'payment', 'governorates', 'funnel'];
       if (hash && validSections.includes(hash)) {
         setActiveSection(hash);
       }
@@ -323,6 +324,7 @@ const AdminDashboard = () => {
             {activeSection === 'contacts' && <Contacts />}
             {activeSection === 'payment' && <PaymentSettings />}
             {activeSection === 'governorates' && <Cities />}
+            {activeSection === 'funnel' && <Funnel />}
           </div>
         </main>
       </div>

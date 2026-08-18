@@ -165,6 +165,21 @@ export const createOrderSchema = z
       .trim()
       .regex(/^[A-Za-z0-9-]{8,64}$/, 'Invalid checkout attempt id')
       .optional(),
+
+    /**
+     * The analytics session this order came from, so the funnel can join a
+     * purchase back to the browsing that led to it.
+     *
+     * Optional and never required. It is measurement, and an order must never
+     * be refused because a customer blocks storage or arrives with tracking
+     * disabled — those are customers, not problems. When it is missing the
+     * server records the purchase against a synthetic id: revenue stays
+     * correct, only the session join is lost.
+     *
+     * NOT stored on the order document. The order has no use for it, and a
+     * field that exists only for analytics is how order schemas rot.
+     */
+    sessionId: z.string().trim().uuid().optional(),
   })
   // InstaPay without proof of payment is an order nobody can fulfil.
   .refine(data => data.paymentMethod !== 'instaPay' || Boolean(data.transactionScreenshot), {

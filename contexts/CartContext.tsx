@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
+import { track } from '../analytics/client/track';
 
 export interface CartItem {
   id: string;
@@ -372,6 +373,22 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     dispatch({ type: 'ADD_ITEM', payload: { ...item, quantity: quantityToAdd, stock } });
+
+    // Recorded here rather than in each button, so the shop grid, the product
+    // page and Buy Now are all covered by one hook point — and recorded only
+    // on the path where the item ACTUALLY went in. Tracking at the call site
+    // would count the refusals above as adds, which is the exact difference
+    // between a funnel that measures intent and one that measures clicks.
+    track('AddToCart', {
+      productId: item.id,
+      productName: item.name,
+      variantName: item.variant?.name,
+      quantity: quantityToAdd,
+      value: item.price * quantityToAdd,
+      currency: 'EGP',
+      source: 'client',
+    });
+
     return { added: true, remaining: stock === undefined ? Infinity : stock - alreadyInCart - quantityToAdd };
   }, [state.items]);
 

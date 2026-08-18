@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Product } from '@/product/model';
 import Nav from '../../sections/Nav';
 import ProductDetailsTabs from './ProductDetailsTabs';
 import { useCart } from '../../../contexts/CartContext';
+import { track } from '../../../analytics/client/track';
 import { motion, AnimatePresence } from 'motion/react';
 import Footer from '@/app/sections/Footer';
 
@@ -83,6 +84,25 @@ export default function ProductClient({ product, relatedProducts }: Props) {
     }
     return media;
   }, [selectedVariant, product.mainImage, product.images, product.videos]);
+
+  /**
+   * ViewContent — someone looked at this product.
+   *
+   * Once per mount, keyed on the product id, NOT on the selected variant.
+   * Clicking through four colours is one person considering one product; four
+   * events would make the funnel's second stage a measure of how many variants
+   * a product has rather than of how many people looked at it.
+   */
+  useEffect(() => {
+    if (!product._id) return;
+    track('ViewContent', {
+      productId: product._id,
+      productName: product.name,
+      value: product.price,
+      currency: 'EGP',
+      source: 'client',
+    });
+  }, [product._id, product.name, product.price]);
 
   // ── Cart actions ───────────────────────────────────────────────────────────
   const buildCartItem = useCallback(() => ({

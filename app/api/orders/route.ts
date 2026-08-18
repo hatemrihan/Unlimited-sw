@@ -4,6 +4,7 @@ import { orderQueries } from '@/order/queries';
 import { createOrderTransaction, findOrderByClientId, resolveVariantName, resolveLegacyProductIds } from '../../../services/orderCreationService';
 import { computeOrderPricing, findPricingMismatches, ServerPricing } from '../../../services/orderPricingService';
 import { dispatchOrderPostProcessing } from '../../../services/emailQueueService';
+import { recordPurchase } from '../../../analytics/purchase';
 import { logger } from '../../../utils/logger';
 import { requireAdmin } from '../../../lib/requireAdmin';
 import { createOrderSchema, listOrdersQuerySchema } from '@/order/schema';
@@ -331,6 +332,24 @@ export async function POST(request: NextRequest) {
         );
       }
       savedOrder = txResult.savedOrder;
+    }
+
+    // 📊 The funnel's Purchase event — the order is committed, so this is true.
+    //
+    // Awaited, not fire-and-forget. Netlify kills the function the instant it
+    // responds, so a detached promise here would lose revenue events under
+    // exactly the load that makes them worth having. It is one insert on an
+    // indexed collection; the milliseconds are worth the certainty.
+    //
+    // Wrapped so it can never fail the order. The customer has paid and the
+    // stock is reserved — a measurement failure at this point is a line in a
+    // log, never a 500 handed to someone who has already bought something.
+    if (!MONGO_BYPASS) {
+      try {
+        await recordPurchase(savedOrder, orderData.sessionId);
+      } catch (analyticsError) {
+        logger.error('📉 Could not record the Purchase event', analyticsError);
+      }
     }
 
     // 📧 Background Post-Processing (Fire and Forget! 0 blocking time)

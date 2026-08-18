@@ -94,6 +94,29 @@ const INDEXES = {
     },
   ],
 
+  analytics_events: [
+    // Every funnel query filters on these two.
+    { key: { name: 1, createdAt: -1 }, name: 'name_1_createdAt_-1', background: true },
+
+    // The abandonment join walks one session's events.
+    { key: { sessionId: 1, createdAt: -1 }, name: 'sessionId_1_createdAt_-1', background: true },
+
+    // Dedup. The tracker retries over flaky mobile connections and sendBeacon
+    // can fire twice on tab close, so the same event arriving again must be a
+    // non-event rather than a double count.
+    { key: { eventId: 1 }, name: 'eventId_1', unique: true, background: true },
+
+    // Retention. One row per page view — the fastest-growing collection here,
+    // and the only one that would outgrow a shared Atlas tier on its own.
+    // MongoDB does the deleting; nothing has to run.
+    {
+      key: { createdAt: 1 },
+      name: 'createdAt_1_ttl',
+      expireAfterSeconds: 180 * 24 * 60 * 60,
+      background: true,
+    },
+  ],
+
   pendingemails: [
     // The drain's only query: what is owed and due, oldest first. Without it
     // the scheduled function scans the whole collection every minute, forever,

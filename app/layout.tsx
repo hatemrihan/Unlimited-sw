@@ -3,6 +3,8 @@ import "./globals.css";
 import { cn } from "../lib/utils";
 import { CartProvider } from "../contexts/CartContext";
 import { Toaster } from 'sonner';
+import GoogleAnalytics from './components/GoogleAnalytics';
+import AnalyticsProvider from './components/AnalyticsProvider';
 
 
 
@@ -89,9 +91,11 @@ export default function RootLayout({
             it cost every anonymous shopper a session request on mount, another
             every five minutes, and another on every tab switch. */}
         <CartProvider>
+          <AnalyticsProvider />
           {children}
           <Toaster position="top-right" />
         </CartProvider>
+        <GoogleAnalytics />
       </body>
 
     </html>

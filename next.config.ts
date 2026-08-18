@@ -41,7 +41,11 @@ const nextConfig: NextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com",
+              // googletagmanager.com serves gtag.js. `connect-src` below is
+              // already `https:`, which covers where GA sends its hits — but
+              // scripts are named explicitly, because an open script-src is the
+              // one that turns any injection into a full compromise.
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com https://www.googletagmanager.com",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https:",
               "media-src 'self' https: data: blob:",

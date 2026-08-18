@@ -47,6 +47,8 @@ const PUBLIC_BY_DESIGN: Record<string, string> = {
     'Checkout calls this to check a code a customer typed. It only reports whether a code is valid for a total — it creates and changes nothing.',
   'app/api/payment-methods/route.ts':
     'Checkout needs to know which payment methods are offered. Read-only, and exposes nothing but the two booleans.',
+  'app/api/analytics/events/route.ts':
+    'Browser telemetry. The visitors it counts have no account and never will, so no authentication is possible — that population IS the measurement. Protected instead by what works without identity: a zod allowlist with no field capable of holding personal data, a per-address rate limit, and a unique eventId so a replayed batch cannot inflate the funnel. Writes only; reads nothing back.',
 };
 
 /**
