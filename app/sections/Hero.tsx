@@ -14,7 +14,7 @@ const Hero: FC = () => {
   }
 
   return (
-    <section className="relative w-full h-[100svh] md:h-[80vh] bg-black overflow-hidden font-sans tracking-tight">
+    <section className="relative w-full h-[100svh] md:h-[80vh] md:mt-[80px] bg-stone-900 overflow-hidden font-sans tracking-tight">
 
       {/* Background Image — mobile vs desktop */}
       {/* Mobile image (visible below md) */}
@@ -29,14 +29,14 @@ const Hero: FC = () => {
         />
       </div>
       {/* Desktop/laptop video (visible at md and above) */}
-      <div className="absolute inset-0 hidden md:flex items-center justify-center">
+      <div className="absolute inset-0 hidden md:flex items-center justify-center md:p-12">
         <video
           src="/videos/main.mov"
           autoPlay
           loop
           muted
           playsInline
-          className="max-w-full max-h-full object-contain scale-[0.8]"
+          className="w-full h-full object-cover rounded-2xl"
         />
       </div>
 
@@ -45,12 +45,12 @@ const Hero: FC = () => {
 
 
 
-        {/* SHOP NOW — centered */}
-        <div className="flex justify-center">
+        {/* SHOP NOW — mobile only */}
+        <div className="flex justify-center md:hidden">
           <a
             href="#products"
             onClick={handleClickMobileNavItem}
-            className="text-white text-sm md:text-base tracking-[0.25em] uppercase border-b border-white pb-1 hover:opacity-70 transition-opacity duration-300"
+            className="text-white text-sm tracking-[0.25em] uppercase border-b border-white pb-1 hover:opacity-70 transition-opacity duration-300"
           >
             Be Unlimited.
           </a>
