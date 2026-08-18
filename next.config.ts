@@ -2,10 +2,34 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
-    // Was `unoptimized: true`, which shipped every product photo at full size —
-    // the single largest thing slowing the store down on mobile data.
-    // Netlify's Next runtime routes next/image through its Image CDN.
-    unoptimized: false,
+    /**
+     * Optimization is OFF, and turning it on again needs a fix elsewhere first.
+     *
+     * It was switched on to stop shipping full-size product photos over mobile
+     * data — a real and worthwhile goal. But on this deployment every
+     * `/_next/image` request answers **400 — "The requested resource isn't a
+     * valid image"**, so nothing rendered through `next/image` appeared at all:
+     * the hero, the Explore slider, the logo, every product photo. The raw
+     * files serve fine (`/images/newmobile-image.JPG` returns 200); it is the
+     * optimizer in front of them that fails.
+     *
+     * The cause is almost certainly the SPA fallback in `public/_redirects`:
+     *
+     *     /*  /index.html  200
+     *
+     * That line belongs to a single-page app, not to a Next server-rendered
+     * one. The optimizer fetches the source image over HTTP, that catch-all
+     * hands it `index.html`, and Next quite correctly reports that what came
+     * back is not an image.
+     *
+     * Removing the fallback is the real fix and is very likely safe — this app
+     * has never been an SPA — but it changes how EVERY unmatched route is
+     * served, and that cannot be verified from a local machine. Unoptimized
+     * images are a performance problem; invisible images are a broken shop. So
+     * this goes back to the setting that demonstrably worked, and the redirect
+     * gets fixed and observed on its own.
+     */
+    unoptimized: true,
     formats: ['image/avif', 'image/webp'],
     // `domains` is deprecated in favour of remotePatterns.
     remotePatterns: [
