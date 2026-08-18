@@ -4,7 +4,7 @@
 import React, { useState } from 'react'
 import Nav from '../sections/Nav'
 import Footer from '../sections/Footer'
-import { motion } from 'framer-motion'
+import { motion } from 'motion/react'
 
 const ContactClient = () => {
     const [formData, setFormData] = useState({

@@ -1,12 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../../lib/mongodb';
 import Promo from '../../../../models/promo';
+import { requireAdmin } from '@/lib/requireAdmin';
+import { updatePromoSchema } from '@/lib/schemas/promo.schema';
+
+/** `2026-08-15` → that day at 00:00:00. */
+function startOfSelectedDay(value?: string): Date | undefined {
+  if (!value) return undefined;
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
+/** `2026-08-15` → that day at 23:59:59, so the code works all day. */
+function endOfSelectedDay(value?: string): Date | undefined {
+  if (!value) return undefined;
+  const date = new Date(`${value}T23:59:59.999`);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
 
 // GET - Fetch single promo code by ID
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Promo codes are money. This route lives at /api/promo, which no
+  // middleware matcher covers, so the check has to happen here.
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
   try {
     const { id } = await params;
     console.log('📋 Fetching promo code:', id);
@@ -35,7 +56,7 @@ export async function GET(
         maxUses: promoCode.usageLimit,
         currentUses: promoCode.usedCount,
         isActive: promoCode.isActive,
-        validFrom: promoCode.createdAt,
+        validFrom: promoCode.startsAt || promoCode.createdAt,
         validUntil: promoCode.expiresAt,
         description: promoCode.description,
         waiveShipping: promoCode.waiveShipping || false
@@ -59,31 +80,44 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Promo codes are money. This route lives at /api/promo, which no
+  // middleware matcher covers, so the check has to happen here.
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
   try {
     const { id } = await params;
     const body = await request.json();
-    console.log('📝 Updating promo code:', id);
+
+    // Same rules as creation: a percentage over 100, a code with no discount and
+    // no free shipping, or an end date before the start date are all rejected
+    // here rather than saved and discovered by a customer.
+    const parsed = updatePromoSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid promo code' },
+        { status: 400 }
+      );
+    }
+
+    const data = parsed.data;
 
     await dbConnect();
 
-    // Set expiry date to END of the selected day (23:59:59)
-    // This means if you select Nov 21, it expires at Nov 21 at 11:59:59 PM
-    let expiryDate = body.validUntil;
-    if (expiryDate) {
-      expiryDate = new Date(expiryDate);
-      expiryDate.setHours(23, 59, 59, 999); // End of day
-    }
-
     const updateData = {
-      code: body.code,
-      discountType: body.type,
-      discountValue: body.discount || 0,
-      minimumOrder: body.minAmount,
-      usageLimit: body.maxUses,
-      isActive: body.isActive,
-      expiresAt: expiryDate,
-      description: body.description,
-      waiveShipping: body.waiveShipping || false
+      ...(data.code ? { code: data.code.toUpperCase().trim() } : {}),
+      discountType: data.type,
+      discountValue: data.discount || 0,
+      minimumOrder: data.minAmount,
+      maximumDiscount: data.maxDiscount ?? undefined,
+      usageLimit: data.maxUses ?? null,
+      isActive: data.isActive,
+      startsAt: startOfSelectedDay(data.validFrom),
+      expiresAt: endOfSelectedDay(data.validUntil),
+      description: data.description,
+      waiveShipping: data.waiveShipping || false
+      // usedCount is deliberately absent: editing a campaign must never reset
+      // how many times it has already been redeemed.
     };
 
     const promoCode = await Promo.findByIdAndUpdate(id, updateData, { new: true });
@@ -109,7 +143,7 @@ export async function PUT(
         maxUses: promoCode.usageLimit,
         currentUses: promoCode.usedCount,
         isActive: promoCode.isActive,
-        validFrom: promoCode.createdAt,
+        validFrom: promoCode.startsAt || promoCode.createdAt,
         validUntil: promoCode.expiresAt,
         description: promoCode.description,
         waiveShipping: promoCode.waiveShipping || false
@@ -133,6 +167,11 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Promo codes are money. This route lives at /api/promo, which no
+  // middleware matcher covers, so the check has to happen here.
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
   try {
     const { id } = await params;
     console.log('🗑️ Deleting promo code:', id);
@@ -172,6 +211,11 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Promo codes are money. This route lives at /api/promo, which no
+  // middleware matcher covers, so the check has to happen here.
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
   try {
     const { id } = await params;
     const body = await request.json();
@@ -206,7 +250,7 @@ export async function PATCH(
         maxUses: promoCode.usageLimit,
         currentUses: promoCode.usedCount,
         isActive: promoCode.isActive,
-        validFrom: promoCode.createdAt,
+        validFrom: promoCode.startsAt || promoCode.createdAt,
         validUntil: promoCode.expiresAt,
         description: promoCode.description,
         waiveShipping: promoCode.waiveShipping || false

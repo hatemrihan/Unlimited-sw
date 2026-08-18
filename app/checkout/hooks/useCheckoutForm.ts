@@ -67,7 +67,14 @@ export function useCheckoutForm() {
           setFormData(prev => ({ ...prev, transactionScreenshot: uploadData.url }));
           setScreenShotPreview(uploadData.url); // Show preview from live URL
         } else {
-          setErrors(prev => ({ ...prev, transactionScreenshot: 'Failed to upload image' }));
+          // The endpoint now refuses uploads for reasons the customer can act
+          // on — too many attempts, or a file that is not really an image —
+          // and a flat "Failed to upload image" hides which one happened.
+          const failure = await uploadResponse.json().catch(() => null);
+          setErrors(prev => ({
+            ...prev,
+            transactionScreenshot: failure?.error || 'Failed to upload image'
+          }));
         }
       } catch (error) {
         setErrors(prev => ({ ...prev, transactionScreenshot: 'Upload error occurred' }));

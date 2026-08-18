@@ -7,6 +7,10 @@ import { requireAdmin } from '../../../../lib/requireAdmin';
 import CityPricing from '../../../../models/cityPricing';
 
 export const GET = withDb(async (request: NextRequest) => {
+  // Shipping and COD configuration is internal pricing data, not public.
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
   const { searchParams } = new URL(request.url);
   const productIds = searchParams.get('productIds')?.split(',').filter(Boolean) ?? [];
 
@@ -43,7 +47,7 @@ export const GET = withDb(async (request: NextRequest) => {
 
   // Attach product-specific pricing if productIds provided
   if (productIds.length > 0) {
-    const Product = (await import('../../../../models/product')).default;
+    const Product = (await import('@/product/model')).default;
     const products = await Product.find(
       { _id: { $in: productIds } },
       { cityPricing: 1 }
@@ -121,6 +125,9 @@ export const POST = withDb(async (request: NextRequest) => {
 });
 
 export const PUT = withDb(async (request: NextRequest) => {
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
   return NextResponse.json({
     success: false,
     error: 'This endpoint is deprecated. Use /api/admin/cities/global-defaults for global defaults or /api/admin/products/[id]/city-pricing for product-specific rates.',

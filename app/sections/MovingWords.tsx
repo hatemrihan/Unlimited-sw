@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { motion, useInView } from 'framer-motion'
+import { motion, useInView } from 'motion/react'
 
 const MovingWords = () => {
   const wordsRef = React.useRef(null);

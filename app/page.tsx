@@ -5,10 +5,12 @@ import FeedbackFormLazy from "./sections/FeedbackFormLazy";
 import Footer from "./sections/Footer";
 import WhatsAppButton from "../components/WhatsAppButton";
 import Explore from "./sections/Explore";
-import { getActiveProducts } from "../services/product.service";
+import { getActiveProducts } from "@/product/actions";
 
 export const metadata = {
-  title: "Unlimited SW | Premium Calisthenics Equipment Egypt",
+  // `absolute` — the brand is already in this title; the root template must not
+  // append it a second time.
+  title: { absolute: "Unlimited SW | Calisthenics Equipment Made in Egypt" },
   description:
     "Shop professional calisthenics equipment in Egypt. Pull-up bars, resistance bands, gymnastic rings, and workout gear.",
   keywords: [
@@ -63,13 +65,17 @@ export default async function Home() {
 
   const structuredData = {
     "@context": "https://schema.org",
-    "@type": "Store",
-    "name": "UNLIMITED-SW",
+    // SportingGoodsStore is a subtype of Store/LocalBusiness — it tells Google
+    // what kind of shop this is, which plain "Store" does not.
+    "@type": "SportingGoodsStore",
+    "name": "Unlimited SW",
     "description": "Premium calisthenics equipment and training gear in Egypt. Shop pull-up bars, resistance bands, gymnastic rings, and professional workout equipment.",
     "url": "https://unlimited-sw.com",
     "logo": "https://unlimited-sw.com/logo.png",
     "image": "https://unlimited-sw.com/og-image.jpg",
-    "telephone": "+20-XXX-XXX-XXXX",
+    // "telephone" is intentionally absent until the owner supplies the real
+    // number in E.164 form (+20XXXXXXXXXX). A placeholder here is worse than
+    // nothing — Google would publish it.
     "email": "Muhamed.alkady@gmail.com",
     "address": {
       "@type": "PostalAddress",
@@ -83,6 +89,10 @@ export default async function Home() {
       "longitude": "31.2357"
     },
     "openingHours": "Mo-Su 09:00-21:00",
+    "areaServed": {
+      "@type": "Country",
+      "name": "Egypt"
+    },
     "paymentAccepted": ["Cash", "Credit Card", "InstaPay"],
     "currenciesAccepted": "EGP",
     "priceRange": "$$",
@@ -122,8 +132,9 @@ export default async function Home() {
       "jobTitle": "Founder & Calisthenics Coach",
       "description": "Ph.D. in Biomechanics in Sports Training with over 14 years of coaching experience"
     },
+    // A site is not "sameAs" itself — that entry is removed. TikTok and YouTube
+    // go here once the owner sends the real URLs.
     "sameAs": [
-      "https://unlimited-sw.com",
       "https://www.instagram.com/unlimited_sw",
       "https://www.facebook.com/unlimited.sw"
     ]

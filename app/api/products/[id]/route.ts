@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getProductById } from '../../../../services/product.service';
+import { getProductById } from '@/product/actions';
 
 // MongoDB ONLY — no static fallback
 export async function GET(
@@ -19,7 +19,7 @@ export async function GET(
   } catch (error: any) {
     const status = error.name === 'NotFoundError' ? 404 : 503;
     return NextResponse.json(
-      { success: false, error: error.message || 'المنتج مش موجود' },
+      { success: false, error: error.message || 'Product not found' },
       { status }
     );
   }

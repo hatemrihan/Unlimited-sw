@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withDb } from '../../../../../../lib/withDb';
-import Product from '../../../../../../models/product';
+import { requireAdmin } from '@/lib/requireAdmin';
+import Product from '@/product/model';
 import CityPricing from '../../../../../../models/cityPricing';
 import { invalidateProductCache, invalidateCitiesCache } from '../../../../../../lib/cache';
+import { revalidateProducts } from '@/product/tags';
 
 // Schema for per-governorate shipping/COD overrides
 // NOTE: price is NOT here — the product price comes from Product.price
@@ -16,6 +18,11 @@ const bulkCityPricingSchema = z.array(z.object({
 
 // GET - Get governorate shipping/COD config for a specific product
 export const GET = withDb(async (request: NextRequest, ctx?: any) => {
+  // middleware.ts matches '/admin/:path*', which does NOT cover '/api/admin/...'.
+  // Without this line the endpoint is open to the internet.
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
   const { id: productId } = await ctx.params;
   
   const product = await Product.findById(productId).select('name price cityPricing');
@@ -52,6 +59,11 @@ export const GET = withDb(async (request: NextRequest, ctx?: any) => {
 
 // PUT - Update governorate shipping/COD for a specific product
 export const PUT = withDb(async (request: NextRequest, ctx?: any) => {
+  // This endpoint writes what customers are charged for shipping and COD.
+  // It was reachable by anyone; the check below is what closes that.
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
   const { id: productId } = await ctx.params;
   const body = await request.json();
   
@@ -85,9 +97,12 @@ export const PUT = withDb(async (request: NextRequest, ctx?: any) => {
     { new: true, runValidators: true }
   );
   
-  // Invalidate caches for real-time updates
+  // Invalidate caches for real-time updates. invalidateProductCache only clears
+  // THIS serverless instance's Map; revalidateProducts purges the shared Data
+  // Cache so every other instance stops serving the old shipping cost too.
   invalidateProductCache(productId.toString());
   invalidateCitiesCache();
+  await revalidateProducts(productId.toString());
   
   return NextResponse.json({
     success: true,

@@ -11,15 +11,19 @@ import VariantImageManager from '../../../components/VariantImageManager';
 import FileUpload from '../../../components/FileUpload';
 import ProtectedAdminRoute from '@/components/auth/protected-admin-route';
 import SidebarNav from '../sections/SideBarNav';
-import { useAddProduct } from '@/hooks/useAddProduct';
+import { useAddProduct } from '@/product/ui/useAddProduct';
 import { calculateFinalPrice } from '@/utils/pricing';
+import { CATEGORIES, CATEGORY_KEYS, type CategoryKey } from '@/product/categories';
+import { slugifyEn, slugifyAr } from '@/lib/slug';
 
 const STEPS = [
   { id: 'general', num: '01', title: 'المعلومات الأساسية' },
   { id: 'pricing', num: '02', title: 'التسعير والحالة' },
   { id: 'media', num: '03', title: 'الوسائط والصور' },
   { id: 'variants', num: '04', title: 'المتغيرات' },
-  { id: 'additional', num: '05', title: 'تفاصيل إضافية' }
+  { id: 'additional', num: '05', title: 'تفاصيل إضافية' },
+  // Phase 2: the category and the Arabic copy that the /ar pages read.
+  { id: 'seo', num: '06', title: 'التصنيف والمحتوى العربي' }
 ];
 
 const InputLabel = ({ children }: { children: React.ReactNode }) => (
@@ -471,6 +475,158 @@ export default function AddProductPage() {
                           </Button>
                         </div>
                       </div>
+                    </div>
+                  )}
+
+                  {/* ── Phase 2: category, slugs, Arabic copy ───────────────── */}
+                  {activeStepId === 'seo' && (
+                    <div className="space-y-8">
+
+                      <div>
+                        <InputLabel>التصنيف (مطلوب)</InputLabel>
+                        <select
+                          value={product.category || ''}
+                          // The blank option means "not chosen yet", which is
+                          // `undefined` in the model — not an empty category.
+                          onChange={(e) => updateField('category', (e.target.value || undefined) as CategoryKey | undefined)}
+                          className={inputClasses}
+                        >
+                          <option value="">— اختر التصنيف —</option>
+                          {CATEGORY_KEYS.map((key) => (
+                            <option key={key} value={key}>
+                              {CATEGORIES[key].ar} — {CATEGORIES[key].en}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="mt-2 text-[12px] text-white/40">
+                          يحدد صفحة التصنيف التي يظهر فيها المنتج.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <InputLabel>الرابط بالإنجليزية (slug)</InputLabel>
+                          <input
+                            type="text"
+                            value={product.slug || ''}
+                            onChange={(e) => updateField('slug', e.target.value)}
+                            className={inputClasses}
+                            dir="ltr"
+                            placeholder={slugifyEn(product.name) || 'floor-parallettes'}
+                          />
+                          <p className="mt-2 text-[12px] text-white/40">
+                            اتركه فارغاً ليُولَّد من الاسم.
+                          </p>
+                        </div>
+
+                        <div>
+                          <InputLabel>الرابط بالعربية</InputLabel>
+                          <input
+                            type="text"
+                            value={product.slugAr || ''}
+                            onChange={(e) => updateField('slugAr', e.target.value)}
+                            className={inputClasses}
+                            placeholder={slugifyAr(product.nameAr || '') || 'بارليتس-أرضي'}
+                          />
+                          <p className="mt-2 text-[12px] text-white/40">
+                            اتركه فارغاً ليُولَّد من الاسم العربي.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <InputLabel>اسم المنتج بالعربية</InputLabel>
+                        <input
+                          type="text"
+                          value={product.nameAr || ''}
+                          onChange={(e) => updateField('nameAr', e.target.value)}
+                          className={inputClasses}
+                          placeholder="بارليتس أرضي"
+                        />
+                      </div>
+
+                      <div>
+                        <InputLabel>الوصف بالعربية</InputLabel>
+                        <textarea
+                          value={product.descriptionAr || ''}
+                          onChange={(e) => updateField('descriptionAr', e.target.value)}
+                          className={inputClasses}
+                          rows={3}
+                          placeholder="وصف قصير يظهر في صفحة المنتج العربية..."
+                        />
+                      </div>
+
+                      <div>
+                        <InputLabel>وصف تفصيلي بالعربية</InputLabel>
+                        <textarea
+                          value={product.detailedDescriptionAr || ''}
+                          onChange={(e) => updateField('detailedDescriptionAr', e.target.value)}
+                          className={inputClasses}
+                          rows={4}
+                        />
+                      </div>
+
+                      <div>
+                        <InputLabel>المواصفات التقنية بالعربية</InputLabel>
+                        <textarea
+                          value={product.specificationsAr || ''}
+                          onChange={(e) => updateField('specificationsAr', e.target.value)}
+                          className={inputClasses}
+                          rows={3}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <InputLabel>عنوان جوجل — إنجليزي (٧٠ حرف)</InputLabel>
+                          <input
+                            type="text"
+                            value={product.seoTitle || ''}
+                            onChange={(e) => updateField('seoTitle', e.target.value)}
+                            className={inputClasses}
+                            dir="ltr"
+                            maxLength={70}
+                          />
+                        </div>
+                        <div>
+                          <InputLabel>عنوان جوجل — عربي (٧٠ حرف)</InputLabel>
+                          <input
+                            type="text"
+                            value={product.seoTitleAr || ''}
+                            onChange={(e) => updateField('seoTitleAr', e.target.value)}
+                            className={inputClasses}
+                            maxLength={70}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <InputLabel>وصف جوجل — إنجليزي (١٦٠ حرف)</InputLabel>
+                          <textarea
+                            value={product.seoDescription || ''}
+                            onChange={(e) => updateField('seoDescription', e.target.value)}
+                            className={inputClasses}
+                            dir="ltr"
+                            rows={2}
+                            maxLength={160}
+                          />
+                        </div>
+                        <div>
+                          <InputLabel>وصف جوجل — عربي (١٦٠ حرف)</InputLabel>
+                          <textarea
+                            value={product.seoDescriptionAr || ''}
+                            onChange={(e) => updateField('seoDescriptionAr', e.target.value)}
+                            className={inputClasses}
+                            rows={2}
+                            maxLength={160}
+                          />
+                        </div>
+                      </div>
+
+                      <p className="text-[12px] text-white/40">
+                        اتركه فارغاً ليستخدم الموقع النص المُولَّد تلقائياً.
+                      </p>
                     </div>
                   )}
                 </div>

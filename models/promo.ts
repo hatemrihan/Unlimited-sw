@@ -9,6 +9,8 @@ export interface IPromo extends Document {
   usageLimit?: number;
   usedCount: number;
   isActive: boolean;
+  /** Campaign start. Absent means the code is live as soon as it is created. */
+  startsAt?: Date;
   expiresAt?: Date;
   description?: string;
   waiveShipping?: boolean;
@@ -54,6 +56,17 @@ const PromoSchema = new Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  /**
+   * When the campaign begins. The admin form has always had a "valid from"
+   * picker, but the value was thrown away by the API and no field existed to
+   * hold it — so every scheduled campaign went live the moment it was saved.
+   *
+   * Absent (every code created before this field existed) means "live now", so
+   * existing codes keep behaving exactly as they do today.
+   */
+  startsAt: {
+    type: Date
   },
   expiresAt: {
     type: Date

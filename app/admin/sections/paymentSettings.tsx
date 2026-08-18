@@ -15,21 +15,30 @@ const PaymentSettings = () => {
     codEnabled: true,
     instaPayEnabled: true,
   });
+  /** What is actually stored, so we can tell whether anything was changed. */
+  const [saved, setSaved] = useState<PaymentSettings>({
+    codEnabled: true,
+    instaPayEnabled: true,
+  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const fetchSettings = async () => {
+  const hasChanges = settings.codEnabled !== saved.codEnabled;
+
+  const fetchSettings = async (signal?: AbortSignal) => {
     try {
       setLoading(true);
-      const response = await fetch('/api/admin/payment-settings');
+      const response = await fetch('/api/admin/payment-settings', { signal });
       const data = await response.json();
-      
+
       if (data.success) {
         setSettings(data.settings);
+        setSaved(data.settings);
       } else {
         toast.error('فشل في تحميل إعدادات الدفع');
       }
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return;
       console.error('Error fetching payment settings:', error);
       toast.error('حدث خطأ أثناء تحميل الإعدادات');
     } finally {
@@ -55,6 +64,7 @@ const PaymentSettings = () => {
       
       if (data.success) {
         setSettings(data.settings);
+        setSaved(data.settings);
         toast.success('تم تحديث إعدادات الدفع بنجاح!');
       } else {
         toast.error(data.error || 'فشل في تحديث الإعدادات');
@@ -68,8 +78,20 @@ const PaymentSettings = () => {
   };
 
   useEffect(() => {
-    fetchSettings();
+    const controller = new AbortController();
+    fetchSettings(controller.signal);
+    return () => controller.abort();
   }, []);
+
+  // Warn before leaving with an unsaved toggle. Switching off Cash on Delivery
+  // and then closing the tab used to look exactly like a successful change.
+  useEffect(() => {
+    if (!hasChanges) return;
+
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [hasChanges]);
 
   if (loading) {
     return (
@@ -151,7 +173,7 @@ const PaymentSettings = () => {
           </div>
           <button
             onClick={saveSettings}
-            disabled={saving}
+            disabled={saving || !hasChanges}
             className="w-full sm:w-auto h-9 px-4 flex items-center justify-center gap-2 bg-white text-black hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-[12px] font-medium transition-colors"
           >
             {saving ? (

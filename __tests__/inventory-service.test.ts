@@ -9,9 +9,9 @@ import { MongoMemoryReplSet } from 'mongodb-memory-server';
 
 jest.mock('../lib/mongodb', () => ({ __esModule: true, default: jest.fn().mockResolvedValue(undefined) }));
 
-import Product from '../models/product';
-import { adjustStock, getAvailability, StockConflictError } from '../services/inventory.service';
-import { updateProduct } from '../services/product.service';
+import Product from '@/product/model';
+import { adjustStock, getAvailability, StockConflictError } from '@/product/inventory';
+import { updateProduct } from '@/product/actions';
 
 jest.setTimeout(120_000);
 

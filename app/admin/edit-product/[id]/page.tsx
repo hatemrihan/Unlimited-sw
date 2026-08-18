@@ -10,7 +10,7 @@ import ImageOrderManager from '@/components/ImageOrderManager';
 import VariantImageManager from '@/components/VariantImageManager';
 import ProtectedAdminRoute from '@/components/auth/protected-admin-route';
 import SidebarNav from '../../sections/SideBarNav';
-import { useProduct } from '@/hooks/useProduct';
+import { useProduct } from '@/product/ui/useProduct';
 import { useParams } from 'next/navigation';
 import { calculateFinalPrice } from '@/utils/pricing';
 

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { DatePicker } from '../../../components/ui/date-picker';
+import { toLocalDateString, fromLocalDateString, todayLocal, daysFromTodayLocal } from '@/utils/localDate';
 import { ICityPricing as City } from '../../../models/cityPricing';
 
 interface PromoCode {
@@ -30,8 +31,8 @@ const AddPromoCodePage = () => {
     minAmount: 0,
     maxUses: 100,
     isActive: true,
-    validFrom: new Date().toISOString().split('T')[0],
-    validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    validFrom: todayLocal(),
+    validUntil: daysFromTodayLocal(30),
     description: '',
     waiveShipping: false
   });
@@ -249,16 +250,16 @@ const AddPromoCodePage = () => {
                   <div>
                     <label className="block text-sm font-medium text-black mb-2">Valid From</label>
                     <DatePicker
-                      date={newPromoCode.validFrom ? new Date(newPromoCode.validFrom) : undefined}
-                      onDateChange={(date) => setNewPromoCode({...newPromoCode, validFrom: date ? date.toISOString().split('T')[0] : ''})}
+                      date={newPromoCode.validFrom ? fromLocalDateString(newPromoCode.validFrom) : undefined}
+                      onDateChange={(date) => setNewPromoCode({...newPromoCode, validFrom: date ? toLocalDateString(date) : ''})}
                       placeholder="Select start date"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-black mb-2">Valid Until</label>
                     <DatePicker
-                      date={newPromoCode.validUntil ? new Date(newPromoCode.validUntil) : undefined}
-                      onDateChange={(date) => setNewPromoCode({...newPromoCode, validUntil: date ? date.toISOString().split('T')[0] : ''})}
+                      date={newPromoCode.validUntil ? fromLocalDateString(newPromoCode.validUntil) : undefined}
+                      onDateChange={(date) => setNewPromoCode({...newPromoCode, validUntil: date ? toLocalDateString(date) : ''})}
                       placeholder="Select end date"
                     />
                   </div>

@@ -9,7 +9,7 @@ import { MongoMemoryReplSet } from 'mongodb-memory-server';
 
 jest.mock('../lib/mongodb', () => ({ __esModule: true, default: jest.fn().mockResolvedValue(undefined) }));
 
-import Product from '../models/product';
+import Product from '@/product/model';
 import Promo from '../models/promo';
 import { computeOrderPricing, findPricingMismatches } from '../services/orderPricingService';
 

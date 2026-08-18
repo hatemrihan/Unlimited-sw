@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '../../../../../../lib/requireAdmin';
 import { invalidateProductCache } from '../../../../../../lib/cache';
-import { revalidateProducts } from '../../../../../../lib/product-tags';
-import { adjustStock, getAvailability, StockConflictError } from '../../../../../../services/inventory.service';
+import { revalidateProducts } from '@/product/tags';
+import { adjustStock, getAvailability, StockConflictError } from '@/product/inventory';
 
 /**
  * Admin inventory adjustment — the only sanctioned way to change stock by hand.

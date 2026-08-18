@@ -55,13 +55,13 @@ const Explore = () => {
                     <div className="order-1 lg:order-1">
                         {/* PRODUCT DESCRIPTION - Shows on DESKTOP */}
                         <div className="hidden lg:flex flex-col items-center justify-center space-y-4 max-w-md mx-auto">
-                            <h1 className="text-6xl text-white font-normal leading-tight tracking-tight text-center">
+                            <h2 className="text-6xl text-white font-normal leading-tight tracking-tight text-center">
                                 Worth the Buy.
-                            </h1>
-
-                            <h2 className="text-2xl font-light text-[#b3b3b3] text-center">
-                                Wall-mounted pull-up bar +Wall-parallel bar
                             </h2>
+
+                            <h3 className="text-2xl font-light text-[#b3b3b3] text-center">
+                                Wall-mounted pull-up bar +Wall-parallel bar
+                            </h3>
                             <p className="text-2xl font-light text-white text-center">
                                 5,400 LE
                             </p>

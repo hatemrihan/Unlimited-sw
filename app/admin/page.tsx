@@ -97,6 +97,8 @@ const DashboardContent = memo(({ onNavigate }: { onNavigate: (s: string) => void
   const [error, setError] = useState(false);
   const [stats, setStats] = useState({ products: 0, orders: 0, promoCodes: 0 });
   const [monthlyData, setMonthlyData] = useState<{ name: string; sales: number }[]>([]);
+  /** All-time revenue, excluding cancelled orders. Summed by MongoDB, not here. */
+  const [revenue, setRevenue] = useState(0);
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [recentProducts, setRecentProducts] = useState<RecentProduct[]>([]);
   const [recentReviews, setRecentReviews] = useState<RecentReview[]>([]);
@@ -105,7 +107,11 @@ const DashboardContent = memo(({ onNavigate }: { onNavigate: (s: string) => void
     try {
       setLoading(true); setError(false);
       const [prodRes, ordRes, promoRes] = await Promise.all([
-        fetch('/api/admin/products?limit=5'), fetch('/api/orders?limit=1000'), fetch('/api/promo'),
+        // Totals come pre-computed from the database. This used to pull 1,000
+        // whole orders — every customer's name, email, phone and address — just
+        // to add up four numbers in the browser, and quietly stopped being
+        // accurate above 1,000 orders.
+        fetch('/api/admin/products?limit=5'), fetch('/api/admin/orders/stats'), fetch('/api/promo'),
       ]);
       const s = { products: 0, orders: 0, promoCodes: 0 };
 
@@ -120,30 +126,15 @@ const DashboardContent = memo(({ onNavigate }: { onNavigate: (s: string) => void
 
       if (ordRes.ok) {
         const d = await ordRes.json();
-        const orders = d.orders || [];
-        s.orders = d.totalCount || orders.length || 0;
-        const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
-        const monthly = months.map(m => ({ name: m, sales: 0 }));
-        orders.forEach((o: any) => {
-          try {
-            // Only count non-cancelled orders for revenue (optional but usually correct)
-            if (o.status !== 'cancelled') {
-              const dt = new Date(o.orderDate || o.createdAt);
-              if (!isNaN(dt.getTime())) { 
-                const mi = dt.getMonth(); 
-                if (mi >= 0 && mi < 12) {
-                  const orderTotal = Number(o.totalAmount) || Number(o.total) || 0;
-                  monthly[mi].sales += orderTotal; 
-                }
-              }
-            }
-          } catch { /* skip */ }
-        });
-        setMonthlyData(monthly);
-        setRecentOrders(orders.slice(0, 5).map((o: any) => ({
-          _id: o._id || o.orderId || '', customerName: o.customer?.name || o.customerName || 'غير معروف',
-          status: o.status || 'pending', createdAt: formatDate(o.createdAt || o.orderDate),
-          total: Number(o.totalAmount) || Number(o.total) || 0,
+        s.orders = d.totalOrders || 0;
+        // Already summed per year+month by MongoDB, and already covering every
+        // order rather than the most recent thousand.
+        setMonthlyData((d.monthly || []).map((m: any) => ({ name: m.name, sales: m.sales || 0 })));
+        setRevenue(Number(d.totalRevenue) || 0);
+        setRecentOrders((d.recentOrders || []).map((o: any) => ({
+          _id: o._id || o.orderId || '', customerName: o.customerName || 'غير معروف',
+          status: o.status || 'pending', createdAt: formatDate(o.createdAt),
+          total: Number(o.total) || 0,
         })));
       }
 
@@ -168,7 +159,8 @@ const DashboardContent = memo(({ onNavigate }: { onNavigate: (s: string) => void
     </div>
   );
 
-  const totalRevenue = monthlyData.reduce((s, m) => s + m.sales, 0);
+  // The server's own total, over every order — not the sum of the 12-month chart.
+  const totalRevenue = revenue;
 
   return (
     <div className="space-y-6 max-w-[1100px]" dir="rtl">
@@ -207,11 +199,6 @@ const DashboardContent = memo(({ onNavigate }: { onNavigate: (s: string) => void
         ) : (
           <div className="h-[110px] flex flex-col items-center justify-center text-[12px] text-white/15">
             لا توجد بيانات مبيعات بعد
-            <div className="text-[10px] mt-2 opacity-50 font-mono">
-              DEBUG: orders count = {stats.orders}, monthlySum = {monthlyData.reduce((a, b) => a + b.sales, 0)}
-              <br/>
-              First order date: {recentOrders[0]?.createdAt || 'none'}
-            </div>
           </div>
         )}
       </div>

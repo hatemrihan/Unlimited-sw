@@ -1,8 +1,8 @@
 import React from 'react';
 import { ColumnDef } from "@tanstack/react-table";
-import { Order } from "@/hooks/useOrders";
+import { Order, OrderStatus } from "@/hooks/useOrders";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowUpDown, Eye, MoreHorizontal } from "lucide-react";
+import { ArrowUpDown, Check, ChevronDown, Eye, Loader2, MoreHorizontal } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,9 +22,48 @@ const copyToClipboard = async (text: string, label: string) => {
   }
 };
 
-export const getOrderColumns = (
-  openDeleteDialog: (order: Order) => void
-): ColumnDef<Order>[] => [
+/**
+ * The order lifecycle, in the order it actually happens.
+ *
+ * Every one of these states existed in the database and in the API from the
+ * start — `PATCH /api/orders/[id]` has always known how to move between them,
+ * restoring stock on the way into `cancelled` and re-reserving it on the way
+ * out. There was simply no control anywhere in the admin panel that called it,
+ * and no column that displayed it, so every order sat at `pending` forever and
+ * the only available action was permanent deletion.
+ */
+export const ORDER_STATUSES: Array<{
+  value: OrderStatus;
+  label: string;
+  /** Badge colours, matching the dark admin theme. */
+  className: string;
+}> = [
+  { value: 'pending',   label: 'قيد الانتظار', className: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
+  { value: 'confirmed', label: 'تم التأكيد',   className: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+  { value: 'shipped',   label: 'تم الشحن',     className: 'bg-purple-500/10 text-purple-400 border-purple-500/20' },
+  { value: 'delivered', label: 'تم التوصيل',   className: 'bg-green-500/10 text-green-400 border-green-500/20' },
+  { value: 'cancelled', label: 'ملغي',         className: 'bg-red-500/10 text-red-400 border-red-500/20' },
+];
+
+const STATUS_BY_VALUE = new Map(ORDER_STATUSES.map(status => [status.value, status]));
+
+export function statusLabel(value: string): string {
+  return STATUS_BY_VALUE.get(value as OrderStatus)?.label ?? value;
+}
+
+export interface OrderColumnHandlers {
+  openDeleteDialog: (order: Order) => void;
+  /** Asks to move an order to a new status. The section owns any confirmation. */
+  requestStatusChange: (order: Order, next: OrderStatus) => void;
+  /** The order currently being written, so its row can show a spinner. */
+  updatingOrderId: string | null;
+}
+
+export const getOrderColumns = ({
+  openDeleteDialog,
+  requestStatusChange,
+  updatingOrderId,
+}: OrderColumnHandlers): ColumnDef<Order>[] => [
   {
     id: "select",
     header: ({ table }) => (
@@ -74,6 +113,49 @@ export const getOrderColumns = (
     cell: ({ row }) => (
       <div className="font-mono text-[11px] text-white">{row.getValue("orderId")}</div>
     ),
+  },
+  {
+    accessorKey: "status",
+    id: "status",
+    header: "الحالة",
+    cell: ({ row }) => {
+      const order = row.original;
+      const current = STATUS_BY_VALUE.get(order.status);
+      const isUpdating = updatingOrderId === order._id;
+
+      return (
+        <DropdownMenu dir="rtl">
+          <DropdownMenuTrigger asChild disabled={isUpdating}>
+            <button
+              className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] rounded font-medium border transition-colors disabled:opacity-60 ${
+                current?.className ?? 'bg-white/[0.06] text-white/60 border-white/[0.08]'
+              }`}
+              aria-label={`تغيير حالة الطلب ${order.orderId}`}
+            >
+              {isUpdating
+                ? <Loader2 className="h-3 w-3 animate-spin" />
+                : <ChevronDown className="h-3 w-3 opacity-60" />}
+              {current?.label ?? order.status}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="bg-[#1c1917] border-white/[0.08] shadow-xl min-w-[160px]">
+            <DropdownMenuLabel className="text-white/60 text-[11px]">تغيير الحالة</DropdownMenuLabel>
+            <DropdownMenuSeparator className="bg-white/[0.08]" />
+            {ORDER_STATUSES.map(status => (
+              <DropdownMenuItem
+                key={status.value}
+                disabled={status.value === order.status}
+                onClick={() => requestStatusChange(order, status.value)}
+                className="text-[12px] text-white hover:bg-white/[0.06] focus:bg-white/[0.06] cursor-pointer flex items-center justify-between gap-2 disabled:opacity-40"
+              >
+                <span>{status.label}</span>
+                {status.value === order.status && <Check className="h-3 w-3 text-white/60" />}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    },
   },
   {
     accessorKey: "customer.email",

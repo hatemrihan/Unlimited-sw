@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../../lib/mongodb';
-import Product from '../../../../models/product';
+import { productQueries } from '@/product/queries';
 import mongoose from 'mongoose';
 
 /**
@@ -31,11 +31,10 @@ export async function GET(request: NextRequest) {
   try {
     await dbConnect();
 
-    // Fetch ONLY the cityPricing from the products in the cart
-    const products = await Product.find(
-      { _id: { $in: productIds } },
-      { _id: 1, cityPricing: 1 }
-    ).lean();
+    // The products in the cart, read through the seam. Only `cityPricing` is
+    // used below; the shared read carries a few more fields, which is the price
+    // of having one query function instead of a second nearly-identical one.
+    const products = await productQueries.findByIds(productIds);
 
     // Build governorate map entirely from product-level city pricing
     const govMap: Record<string, any> = {};
@@ -68,7 +67,11 @@ export async function GET(request: NextRequest) {
         govMap[key].productPricing[pid] = {
           shippingCost: cp.shippingCost ?? 0,
           codFee: cp.codFee ?? 0,
-          isActive: cp.isActive !== false,
+          // Always true: the loop skipped the inactive entries above. This read
+          // `cp.isActive !== false`, which looked like a check and was not —
+          // the query result was untyped, so nothing pointed out that the
+          // answer could only ever be true.
+          isActive: true,
         };
       }
     }
@@ -84,7 +87,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('[Checkout Cities] MongoDB failed:', error);
     return NextResponse.json(
-      { success: false, cities: [], error: 'فشل تحميل بيانات الشحن. جرب تاني.' },
+      { success: false, cities: [], error: 'Could not load shipping options. Please try again.' },
       { status: 503 }
     );
   }

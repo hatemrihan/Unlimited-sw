@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Product } from '../../../models/product';
+import { Product } from '@/product/model';
 import { toast } from 'sonner';
 import { fetchWithRetry } from '@/utils/fetchWithRetry';
 import { z } from 'zod';

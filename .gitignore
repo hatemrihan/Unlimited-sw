@@ -55,3 +55,7 @@ server.js
 # deliverables the team has to be able to run, so they belong in the repo.
 !__tests__/**
 !scripts/reconcile-stock.js
+!scripts/sync-indexes.js
+
+# rendered email previews (npm run email:preview)
+.email-preview/

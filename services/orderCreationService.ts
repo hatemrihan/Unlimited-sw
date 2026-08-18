@@ -1,9 +1,12 @@
 import mongoose from 'mongoose';
 import dbConnect from '../lib/mongodb';
-import Order, { IOrder } from '../models/order';
+import type { IOrder } from '@/order/model';
+import { orderQueries } from '@/order/queries';
 import { invalidateProductCache } from '../lib/cache';
-import { revalidateProducts } from '../lib/product-tags';
-import { reserveStock, isValidProductId } from './inventory.service';
+import { revalidateProducts } from '@/product/tags';
+import { reserveStock, isValidProductId } from '@/product/inventory';
+import { incrementPromoUsage, PromoLimitError } from './promoService';
+import { enqueueOrderEmail } from './pendingEmailService';
 
 /**
  * Resolves the variant name for an order line item.
@@ -31,7 +34,7 @@ export async function resolveLegacyProductIds(orderData: any): Promise<any[]> {
   if (legacyLines.length === 0) return [];
 
   await dbConnect();
-  const Product = (await import('../models/product')).default;
+  const Product = (await import('@/product/model')).default;
 
   const candidates = await Product.find(
     { name: { $in: legacyLines.map((p: any) => p.name).filter(Boolean) } },
@@ -61,11 +64,44 @@ export async function resolveLegacyProductIds(orderData: any): Promise<any[]> {
 }
 
 /**
+ * The order already placed under this checkout attempt, or null.
+ *
+ * Called before any work is done, so a customer whose response was lost gets
+ * their original order back instead of a second one. A blank id finds nothing
+ * on purpose — orders placed without one store no value at all, and a lookup
+ * on `''` or `undefined` must not hand back a stranger's order.
+ */
+export async function findOrderByClientId(clientOrderId?: string) {
+  if (!clientOrderId || !clientOrderId.trim()) return null;
+
+  await dbConnect();
+  return orderQueries.findByClientOrderId(clientOrderId.trim());
+}
+
+/**
+ * Whether this error is the unique index refusing a repeated checkout attempt.
+ *
+ * Distinguished from every other write failure because it is the one that is
+ * not a failure: the customer's order exists, and the right answer is to show
+ * it to them. Keyed on `keyPattern` rather than the message so an `orderId`
+ * collision — a genuinely different problem, handled by its own retry — is
+ * never mistaken for it.
+ */
+function isDuplicateClientOrderId(error: any): boolean {
+  return error?.code === 11000 && Boolean(error?.keyPattern?.clientOrderId);
+}
+
+/**
  * Executes the Order creation and Stock decrement completely inside a unified
  * database Transaction boundaries guaranteeing all-or-nothing execution without
  * manual rollback drift.
  */
-export async function createOrderTransaction(orderData: any, newOrder: Partial<IOrder>, promoDiscount: number) {
+export async function createOrderTransaction(
+  orderData: any,
+  newOrder: Partial<IOrder>,
+  /** The promo code the SERVER validated and priced, if any. */
+  appliedPromoCode?: string
+) {
   await dbConnect();
 
   // Establish standard session wrapper preventing manual drift
@@ -89,7 +125,7 @@ export async function createOrderTransaction(orderData: any, newOrder: Partial<I
       for (const orderProduct of orderData.products) {
         if (!isValidProductId(orderProduct.productId)) {
           console.warn(`⚠️ [OrderService] Rejecting order: legacy/static product ID "${orderProduct.productId}" (${orderProduct.name}) is not in MongoDB.`);
-          throw new Error(`المنتج ${orderProduct.name} مش متاح للطلب دلوقتي. من فضلك حدّث الصفحة والسلة وجرب تاني.`);
+          throw new Error(`${orderProduct.name} is not available to order right now. Please refresh the page and your cart, then try again.`);
         }
       }
 
@@ -105,17 +141,46 @@ export async function createOrderTransaction(orderData: any, newOrder: Partial<I
       reserved.forEach(id => touchedProductIds.add(id));
 
       // 2. Commit Order Payload identically across the session
-      const [order] = await Order.create([newOrder], { session });
-      savedOrder = order;
+      savedOrder = await orderQueries.create(newOrder, session);
 
-      // 3. Complete internal native hooks safely without wire delays
-      if (promoDiscount > 0 && orderData.promoCode) {
-        const Promo = (await import('../models/promo')).default;
-        await Promo.findOneAndUpdate(
-          { code: orderData.promoCode.toUpperCase().trim() },
-          { $inc: { usedCount: 1 } },
-          { session }
-        );
+      // 2b. Record that this order owes its customer an email, in the same
+      // transaction. Before this, the confirmation existed only as a promise
+      // inside the request: if the provider was slow or the function died, the
+      // email was lost with nothing anywhere recording that it was owed.
+      //
+      // Inside the transaction so the two commit together — never an order
+      // with no mail owed, never mail owed for an order that rolled back.
+      await enqueueOrderEmail(
+        savedOrder.orderId,
+        {
+          order: JSON.parse(JSON.stringify(savedOrder)),
+          orderData: JSON.parse(JSON.stringify(orderData)),
+        },
+        session
+      );
+
+      // 3. Claim one use of the promo code, inside the same transaction.
+      //
+      // This used to be a bare $inc with NO limit condition, so usageLimit was
+      // only ever checked while the customer was still filling in the form. Two
+      // people racing for the last use of a code both passed that check and both
+      // orders committed. incrementPromoUsage enforces the limit inside the
+      // update itself, so exactly one of them wins.
+      //
+      // It is also keyed off the code the SERVER validated and priced, not
+      // `promoDiscount > 0`: a code that only waives shipping produces a zero
+      // discount, and those were never being counted at all.
+      if (appliedPromoCode) {
+        try {
+          await incrementPromoUsage(appliedPromoCode, session);
+        } catch (error) {
+          if (error instanceof PromoLimitError) {
+            throw new Error(
+              `Promo code "${appliedPromoCode}" has reached its usage limit. Please try a different code.`
+            );
+          }
+          throw error;
+        }
       }
     });
 
@@ -128,7 +193,19 @@ export async function createOrderTransaction(orderData: any, newOrder: Partial<I
 
     return { success: true, savedOrder };
   } catch (error: any) {
-    console.error('❌ الأوردر اتلغى بسبب مشكلة في الستوك:', error.message);
+    // A repeated checkout attempt. The insert was refused by the unique index,
+    // which took the whole transaction down with it — so the stock this attempt
+    // reserved and the promo use it claimed are already released, with no
+    // compensating logic of our own. The caller answers with the order that
+    // did get through.
+    if (isDuplicateClientOrderId(error)) {
+      console.warn(
+        `↩️ [OrderService] Repeat of checkout attempt "${newOrder.clientOrderId}" — the first one already placed an order. Nothing reserved.`
+      );
+      return { success: false, duplicate: true as const, error: 'Duplicate checkout attempt' };
+    }
+
+    console.error('❌ [OrderService] Order rolled back:', error.message);
     return { success: false, error: error.message };
   } finally {
     await session.endSession();

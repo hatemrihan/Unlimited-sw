@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -9,6 +9,19 @@ import { useCart, CartItem } from '../../contexts/CartContext';
 import { useCheckoutPricing } from './hooks/useCheckoutPricing';
 import { useCheckoutForm } from './hooks/useCheckoutForm';
 import { City } from './types';
+import { newClientOrderId } from '../../lib/clientOrderId';
+
+/**
+ * One way of writing an amount, across the whole checkout.
+ *
+ * The cart showed "L.E 1,500" and this page showed "L.E 1500" for the same
+ * order, because one used `toLocaleString()` and the other `toFixed(0)`. Small,
+ * but it is the screen where a customer is deciding whether to hand over money,
+ * and two spellings of their total invites a second look at the wrong moment.
+ *
+ * Rounded, matching what the server stores.
+ */
+const egp = (amount: number) => Math.round(amount).toLocaleString();
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -17,7 +30,23 @@ export default function CheckoutPage() {
   const [stockWarning, setStockWarning] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { state, clearCart } = useCart();
+  /**
+   * This checkout attempt's id, held across re-renders and across retries.
+   *
+   * `isSubmitting` already stops a double-click, but it cannot help with the
+   * failure that actually costs money: the request commits and the response is
+   * lost, the button comes back, and the customer presses it again. Both
+   * requests carry this same value, so the second is recognised as the retry it
+   * is. Re-minted on success, so someone who really does order twice is not
+   * handed their previous order.
+   */
+  const clientOrderIdRef = useRef<string>('');
+  if (!clientOrderIdRef.current) clientOrderIdRef.current = newClientOrderId();
+
+  const { state, clearCart, refreshPrices } = useCart();
+  /** Set when the server refused because its prices disagree with ours. */
+  const [priceMismatch, setPriceMismatch] = useState(false);
+  const [isRefreshingPrices, setIsRefreshingPrices] = useState(false);
   const cartItems = useMemo(() => state.items, [state.items]);
 
   const {
@@ -53,9 +82,40 @@ export default function CheckoutPage() {
   });
 
   useEffect(() => {
-    // Instantly apply static payment settings, bypassing MongoDB API latency
-    setPaymentSettings({ codEnabled: true, instaPayEnabled: true });
-    // No need to override formData since both are enabled
+    // Reads the admin's payment-method switches. This used to be hardcoded to
+    // `true` for both, which made the admin toggle decorative — turning Cash on
+    // Delivery off changed nothing here.
+    //
+    // On failure both methods stay enabled (the state's initial value): a
+    // database hiccup must never stop customers being able to pay.
+    let cancelled = false;
+
+    fetch('/api/payment-methods')
+      .then(response => (response.ok ? response.json() : null))
+      .then(data => {
+        if (cancelled || !data?.methods) return;
+
+        setPaymentSettings(data.methods);
+
+        // If the currently selected method has just been switched off, move the
+        // customer to one that still works rather than leaving a dead selection.
+        setFormData(previous => {
+          if (previous.paymentMethod === 'cashOnDelivery' && !data.methods.codEnabled) {
+            return { ...previous, paymentMethod: 'instaPay' };
+          }
+          if (previous.paymentMethod === 'instaPay' && !data.methods.instaPayEnabled) {
+            return { ...previous, paymentMethod: 'cashOnDelivery' };
+          }
+          return previous;
+        });
+      })
+      .catch(() => {
+        /* keep both enabled */
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [setFormData]);
 
   // Check availability on mount so a customer learns an item is gone before
@@ -89,11 +149,11 @@ export default function CheckoutPage() {
         const names = unavailable
           .map((line: any) => {
             const item = cartItems.find(i => i.id === line.productId);
-            return `${item?.name || 'منتج'}${line.variantName ? ` (${line.variantName})` : ''}`;
+            return `${item?.name || 'an item'}${line.variantName ? ` (${line.variantName})` : ''}`;
           })
           .join('، ');
 
-        setStockWarning(`الكميات المتاحة اتغيرت: ${names}. راجع السلة قبل ما تكمل.`);
+        setStockWarning(`Availability changed for: ${names}. Please review your cart before continuing.`);
       } catch {
         // Advisory check — a failure here must not block the form.
       }
@@ -133,34 +193,13 @@ export default function CheckoutPage() {
     setOrderError(null);
 
     try {
-      // 🛡️ LAYER 3: Last-resort migration for any legacy static product IDs
-      // If a user somehow reaches checkout with "static-product-1" in their cart,
-      // attempt to resolve it to a real MongoDB ObjectId before submitting.
-      let resolvedItems = cartItems;
-      const hasLegacyIds = cartItems.some((item: CartItem) => !item.id.match(/^[0-9a-fA-F]{24}$/));
-      
-      if (hasLegacyIds) {
-        try {
-          const allRes = await fetch('/api/products');
-          const allData = await allRes.json();
-          if (allData.success && allData.products) {
-            resolvedItems = cartItems.map((item: CartItem) => {
-              if (item.id.match(/^[0-9a-fA-F]{24}$/)) return item; // Already valid
-              const match = allData.products.find((p: any) => 
-                p.name === item.name || p.name?.trim() === item.name?.trim()
-              );
-              if (match?._id) {
-                console.log(`🛡️ [Checkout Guard] Last-resort migration: "${item.name}" → ${match._id}`);
-                return { ...item, id: match._id.toString() };
-              }
-              return item; // Keep as-is — order service Layer 1 will handle gracefully
-            });
-          }
-        } catch (migrationError) {
-          // Migration failed — proceed anyway, Layer 1 in orderCreationService will catch it
-          console.warn('⚠️ [Checkout Guard] Migration fetch failed, proceeding with existing IDs');
-        }
-      }
+      // The last-resort client migration for pre-MongoDB product ids used to
+      // sit here, fetching the entire catalogue on the submit path to rename an
+      // id by matching product names. It was the fourth copy of one idea — the
+      // cart context, the cart page, here, and `resolveLegacyProductIds` on the
+      // server. Only the server's copy runs where a customer cannot skip it,
+      // and it already logs when it fires, so the three client copies are gone.
+      const resolvedItems = cartItems;
 
       const orderData = {
         customer: {
@@ -202,7 +241,11 @@ export default function CheckoutPage() {
         discountAmount: discountAmount,
         notes: formData.notes.trim(),
         status: 'pending',
-        orderDate: new Date().toISOString()
+        // No `orderDate`. The browser used to send one and the server ignored
+        // it, setting its own — two clocks for one fact, where the customer's
+        // is the one that can be wrong or lied about. Removed so nobody later
+        // "fixes" the server by trusting it.
+        clientOrderId: clientOrderIdRef.current
       };
 
       const response = await fetch('/api/orders', {
@@ -227,15 +270,45 @@ export default function CheckoutPage() {
           // Safely catch scenarios where storage is disabled / full
         }
 
+        // This attempt is spent. A customer who comes back and orders again is
+        // making a new purchase, not retrying this one.
+        clientOrderIdRef.current = newClientOrderId();
+
         clearCart();
         router.push(`/thankyou?orderId=${data.order.orderId}`);
       } else {
         setOrderError(data.error || 'Something went wrong with your order');
+        // A pricing mismatch is the one failure the customer can fix in place,
+        // so the error box offers the fix rather than telling them to reload a
+        // form they have just spent two minutes filling in.
+        setPriceMismatch(data.code === 'PRICING_MISMATCH' || data.code === 'PROMO_REJECTED');
       }
     } catch (error) {
       setOrderError(error instanceof Error ? error.message : 'An unexpected error occurred');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  /**
+   * Pulls current prices and clears the mismatch, keeping the filled-in form.
+   *
+   * The server was already right to refuse — the customer must never be charged
+   * a number they did not see. What was missing was any way to act on it.
+   */
+  const handleRefreshPrices = async () => {
+    setIsRefreshingPrices(true);
+    try {
+      const refreshed = await refreshPrices();
+      if (refreshed) {
+        setOrderError(null);
+        setPriceMismatch(false);
+        setStockWarning(null);
+      } else {
+        setOrderError('We could not reach the server to check prices. Please check your connection and try again.');
+      }
+    } finally {
+      setIsRefreshingPrices(false);
     }
   };
 
@@ -253,16 +326,29 @@ export default function CheckoutPage() {
 
           {orderError && (
             <div className="mb-8 p-4 bg-red-900 border border-red-600 text-red-300 rounded">
-              <h3 className="font-medium mb-2 text-white">Order Submission Failed</h3>
+              <h3 className="font-medium mb-2 text-white">
+                {priceMismatch ? 'Prices Changed' : 'Order Submission Failed'}
+              </h3>
               <p className="text-red-300">{orderError}</p>
+
+              {priceMismatch && (
+                <button
+                  type="button"
+                  onClick={handleRefreshPrices}
+                  disabled={isRefreshingPrices}
+                  className="mt-3 px-4 py-2 bg-white text-black text-sm font-medium rounded hover:bg-gray-200 transition-colors disabled:opacity-50"
+                >
+                  {isRefreshingPrices ? 'Updating prices…' : 'Update prices and review'}
+                </button>
+              )}
             </div>
           )}
 
           {stockWarning && (
-            <div className="mb-8 p-4 bg-amber-900/60 border border-amber-600 rounded" dir="rtl">
+            <div className="mb-8 p-4 bg-amber-900/60 border border-amber-600 rounded">
               <p className="text-amber-200">{stockWarning}</p>
               <Link href="/cart" className="mt-2 inline-block underline text-amber-100">
-                رجوع للسلة
+                Back to cart
               </Link>
             </div>
           )}
@@ -586,7 +672,7 @@ export default function CheckoutPage() {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-white">L.E {((refreshedPrices[`${item.id}_${item.variant?.name || 'default'}`] || item.price) * item.quantity).toFixed(0)}</p>
+                      <p className="text-white">L.E {egp((refreshedPrices[`${item.id}_${item.variant?.name || 'default'}`] || item.price) * item.quantity)}</p>
                     </div>
                   </div>
                 ))}
@@ -595,12 +681,12 @@ export default function CheckoutPage() {
               <div className="border-t border-gray-600 pt-4 space-y-2">
                 <div className="flex justify-between">
                   <span className="text-white">Subtotal</span>
-                  <span className="text-white">L.E {refreshedSubtotal.toFixed(0)}</span>
+                  <span className="text-white">L.E {egp(refreshedSubtotal)}</span>
                 </div>
                 {appliedPromo && (
                   <div className="flex justify-between text-green-400">
                     <span>Discount ({appliedPromo.code})</span>
-                    <span>- L.E {discountAmount.toFixed(0)}</span>
+                    <span>- L.E {egp(discountAmount)}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
@@ -610,19 +696,19 @@ export default function CheckoutPage() {
                       ? 'Select a governorate'
                       : shouldWaiveShipping
                         ? 'Free'
-                        : `L.E ${shippingCost}`
+                        : `L.E ${egp(shippingCost)}`
                     }
                   </span>
                 </div>
                 {formData.paymentMethod === 'cashOnDelivery' && codFee > 0 && (
                   <div className="flex justify-between">
                     <span className="text-white">Cash on Delivery Fee</span>
-                    <span className="text-white">L.E {codFee}</span>
+                    <span className="text-white">L.E {egp(codFee)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-medium text-lg pt-2 border-t border-gray-600">
                   <span className="text-white">Total</span>
-                  <span className="text-white">L.E {totalWithShipping.toFixed(0)}</span>
+                  <span className="text-white">L.E {egp(totalWithShipping)}</span>
                 </div>
               </div>
             </div>

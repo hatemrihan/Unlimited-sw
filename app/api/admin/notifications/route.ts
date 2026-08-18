@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../../lib/mongodb';
 import Notification from '../../../../models/notification';
+import { requireAdmin } from '../../../../lib/requireAdmin';
 
 // GET - Fetch notifications for admin dashboard
 export async function GET(request: NextRequest) {
+  // middleware.ts matches '/admin/:path*', which does NOT cover
+  // '/api/admin/...'. Without this the endpoint is open to the internet.
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
   try {
     console.log('🔔 Fetching admin notifications...');
     
@@ -52,6 +58,11 @@ export async function GET(request: NextRequest) {
 
 // PUT - Mark notifications as read
 export async function PUT(request: NextRequest) {
+  // middleware.ts matches '/admin/:path*', which does NOT cover
+  // '/api/admin/...'. Without this the endpoint is open to the internet.
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
   try {
     console.log('🔔 Marking notifications as read...');
     
@@ -91,6 +102,11 @@ export async function PUT(request: NextRequest) {
 
 // DELETE - Delete old notifications (cleanup)
 export async function DELETE(request: NextRequest) {
+  // middleware.ts matches '/admin/:path*', which does NOT cover
+  // '/api/admin/...'. Without this the endpoint is open to the internet.
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
   try {
     console.log('🗑️ Cleaning up old notifications...');
     

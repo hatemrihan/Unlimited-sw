@@ -12,8 +12,8 @@ import { MongoMemoryReplSet } from 'mongodb-memory-server';
 // createOrderTransaction calls dbConnect(); the suite owns the connection instead.
 jest.mock('../lib/mongodb', () => ({ __esModule: true, default: jest.fn().mockResolvedValue(undefined) }));
 
-import Product from '../models/product';
-import Order from '../models/order';
+import Product from '@/product/model';
+import Order from '@/order/model';
 import { createOrderTransaction, resolveVariantName, resolveLegacyProductIds } from '../services/orderCreationService';
 
 jest.setTimeout(120_000);
@@ -76,7 +76,7 @@ function newOrderDoc(products: any[]) {
 }
 
 async function placeOrder(products: any[]) {
-  return createOrderTransaction(orderPayload(products), newOrderDoc(products), 0);
+  return createOrderTransaction(orderPayload(products), newOrderDoc(products));
 }
 
 describe('variant stock decrement', () => {

@@ -1,8 +1,7 @@
 "use client";
 
 import { FC, useEffect, useState, MouseEvent } from "react";
-import { useAnimate } from "framer-motion";
-import { useSession, signOut, signIn } from "next-auth/react";
+import { useAnimate } from "motion/react";
 import { useCart } from "../../contexts/CartContext";
 import Image from "next/image";
 import Link from "next/link";
@@ -40,7 +39,6 @@ const Nav: FC = () => {
   const [mounted, setMounted] = useState(false);
   const [showLoader, setShowLoader] = useState(false);
   const { state: cartState } = useCart();
-  const { data: session, status } = useSession();
 
   // Initialize theme toggle
   useEffect(() => {
@@ -69,11 +67,11 @@ const Nav: FC = () => {
     const header = document.querySelector('[data-header="true"]');
     if (header) {
       if (isOpen) {
-        header.classList.remove('bg-black', 'border-gray-800/50');
+        header.classList.remove('bg-transparent', 'border-gray-800/50');
         header.classList.add('bg-white', 'border-gray-300/50');
       } else {
         header.classList.remove('bg-white', 'border-gray-300/50');
-        header.classList.add('bg-black', 'border-gray-800/50');
+        header.classList.add('bg-transparent', 'border-gray-800/50');
       }
     }
 
@@ -263,7 +261,7 @@ const Nav: FC = () => {
         </div>
 
         {/* Fixed Header - Always on top */}
-        <div className="fixed top-0 left-0 right-0 w-full z-50 backdrop-blur-sm border-b transition-colors duration-300 bg-stone-900 border-gray-800/50" data-header="true" suppressHydrationWarning>
+        <div className="fixed top-0 left-0 right-0 w-full z-50 transition-colors duration-300 bg-transparent" data-header="true" suppressHydrationWarning>
           <div className="w-full px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16 lg:h-20 relative">
               {/* Mobile: Menu Button - Left */}
@@ -374,39 +372,23 @@ const Nav: FC = () => {
                     <div className="absolute bottom-0 left-0 w-0 h-0.5 bg-white transition-all duration-300 group-hover:w-full"></div>
                   </div>
 
-                  {/* Desktop Account Icon */}
-                  {session ? (
-                    <div className="flex items-center space-x-2">
-                      <span className="text-[#b3b3b3] text-sm font-medium">
-                        {session.user?.name || session.user?.email}
-                      </span>
-                      <button
-                        className="text-[#b3b3b3] hover:text-gray-400 transition-colors duration-300 p-2 hover:bg-gray-700/30 rounded-lg cursor-pointer"
-                        onClick={() => signOut()}
-                        aria-label="Sign out"
-                        suppressHydrationWarning
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" className="w-6 h-6 fill-current">
-                          <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      className="text-[#b3b3b3] hover:text-gray-400 transition-colors duration-300 p-2 hover:bg-gray-700/30 rounded-lg cursor-pointer"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        signIn('google', { callbackUrl: '/' });
-                      }}
-                      aria-label="Sign in with Google"
-                      suppressHydrationWarning
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" className="w-6 h-6 fill-current">
-                        <path fillRule="evenodd" d="M10 3a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm-2 3.5a2 2 0 1 1 4 0 2 2 0 0 1-4 0Z" />
-                        <path fillRule="evenodd" d="M15.484 14.227a6.274 6.274 0 0 0-10.968 0l-.437.786a1.338 1.338 0 0 0 1.17 1.987h9.502a1.338 1.338 0 0 0 1.17-1.987l-.437-.786Zm-9.657.728a4.773 4.773 0 0 1 8.346 0l.302.545h-8.95l.302-.545Z" />
-                      </svg>
-                    </button>
-                  )}
+                  {/* Desktop Account Icon
+                      A link, not a session.
+                      Reading the session here made every anonymous shopper pay
+                      for /api/auth/session on every page — to render an icon
+                      that, for a customer, never changes: the storefront has no
+                      accounts and checkout is a guest flow. The only people who
+                      sign in are admins, and /admin/login is where they do it. */}
+                  <Link
+                    href="/admin"
+                    className="text-[#b3b3b3] hover:text-gray-400 transition-colors duration-300 p-2 hover:bg-gray-700/30 rounded-lg cursor-pointer"
+                    aria-label="Admin sign in"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" className="w-6 h-6 fill-current">
+                      <path fillRule="evenodd" d="M10 3a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm-2 3.5a2 2 0 1 1 4 0 2 2 0 0 1-4 0Z" />
+                      <path fillRule="evenodd" d="M15.484 14.227a6.274 6.274 0 0 0-10.968 0l-.437.786a1.338 1.338 0 0 0 1.17 1.987h9.502a1.338 1.338 0 0 0 1.17-1.987l-.437-.786Zm-9.657.728a4.773 4.773 0 0 1 8.346 0l.302.545h-8.95l.302-.545Z" />
+                    </svg>
+                  </Link>
                 </div>
 
                 {/* Mobile Cart and Account Icons */}
@@ -432,41 +414,18 @@ const Nav: FC = () => {
                     <div className="absolute bottom-0 left-0 w-0 h-0.5 bg-current transition-all duration-300 group-hover:w-full"></div>
                   </div>
 
-                  {/* Mobile Account Icon */}
-                  {session ? (
-                    <div className="flex items-center space-x-1">
-                      <span className="text-xs font-medium max-w-[60px] truncate text-[#b3b3b3]" data-dynamic-color="true">
-                        {session.user?.name?.split(' ')[0] || session.user?.email?.split('@')[0]}
-                      </span>
-                      <button
-                        className="text-[#b3b3b3] hover:text-gray-400 transition-colors duration-300 p-1 hover:bg-gray-700/30 rounded cursor-pointer"
-                        data-dynamic-color="true"
-                        onClick={() => signOut()}
-                        aria-label="Sign out"
-                        suppressHydrationWarning
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" className="w-4 h-4 fill-current">
-                          <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      className="text-[#b3b3b3] hover:text-gray-400 transition-colors duration-300 p-2 hover:bg-gray-700/30 rounded-lg cursor-pointer"
-                      data-dynamic-color="true"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        signIn('google', { callbackUrl: '/' });
-                      }}
-                      aria-label="Sign in with Google"
-                      suppressHydrationWarning
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" className="w-5 h-5 fill-current">
-                        <path fillRule="evenodd" d="M10 3a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm-2 3.5a2 2 0 1 1 4 0 2 2 0 0 1-4 0Z" />
-                        <path fillRule="evenodd" d="M15.484 14.227a6.274 6.274 0 0 0-10.968 0l-.437.786a1.338 1.338 0 0 0 1.17 1.987h9.502a1.338 1.338 0 0 0 1.17-1.987l-.437-.786Zm-9.657.728a4.773 4.773 0 0 1 8.346 0l.302.545h-8.95l.302-.545Z" />
-                      </svg>
-                    </button>
-                  )}
+                  {/* Mobile Account Icon — see the desktop one above */}
+                  <Link
+                    href="/admin"
+                    className="text-[#b3b3b3] hover:text-gray-400 transition-colors duration-300 p-2 hover:bg-gray-700/30 rounded-lg cursor-pointer"
+                    data-dynamic-color="true"
+                    aria-label="Admin sign in"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" className="w-5 h-5 fill-current">
+                      <path fillRule="evenodd" d="M10 3a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm-2 3.5a2 2 0 1 1 4 0 2 2 0 0 1-4 0Z" />
+                      <path fillRule="evenodd" d="M15.484 14.227a6.274 6.274 0 0 0-10.968 0l-.437.786a1.338 1.338 0 0 0 1.17 1.987h9.502a1.338 1.338 0 0 0 1.17-1.987l-.437-.786Zm-9.657.728a4.773 4.773 0 0 1 8.346 0l.302.545h-8.95l.302-.545Z" />
+                    </svg>
+                  </Link>
                 </div>
               </div>
             </div>

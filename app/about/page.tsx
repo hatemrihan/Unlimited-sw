@@ -1,37 +1,20 @@
-"use client";
-
-import React, { useEffect, useState } from 'react';
+import type { Metadata } from 'next';
 import Nav from '../sections/Nav';
 import Footer from '../sections/Footer';
 import Image from 'next/image';
 import aboutImage from '../../public/images/about-image.jpg';
 import Link from 'next/link';
+import HeaderTypewriter from './HeaderTypewriter';
 
-// Simple Typewriter specifically for the header to match the ThankYou feel
-const HeaderTypewriter = ({ text, delay = 0, speed = 90, className = '' }: { text: string, delay?: number, speed?: number, className?: string }) => {
-  const [displayedText, setDisplayedText] = useState('');
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-
-    const timeout = setTimeout(() => {
-      let i = 0;
-      interval = setInterval(() => {
-        setDisplayedText(text.slice(0, i + 1));
-        i++;
-        if (i >= text.length) {
-          clearInterval(interval);
-        }
-      }, speed);
-    }, delay);
-
-    return () => {
-      clearTimeout(timeout);
-      clearInterval(interval);
-    };
-  }, [text, delay, speed]);
-
-  return <span className={className}>{displayedText}</span>;
+export const metadata: Metadata = {
+  // `absolute` because this title already carries the brand; the root template
+  // would otherwise append it a second time.
+  title: {
+    absolute: 'About Unlimited SW – Egyptian Calisthenics Equipment by Dr. Mohamed Alkady',
+  },
+  description:
+    'Unlimited SW designs and manufactures calisthenics equipment in Egypt, founded by Dr. Mohamed Alkady, PhD in sports biomechanics with 14+ years of coaching.',
+  alternates: { canonical: 'https://unlimited-sw.com/about' },
 };
 
 export default function AboutPage() {
@@ -49,8 +32,6 @@ export default function AboutPage() {
               delay={300}
               speed={40}
             />
-            {/* The cursor styling to keep it clean */}
-            <span className="animate-pulse ml-2 opacity-50 font-light">|</span>
           </h1>
         </div>
 
@@ -72,7 +53,7 @@ export default function AboutPage() {
             <div className="pt-8 flex items-center">
               <Link href="/shop" className="inline-flex items-center text-sm font-bold uppercase tracking-[0.15em] text-white hover:opacity-60 transition-opacity pb-1 border-b-2 border-white group">
                 Explore Equipments
-                <svg className="w-4 h-4 ml-3 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <svg aria-hidden="true" className="w-4 h-4 ml-3 transform group-hover:translate-x-1 transition-transform motion-reduce:transform-none" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                 </svg>
               </Link>
@@ -83,11 +64,11 @@ export default function AboutPage() {
           <div className="md:col-span-6 lg:col-span-7 w-full relative aspect-[4/5] bg-stone-800">
             <Image
               src={aboutImage}
-              alt="Unlimited About Image"
+              alt="Muhamed Alkady, founder of UNLIMITED, coaching calisthenics"
               fill
               priority
               sizes="(max-width: 768px) 100vw, 50vw"
-              className="object-cover grayscale hover:grayscale-0 transition-all duration-[1000ms] ease-in-out"
+              className="object-cover grayscale hover:grayscale-0 transition-all duration-[1000ms] ease-in-out motion-reduce:transition-none"
             />
           </div>
         </div>

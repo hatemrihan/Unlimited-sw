@@ -1,6 +1,7 @@
 // API endpoint for uploading files to AWS S3
 import { NextRequest, NextResponse } from 'next/server';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { requireAdmin } from '@/lib/requireAdmin';
 
 // Configure S3 client with AWS credentials
 // Using custom variable names to avoid Netlify/Vercel reserved variable conflicts
@@ -17,6 +18,14 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
   try {
+    // Only the admin product forms call this — components/FileUpload, from
+    // add-product and edit-product. It was nonetheless open to the whole
+    // internet, taking 50MB of any content type straight into the bucket the
+    // storefront serves its images from. Nothing here is customer-facing, so
+    // nothing here should be reachable without an admin session.
+    const unauthorized = await requireAdmin();
+    if (unauthorized) return unauthorized;
+
     console.log('📤 S3 Upload ye - Starting upload process...');
 
     // Check if AWS credentials are configured

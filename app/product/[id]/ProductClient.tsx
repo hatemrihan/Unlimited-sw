@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Product } from '../../../models/product';
+import { Product } from '@/product/model';
 import Nav from '../../sections/Nav';
 import ProductDetailsTabs from './ProductDetailsTabs';
 import { useCart } from '../../../contexts/CartContext';
@@ -54,6 +54,8 @@ export default function ProductClient({ product, relatedProducts }: Props) {
   const [quantity, setQuantity] = useState(1);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showCartNotification, setShowCartNotification] = useState(false);
+  /** Set when the cart refused an add, so the button can explain itself. */
+  const [cartRefusal, setCartRefusal] = useState<string | null>(null);
   const [cartNotificationKey, setCartNotificationKey] = useState(0);
 
   // ── Computed values (memoized) ─────────────────────────────────────────────
@@ -95,9 +97,29 @@ export default function ProductClient({ product, relatedProducts }: Props) {
     variant: selectedVariant ? { name: selectedVariant.name } : undefined,
   }), [product._id, product.name, product.mainImage, displayPrice, currentStock, selectedVariant]);
 
+  /**
+   * What to say when the cart refuses an add.
+   *
+   * `addItem` used to return nothing, so a refusal — always a stock limit —
+   * looked exactly like a working button that did nothing at all. The customer
+   * pressed it again, and again.
+   */
+  const refusalMessage = (remaining: number) =>
+    remaining > 0
+      ? `Only ${remaining} more available — your cart already holds the rest.`
+      : 'That is all we have in stock right now.';
+
   const handleAddToCart = useCallback(() => {
     try {
-      addItem(buildCartItem(), quantity, currentStock);
+      const result = addItem(buildCartItem(), quantity, currentStock);
+
+      if (!result.added) {
+        setCartRefusal(refusalMessage(result.remaining));
+        setTimeout(() => setCartRefusal(null), 4000);
+        return;
+      }
+
+      setCartRefusal(null);
       setCartNotificationKey(prev => prev + 1);
       setShowCartNotification(true);
       setTimeout(() => setShowCartNotification(false), 3000);
@@ -108,7 +130,16 @@ export default function ProductClient({ product, relatedProducts }: Props) {
 
   const handleBuyNow = useCallback(() => {
     try {
-      addItem(buildCartItem(), quantity, currentStock);
+      const result = addItem(buildCartItem(), quantity, currentStock);
+
+      // Navigating on a refused add sent the customer to checkout to buy
+      // something that was never added.
+      if (!result.added) {
+        setCartRefusal(refusalMessage(result.remaining));
+        setTimeout(() => setCartRefusal(null), 4000);
+        return;
+      }
+
       router.push('/checkout');
     } catch (error) {
       console.error('Error in Buy Now:', error);
@@ -428,6 +459,22 @@ export default function ProductClient({ product, relatedProducts }: Props) {
 
           </div>
         </div>
+
+        {/* Cart refusal — always a stock limit, and always actionable */}
+        <AnimatePresence>
+          {cartRefusal && (
+            <motion.div
+              initial={{ y: -50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -50, opacity: 0 }}
+              role="status"
+              aria-live="polite"
+              className="fixed top-4 right-4 bg-amber-600 text-white px-6 py-3 rounded-lg z-50"
+            >
+              {cartRefusal}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Cart notification */}
         <AnimatePresence>

@@ -2,38 +2,19 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { cn } from "../lib/utils";
 import { CartProvider } from "../contexts/CartContext";
-import SessionWrapper from "../components/SessionWrapper";
 import { Toaster } from 'sonner';
 
 
 
 export const metadata: Metadata = {
   title: {
-    default: "UNLIMITED-SW - Premium Calisthenics Equipment & Training Gear",
-    template: "%s | UNLIMITED-SW"
+    default: 'Unlimited SW – Calisthenics Equipment Made in Egypt',
+    template: '%s | Unlimited SW'
   },
-  description: "Premium calisthenics equipment and training gear in Egypt. Shop pull-up bars, resistance bands, gymnastic rings, and professional workout equipment. Build strength, train unlimited with UNLIMITED-SW.",
-  keywords: [
-    "calisthenics equipment",
-    "pull up bars",
-    "resistance bands",
-    "gymnastic rings",
-    "workout equipment",
-    "fitness gear",
-    "bodyweight training",
-    "home gym equipment",
-    "Egypt fitness",
-    "Cairo gym equipment",
-    "strength training",
-    "unlimited sw",
-    "unlimited-sw",
-    "Mohamed Alkady",
-    "calisthenics Egypt",
-    "fitness equipment Cairo"
-  ],
-  authors: [{ name: "UNLIMITED-SW", url: "https://unlimited-sw.com" }],
-  creator: "UNLIMITED-SW",
-  publisher: "UNLIMITED-SW",
+  description: "Premium calisthenics equipment and training gear in Egypt. Shop pull-up bars, resistance bands, gymnastic rings, and professional workout equipment. Build strength, train unlimited with Unlimited SW.",
+  authors: [{ name: 'Unlimited SW', url: 'https://unlimited-sw.com' }],
+  creator: 'Unlimited SW',
+  publisher: 'Unlimited SW',
   formatDetection: {
     email: false,
     address: false,
@@ -44,16 +25,16 @@ export const metadata: Metadata = {
     canonical: '/',
   },
   openGraph: {
-    title: "UNLIMITED-SW - Premium Calisthenics Equipment & Training Gear",
+    title: 'Unlimited SW – Calisthenics Equipment Made in Egypt',
     description: "Premium calisthenics equipment and training gear in Egypt. Shop pull-up bars, resistance bands, gymnastic rings, and professional workout equipment.",
     url: 'https://unlimited-sw.com',
-    siteName: 'UNLIMITED-SW',
+    siteName: 'Unlimited SW',
     images: [
       {
-        url: '/one-image.jpg',
+        url: '/og-image.jpg',
         width: 1200,
         height: 630,
-        alt: 'UNLIMITED-SW Calisthenics Equipment',
+        alt: 'Unlimited SW Calisthenics Equipment',
       }
     ],
     locale: 'en_US',
@@ -61,9 +42,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: "UNLIMITED-SW - Premium Calisthenics Equipment",
+    title: 'Unlimited SW – Calisthenics Equipment Made in Egypt',
     description: "Premium calisthenics equipment and training gear in Egypt. Build strength, train unlimited.",
-    images: ['/one-image.jpg'],
+    images: ['/og-image.jpg'],
   },
   robots: {
     index: true,
@@ -103,12 +84,14 @@ export default function RootLayout({
       <body
         className={cn(`antialiased bg-stone-900 text-[#b3b3b3] transition-colors duration-300 font-sans`)}
       >
-        <SessionWrapper>
-          <CartProvider>
-            {children}
-            <Toaster position="top-right" />
-          </CartProvider>
-        </SessionWrapper>
+        {/* SessionProvider lives in app/admin/layout.tsx, not here — see the
+            comment there. The storefront has no signed-in state, and wrapping
+            it cost every anonymous shopper a session request on mount, another
+            every five minutes, and another on every tab switch. */}
+        <CartProvider>
+          {children}
+          <Toaster position="top-right" />
+        </CartProvider>
       </body>
 
     </html>

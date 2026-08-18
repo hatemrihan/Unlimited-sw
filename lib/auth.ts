@@ -42,10 +42,23 @@ export const authOptions: NextAuthOptions = {
     async redirect({ url, baseUrl }) {
       if (url.startsWith("/")) return `${baseUrl}${url}`;
       if (new URL(url).origin === baseUrl) return url;
-      return `${baseUrl}/admin`; // Default to admin dashboard after successful sign-in
+      // Falls back to the storefront, not /admin.
+      //
+      // Customers sign in with Google too, through this same configuration. The
+      // old default sent every one of them to /admin, where the middleware
+      // immediately bounced them to /access-denied — telling a paying shopper on
+      // their own shop that they were not authorised.
+      //
+      // Admins are unaffected: the login page passes an explicit callbackUrl,
+      // which is handled by the two lines above.
+      return baseUrl;
     },
   },
   session: {
     strategy: "jwt",
+    // Stated explicitly rather than relying on NextAuth's default, which happens
+    // to be the same 30 days. Removing someone from ADMIN_EMAILS now takes
+    // effect on their next request regardless of session age — see requireAdmin.
+    maxAge: 30 * 24 * 60 * 60,
   },
 };

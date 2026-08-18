@@ -4,8 +4,8 @@ import { withDb } from '../../../../lib/withDb';
 import { requireAdmin } from '../../../../lib/requireAdmin';
 import { invalidateProductCache } from '../../../../lib/cache';
 
-import { getAdminProducts, createProduct } from '../../../../services/product.service';
-import { createProductSchema } from '../../../../lib/schemas/product.schema';
+import { getAdminProducts, createProduct, toPositiveInt, MAX_PAGE_SIZE } from '@/product';
+import { createProductSchema } from '@/product/schema';
 
 // GET - Fetch products for admin dashboard with pagination + search
 export const GET = withDb(async (req: NextRequest) => {
@@ -13,8 +13,8 @@ export const GET = withDb(async (req: NextRequest) => {
   if (authError) return authError;
 
   const { searchParams } = new URL(req.url);
-  const page = parseInt(searchParams.get('page') || '1');
-  const limit = parseInt(searchParams.get('limit') || '20');
+  const page = toPositiveInt(searchParams.get('page'), 1);
+  const limit = toPositiveInt(searchParams.get('limit'), 20, MAX_PAGE_SIZE);
   const search = searchParams.get('search') || '';
 
   const result = await getAdminProducts(search, page, limit);

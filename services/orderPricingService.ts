@@ -1,5 +1,5 @@
 import dbConnect from '../lib/mongodb';
-import Product from '../models/product';
+import { productQueries } from '@/product/queries';
 import { validatePromo } from './promoService';
 import { resolveVariantName } from './orderCreationService';
 
@@ -55,6 +55,12 @@ export interface ServerPricing {
   totalAmount: number;
   promoCode?: string;
   waiveShipping: boolean;
+  /**
+   * Why the submitted promo code was not applied, if one was submitted and
+   * rejected. Carried so the customer can be told the real reason — see the
+   * note in `computeOrderPricing`.
+   */
+  promoError?: string;
 }
 
 export interface PricingResult {
@@ -80,7 +86,10 @@ export async function computeOrderPricing(orderData: any): Promise<PricingResult
     .map((p: any) => p.productId)
     .filter((id: any) => isValidObjectId(id));
 
-  const products = await Product.find({ _id: { $in: productIds } }).lean();
+  // Through the seam, and deliberately NOT through a cached read: this is the
+  // query that decides what the customer is charged, and it must see the
+  // database as it is right now, not as it was up to 45 seconds ago.
+  const products = await productQueries.findByIds(productIds);
   const productMap = new Map(products.map((p: any) => [String(p._id), p]));
 
   const lines: ServerPricing['lines'] = [];
@@ -93,7 +102,7 @@ export async function computeOrderPricing(orderData: any): Promise<PricingResult
     if (!product) {
       return {
         success: false,
-        error: `المنتج ${item.name || ''} مش متاح دلوقتي. من فضلك حدّث الصفحة وجرب تاني.`,
+        error: `${item.name || 'That item'} is not available right now. Please refresh the page and try again.`,
       };
     }
 
@@ -120,6 +129,8 @@ export async function computeOrderPricing(orderData: any): Promise<PricingResult
   let waiveShipping = false;
   let appliedPromoCode: string | undefined;
 
+  let promoError: string | undefined;
+
   const rawPromoCode = orderData.promoCode?.trim();
   if (rawPromoCode) {
     const promoResponse = await validatePromo(rawPromoCode, subtotal);
@@ -127,9 +138,17 @@ export async function computeOrderPricing(orderData: any): Promise<PricingResult
       discountAmount = Math.round(promoResponse.promo.discount);
       waiveShipping = Boolean(promoResponse.promo.waiveShipping);
       appliedPromoCode = promoResponse.promo.code;
+    } else {
+      // An invalid or expired code is still not fatal — the order goes through
+      // at full price. But the reason is now KEPT rather than discarded.
+      //
+      // Discarding it produced a genuinely misleading message: the total then
+      // disagreed with the browser's, which tripped the pricing-mismatch check,
+      // and the customer was told "the prices changed" when the truth was
+      // "your promo code expired". They would refresh, see the same total, and
+      // have no idea what was wrong.
+      promoError = promoResponse.error;
     }
-    // An invalid or expired code is silently ignored, matching the existing
-    // behaviour — the order still goes through, just at full price.
   }
 
   if (waiveShipping) shippingCost = 0;
@@ -148,6 +167,7 @@ export async function computeOrderPricing(orderData: any): Promise<PricingResult
       totalAmount,
       promoCode: appliedPromoCode,
       waiveShipping,
+      promoError,
     },
   };
 }

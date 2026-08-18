@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Product } from '../../models/product';
+import { Product } from '@/product/model';
 import { useCart } from '../../contexts/CartContext';
 import Image from "next/image";
 import Link from "next/link";
@@ -41,7 +41,12 @@ const Products = ({ initialProducts = [], initialHasMore = false }: ProductsProp
 
     const refreshProducts = async () => {
       try {
-        const res = await fetch(`/api/products?page=1&limit=6`, { cache: 'no-store' });
+        // No `cache: 'no-store'`. The endpoint is now cached server-side and
+        // tagged, so committing an order purges it everywhere within seconds —
+        // whereas `no-store` forced two MongoDB queries for every visitor to
+        // the home page, which is the page most of them land on. Stock is not
+        // read from here; the product page asks the uncached stock endpoint.
+        const res = await fetch(`/api/products?page=1&limit=6`);
         if (!res.ok) return; // Don't override good server data with an error
         
         const data = await res.json();
@@ -66,7 +71,7 @@ const Products = ({ initialProducts = [], initialHasMore = false }: ProductsProp
 
     try {
       const nextPage = page + 1;
-      const res = await fetch(`/api/products?page=${nextPage}&limit=6`, { cache: 'no-store' });
+      const res = await fetch(`/api/products?page=${nextPage}&limit=6`);
 
       if (!res.ok) throw new Error('API returned error');
 

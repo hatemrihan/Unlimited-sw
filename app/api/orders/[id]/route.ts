@@ -1,12 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../../lib/mongodb';
-import Order from '../../../../models/order';
+import { orderQueries } from '@/order/queries';
 import { requireAdmin } from '../../../../lib/requireAdmin';
 import {
   restoreStockForOrder,
   reapplyStockForOrder,
   deleteOrderWithStockRestoration,
 } from '../../../../services/stockRestorationService';
+
+/**
+ * A malformed id used to reach `Order.findById`, throw a Mongoose CastError, and
+ * come back to the admin as a 500 "Failed to update order" — which reads as "the
+ * server is broken" when it means "that is not an order id".
+ */
+function isValidOrderId(id: string): boolean {
+  return /^[0-9a-fA-F]{24}$/.test(String(id));
+}
+
+const INVALID_ID_RESPONSE = NextResponse.json(
+  { success: false, error: 'That is not a valid order id.' },
+  { status: 400 }
+);
 
 export async function PATCH(
   request: NextRequest,
@@ -17,6 +31,8 @@ export async function PATCH(
     if (authError) return authError;
     const params = await context.params;
     const { id } = params;
+
+    if (!isValidOrderId(id)) return INVALID_ID_RESPONSE.clone();
 
     await dbConnect();
 
@@ -32,7 +48,7 @@ export async function PATCH(
       );
     }
 
-    const existing = await Order.findById(id).select('status stockRestored');
+    const existing = await orderQueries.findStatusById(id);
     if (!existing) {
       return NextResponse.json(
         { success: false, error: 'Order not found' },
@@ -67,11 +83,7 @@ export async function PATCH(
     }
 
     // Status change with no inventory consequence.
-    const updatedOrder = await Order.findByIdAndUpdate(
-      id,
-      { status },
-      { new: true }
-    );
+    const updatedOrder = await orderQueries.updateStatus(id, status);
 
     if (!updatedOrder) {
       return NextResponse.json(
@@ -102,6 +114,8 @@ export async function DELETE(
     if (authError) return authError;
     const params = await context.params;
     const { id } = params;
+
+    if (!isValidOrderId(id)) return INVALID_ID_RESPONSE.clone();
 
     await dbConnect();
 

@@ -9,8 +9,8 @@ import { MongoMemoryReplSet } from 'mongodb-memory-server';
 
 jest.mock('../lib/mongodb', () => ({ __esModule: true, default: jest.fn().mockResolvedValue(undefined) }));
 
-import Product from '../models/product';
-import Order from '../models/order';
+import Product from '@/product/model';
+import Order from '@/order/model';
 import { createOrderTransaction, resolveVariantName } from '../services/orderCreationService';
 import {
   restoreStockForOrder,
@@ -69,7 +69,7 @@ async function placeOrder(products: any[]) {
     status: 'pending',
     orderDate: new Date(),
   };
-  const result = await createOrderTransaction(orderData, newOrder, 0);
+  const result = await createOrderTransaction(orderData, newOrder);
   expect(result.success).toBe(true);
   return result.savedOrder;
 }

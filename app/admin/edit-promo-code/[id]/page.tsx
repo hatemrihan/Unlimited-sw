@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { DatePicker } from '../../../../components/ui/date-picker';
+import { toLocalDateString, fromLocalDateString } from '@/utils/localDate';
 
 interface PromoCode {
   _id: string;
@@ -219,16 +220,16 @@ const EditPromoCodePage = () => {
                   <div>
                     <label className="block text-sm font-medium text-white mb-2">Valid From</label>
                     <DatePicker
-                      date={promoCode.validFrom ? new Date(promoCode.validFrom) : undefined}
-                      onDateChange={(date) => setPromoCode({...promoCode, validFrom: date ? date.toISOString().split('T')[0] : ''})}
+                      date={promoCode.validFrom ? fromLocalDateString(promoCode.validFrom) : undefined}
+                      onDateChange={(date) => setPromoCode({...promoCode, validFrom: date ? toLocalDateString(date) : ''})}
                       placeholder="Select start date"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-white mb-2">Valid Until</label>
                     <DatePicker
-                      date={promoCode.validUntil ? new Date(promoCode.validUntil) : undefined}
-                      onDateChange={(date) => setPromoCode({...promoCode, validUntil: date ? date.toISOString().split('T')[0] : ''})}
+                      date={promoCode.validUntil ? fromLocalDateString(promoCode.validUntil) : undefined}
+                      onDateChange={(date) => setPromoCode({...promoCode, validUntil: date ? toLocalDateString(date) : ''})}
                       placeholder="Select end date"
                     />
                   </div>

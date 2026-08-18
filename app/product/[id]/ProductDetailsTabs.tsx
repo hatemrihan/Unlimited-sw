@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Product } from '../../../models/product';
+import { Product } from '@/product/model';
 
 interface ProductDetailsTabsProps {
   product: Product;

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { adminEmails } from '@/lib/admins';
+import { verifyAdminCookie, ADMIN_COOKIE_NAME } from '@/login/adminCookie';
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
@@ -13,11 +14,15 @@ export async function middleware(request: NextRequest) {
 
   // 2. Only protect /admin routes
   if (pathname.startsWith('/admin')) {
-    // Check A: Legacy cookie-based auth (password login)
-    const adminAuth = request.cookies.get('adminAuthenticated');
-    const adminSecret = process.env.ADMIN_COOKIE_SECRET;
+    // Check A: the emergency password cookie.
+    //
+    // Verified with the same signature check the API guard uses, so a page and
+    // an API route can never disagree about whether a cookie is valid. It used
+    // to be compared directly against ADMIN_COOKIE_SECRET, which meant the
+    // cookie WAS the secret and never actually expired.
+    const adminAuth = request.cookies.get(ADMIN_COOKIE_NAME);
 
-    if (adminSecret && adminAuth && adminAuth.value === adminSecret) {
+    if (await verifyAdminCookie(adminAuth?.value, process.env.ADMIN_COOKIE_SECRET)) {
       return NextResponse.next();
     }
 

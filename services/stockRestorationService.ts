@@ -1,10 +1,11 @@
 import mongoose from 'mongoose';
 import dbConnect from '../lib/mongodb';
-import Order from '../models/order';
+import { orderQueries } from '@/order/queries';
 import { invalidateProductCache } from '../lib/cache';
-import { revalidateProducts } from '../lib/product-tags';
+import { revalidateProducts } from '@/product/tags';
 import { resolveVariantName } from './orderCreationService';
-import { reserveStock, releaseStock, InsufficientStockError, StockLine } from './inventory.service';
+import { reserveStock, releaseStock, InsufficientStockError, StockLine } from '@/product/inventory';
+import { incrementPromoUsage, releasePromoUsage, PromoLimitError } from './promoService';
 
 /**
  * Stock restoration for cancelled and deleted orders.
@@ -33,6 +34,54 @@ function toStockLines(products: any[]): StockLine[] {
 export { InsufficientStockError };
 
 /**
+ * The Arabic wording an admin sees when re-reserving stock fails.
+ *
+ * `reserveStock` throws in English because the customer checkout is English and
+ * reads it thousands of times more often. The admin panel is Arabic, so the
+ * sentence is rebuilt here from the error's `productName` / `variantName`
+ * fields rather than by translating a string after the fact.
+ *
+ * A promo-limit refusal already arrives Arabic from `reclaimPromoUsage`, so it
+ * is passed through untouched.
+ */
+function adminStockMessage(error: InsufficientStockError): string {
+  if (!error.productName) return error.message;
+
+  const product = error.variantName
+    ? `"${error.productName}" (${error.variantName})`
+    : `"${error.productName}"`;
+
+  return `مش ممكن نرجّع الأوردر ده: الكمية المطلوبة من ${product} مش متوفرة في المخزون دلوقتي. راجع المخزون وحاول تاني.`;
+}
+
+/**
+ * Re-claims the promo use that cancelling this order gave back.
+ *
+ * Allowed to fail the whole status change, exactly as insufficient stock is: if
+ * the campaign filled up while the order sat cancelled, letting it through would
+ * push `usedCount` past `usageLimit` — the precise over-redemption the atomic
+ * claim exists to prevent. Recoverable by hand: the admin raises the limit and
+ * tries again.
+ *
+ * Reported as InsufficientStockError so the route answers 409 ("something moved
+ * on, look at it") rather than 500 ("we broke").
+ */
+async function reclaimPromoUsage(promoCode: string | undefined, session: mongoose.ClientSession) {
+  if (!promoCode) return;
+
+  try {
+    await incrementPromoUsage(promoCode, session);
+  } catch (error) {
+    if (error instanceof PromoLimitError) {
+      throw new InsufficientStockError(
+        `كود الخصم "${promoCode}" وصل للحد الأقصى لعدد مرات استخدامه، فمش ممكن نرجّع الأوردر ده. ارفع الحد الأقصى للكود الأول وجرب تاني.`
+      );
+    }
+    throw error;
+  }
+}
+
+/**
  * Cancels an order and returns its stock, atomically and idempotently.
  * Safe to call on an order that was already restored — it becomes a no-op.
  */
@@ -47,17 +96,20 @@ export async function restoreStockForOrder(orderId: string, options: { newStatus
     await session.withTransaction(async () => {
       touched.clear();
 
-      order = await Order.findById(orderId).session(session);
+      order = await orderQueries.findById(orderId, session);
       if (!order) return;
 
-      // Idempotency guard — the whole point of the flag.
+      // Idempotency guard — the whole point of the flag. The promo use rides on
+      // the same flag as the stock, so a cancelled order gives back both exactly
+      // once, in the same transaction.
       if (!order.stockRestored) {
         (await releaseStock(toStockLines(order.products), session)).forEach(id => touched.add(id));
+        await releasePromoUsage(order.promoCode, session);
         order.stockRestored = true;
       }
 
       if (options.newStatus) order.status = options.newStatus;
-      await order.save({ session });
+      await orderQueries.save(order, session);
     });
 
     if (!order) return { success: false, notFound: true as const };
@@ -90,17 +142,20 @@ export async function reapplyStockForOrder(orderId: string, newStatus: string) {
     await session.withTransaction(async () => {
       touched.clear();
 
-      order = await Order.findById(orderId).session(session);
+      order = await orderQueries.findById(orderId, session);
       if (!order) return;
 
       // Only re-reserve what was actually released.
       if (order.stockRestored) {
         (await reserveStock(toStockLines(order.products), session)).forEach(id => touched.add(id));
+
+        await reclaimPromoUsage(order.promoCode, session);
+
         order.stockRestored = false;
       }
 
       order.status = newStatus;
-      await order.save({ session });
+      await orderQueries.save(order, session);
     });
 
     if (!order) return { success: false as const, notFound: true as const };
@@ -113,7 +168,10 @@ export async function reapplyStockForOrder(orderId: string, newStatus: string) {
   } catch (error: any) {
     const insufficient = error instanceof InsufficientStockError;
     if (!insufficient) console.error('❌ [StockRestoration] Failed to re-reserve stock:', error.message);
-    return { success: false as const, error: error.message, insufficient };
+    // This message is read by an ADMIN, and the admin panel is Arabic. The
+    // inventory module's own wording is English because it is read by customers
+    // many times more often, so it is rebuilt here from the error's fields.
+    return { success: false as const, error: insufficient ? adminStockMessage(error) : error.message, insufficient };
   } finally {
     await session.endSession();
   }
@@ -133,15 +191,19 @@ export async function deleteOrderWithStockRestoration(orderId: string) {
     await session.withTransaction(async () => {
       touched.clear();
 
-      const order = await Order.findById(orderId).session(session);
+      const order = await orderQueries.findById(orderId, session);
       if (!order) return;
       found = true;
 
+      // Deleting destroys the record, so this is the last chance to give the
+      // campaign its use back. Guarded by the same flag as the stock so an
+      // already-cancelled order is not credited twice.
       if (!order.stockRestored) {
         (await releaseStock(toStockLines(order.products), session)).forEach(id => touched.add(id));
+        await releasePromoUsage(order.promoCode, session);
       }
 
-      await Order.deleteOne({ _id: orderId }).session(session);
+      await orderQueries.deleteById(orderId, session);
     });
 
     if (!found) return { success: false as const, notFound: true as const };

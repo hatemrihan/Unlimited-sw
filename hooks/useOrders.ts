@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { orderService } from '@/services/orderService';
+import { FetchOrdersParams } from '@/repositories/orderRepository';
 import { handleApiError } from '@/utils/handleApiError';
 
 export interface OrderProduct {
@@ -9,6 +10,7 @@ export interface OrderProduct {
   image: string;
   price: number;
   quantity: number;
+  variantName?: string;
   size?: string;
   color?: string;
   promoCode?: string;
@@ -21,6 +23,8 @@ export interface Customer {
   address: string;
 }
 
+export type OrderStatus = 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+
 export interface Order {
   _id: string;
   orderId: string;
@@ -29,8 +33,9 @@ export interface Order {
   totalAmount: number;
   subtotal: number;
   shippingCost: number;
+  codFee?: number;
   paymentMethod: 'cashOnDelivery' | 'instaPay';
-  status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+  status: OrderStatus;
   orderDate: string;
   createdAt: string;
   transactionScreenshot?: string;
@@ -43,14 +48,17 @@ export const useOrders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState<boolean>(false);
   const [totalPages, setTotalPages] = useState<number>(1);
+  const [totalCount, setTotalCount] = useState<number>(0);
+  /** The order currently being updated, so the row can show its own spinner. */
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
 
-  // Function to fetch all orders
-  const fetchOrders = useCallback(async (signal?: AbortSignal, page = 1, limit = 50) => {
+  const fetchOrders = useCallback(async (signal?: AbortSignal, params: FetchOrdersParams = {}) => {
     try {
       setLoadingOrders(true);
-      const data = await orderService.getOrders(signal, page, limit);
+      const data = await orderService.getOrders(signal, params);
       setOrders(data.orders);
       setTotalPages(data.totalPages);
+      setTotalCount(data.totalCount);
     } catch (error: any) {
       // Intentional abort on unmount/navigation — never surface these to the user
       if (error?.name === 'AbortError') return;
@@ -60,40 +68,53 @@ export const useOrders = () => {
     }
   }, []);
 
-  // Function to update order status
-  const updateOrderStatus = useCallback(async (orderId: string, newStatus: Order['status']) => {
+  /**
+   * Moves an order to a new status.
+   *
+   * Returns whether it worked, and — when it did not — whether the reason was a
+   * conflict. A conflict means the server refused because the world moved on
+   * (stock was sold, a promo code filled up), so the caller reloads to show the
+   * admin what is actually true rather than leaving a stale row on screen.
+   */
+  const updateOrderStatus = useCallback(async (orderId: string, newStatus: OrderStatus) => {
+    setUpdatingOrderId(orderId);
     try {
       const res = await orderService.updateStatus(orderId, newStatus);
-      
+
       if (res.success) {
         setOrders(prev => prev.map(order =>
           order._id === orderId ? { ...order, status: newStatus } : order
         ));
         toast.success(res.message);
-        return true;
-      } else {
-        toast.error(res.message);
-        return false;
+        return { ok: true as const, isConflict: false };
       }
+
+      // The server's own wording reaches the admin here — "stock changed since
+      // this page was loaded", "that promo code is fully used" — instead of the
+      // `HTTP 409` this layer used to report.
+      toast.error(res.message, { duration: res.isConflict ? 8000 : 5000 });
+      return { ok: false as const, isConflict: Boolean(res.isConflict) };
     } catch (error) {
       handleApiError(error, 'Error updating order status');
-      return false;
+      return { ok: false as const, isConflict: false };
+    } finally {
+      setUpdatingOrderId(null);
     }
   }, []);
 
-  // Function to delete order
   const deleteOrder = useCallback(async (orderId: string) => {
     try {
       const res = await orderService.removeOrder(orderId);
-      
+
       if (res.success) {
         setOrders(prev => prev.filter(order => order._id !== orderId));
+        setTotalCount(prev => Math.max(0, prev - 1));
         toast.success(res.message);
         return true;
-      } else {
-        toast.error(res.message);
-        return false;
       }
+
+      toast.error(res.message);
+      return false;
     } catch (error) {
       handleApiError(error, 'Error deleting order');
       return false;
@@ -104,6 +125,8 @@ export const useOrders = () => {
     orders,
     loadingOrders,
     totalPages,
+    totalCount,
+    updatingOrderId,
     fetchOrders,
     updateOrderStatus,
     deleteOrder,

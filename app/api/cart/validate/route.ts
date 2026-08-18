@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAvailability } from '../../../../services/inventory.service';
+import { getAvailability } from '@/product/inventory';
 import { resolveVariantName } from '../../../../services/orderCreationService';
 
 /**
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[api/cart/validate] failed:', error);
     return NextResponse.json(
-      { success: false, error: 'فشل التحقق من توفر المنتجات. جرب تاني.' },
+      { success: false, error: 'Could not check availability. Please try again.' },
       { status: 503 }
     );
   }

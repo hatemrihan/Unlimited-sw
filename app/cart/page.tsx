@@ -22,7 +22,6 @@ import { useCart, CartItem } from '../../contexts/CartContext';
  */
 
 // ── Constants ────────────────────────────────────────────────────────────────
-const MONGODB_ID_REGEX = /^[0-9a-fA-F]{24}$/;
 const PRODUCTS_API_TIMEOUT = 8000; // 8s timeout for product fetches
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -30,160 +29,154 @@ function priceKey(itemId: string, variantName?: string): string {
   return `${itemId}_${variantName || 'default'}`;
 }
 
-function isValidMongoId(id: string): boolean {
-  return MONGODB_ID_REGEX.test(id);
-}
-
 /** Fetch with timeout — prevents hanging requests from blocking the cart */
-async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch(url, { signal: controller.signal, cache: 'no-store' });
+    return await fetch(url, { ...init, signal: controller.signal, cache: 'no-store' });
   } finally {
     clearTimeout(timer);
   }
 }
 
-// ── Types ────────────────────────────────────────────────────────────────────
-interface RefreshedProduct {
-  id: string;
-  product: any | null;
+/**
+ * Live stock for the lines this cart holds.
+ *
+ * The only request this page makes, and it is the one that cannot be avoided.
+ *
+ * It used to fetch `/api/products/[id]` once PER PRODUCT as well, re-fired on
+ * every tap of + or − because the effect's key included quantities — five
+ * products and five taps was twenty-five round trips for data that had not
+ * changed. Prices and images now come from CartContext, which has already
+ * re-read exactly these products from the batch endpoint; fetching them again
+ * here was the same query twice on one page load.
+ *
+ * Stock is separate on purpose and always will be: `/api/products/[id]` is
+ * cached for 30 seconds, and this endpoint exists precisely because stock is
+ * the one number that must never be served from a cache.
+ */
+async function fetchCartStock(ids: string[]): Promise<Record<string, any> | null> {
+  try {
+    const response = await fetchWithTimeout(
+      `/api/products/stock?ids=${ids.join(',')}`,
+      { method: 'GET' },
+      PRODUCTS_API_TIMEOUT
+    );
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    return data.success && data.stock ? data.stock : null;
+  } catch {
+    return null;
+  }
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
 const CartPage = () => {
   const router = useRouter();
   const { state: cartState, updateQuantity, removeItem, syncItems } = useCart();
-  const [loading, setLoading] = useState(true);
+  const [checkingAvailability, setCheckingAvailability] = useState(true);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [refreshedPrices, setRefreshedPrices] = useState<Record<string, number>>({});
 
-  // Guard against infinite effect loops — only refresh once per cart identity
-  const cartIdentityRef = useRef('');
+  /**
+   * Which products are in the cart — not how many of each.
+   *
+   * This is the whole performance fix. The old identity string included every
+   * line's quantity, so pressing + re-ran the entire availability check: the
+   * prices and stock of the same products, fetched again, because the customer
+   * wanted two of something instead of one.
+   */
+  const productIdsKey = useMemo(
+    () => [...new Set(cartState.items.map(item => item.id))].sort().join(','),
+    [cartState.items]
+  );
+
+  /** The live cart, for the availability check to read when it finishes. */
+  const itemsRef = useRef(cartState.items);
+  itemsRef.current = cartState.items;
 
   // ── Core: Refresh prices & validate stock against live MongoDB ─────────
   useEffect(() => {
-    // Build stable identity string from current cart contents
-    const cartIdentity = cartState.items
-      .map(i => `${i.id}:${i.variant?.name || ''}:${i.quantity}`)
-      .join('|');
-
-    // Already refreshed this exact cart state — skip
-    if (cartIdentity === cartIdentityRef.current) {
-      setLoading(false);
+    if (!productIdsKey) {
+      setCheckingAvailability(false);
       return;
     }
 
-    // Empty cart — nothing to validate
-    if (cartState.items.length === 0) {
-      setLoading(false);
-      cartIdentityRef.current = cartIdentity;
-      return;
-    }
+    // A check already in flight when the cart changes underneath it must not
+    // write its stale answer over the new one.
+    let abandoned = false;
 
     const refreshCart = async () => {
+      setCheckingAvailability(true);
+
       try {
         setRefreshError(null);
-        const uniqueIds = [...new Set(cartState.items.map(item => item.id))];
-        const validIds = uniqueIds.filter(isValidMongoId);
-        const legacyIds = uniqueIds.filter(id => !isValidMongoId(id));
+        const uniqueIds = productIdsKey.split(',');
 
-        // ── Step 1: Migrate legacy IDs (users who carted static products) ──
-        let allDbProducts: any[] = [];
-        if (legacyIds.length > 0) {
-          try {
-            const res = await fetchWithTimeout('/api/products?limit=200', PRODUCTS_API_TIMEOUT);
-            if (res.ok) {
-              const data = await res.json();
-              if (data.success && Array.isArray(data.products)) {
-                allDbProducts = data.products;
-              }
-            }
-          } catch {
-            // Migration will fail gracefully — legacy items get purged below
-          }
+        // One request, whatever the cart holds.
+        const stockById = await fetchCartStock(uniqueIds);
+
+        if (abandoned) return;
+
+        // Could not reach it. We do not know what is available, and guessing is
+        // what let sold-out items through to checkout.
+        if (stockById === null) {
+          setRefreshError('We could not confirm availability for some items. Refresh the page before you check out.');
+          return;
         }
 
-        // ── Step 2: Batch-fetch live product data for valid IDs ─────────────
-        const results: RefreshedProduct[] = await Promise.all(
-          validIds.map(async (id): Promise<RefreshedProduct> => {
-            try {
-              const res = await fetchWithTimeout(`/api/products/${id}`, PRODUCTS_API_TIMEOUT);
-              if (res.ok) {
-                const data = await res.json();
-                return { id, product: data.product ?? null };
-              }
-            } catch {
-              // Individual product fetch failed — will be handled below
-            }
-            return { id, product: null };
-          })
-        );
-
-        // ── Step 3: Build O(1) product lookup map ──────────────────────────
-        const productMap: Record<string, any> = {};
-        for (const { id, product } of results) {
-          if (product) productMap[id] = product;
-        }
-
-        // ── Step 4: Validate every cart item ────────────────────────────────
+        // ── Validate every cart item ────────────────────────────────────────
         const prices: Record<string, number> = {};
         let needsSync = false;
-        // Set when any line's availability could not be confirmed against the
-        // database. Checkout stays blocked while true.
-        let validationFailed = false;
 
-        const validated = cartState.items.map(item => {
-          let resolvedId = item.id;
+        // Read through a ref, not the closure. This effect deliberately does
+        // not re-run when quantities change, so the `cartState.items` captured
+        // when it started can be a tap or two out of date by the time the
+        // requests come back — and writing that back would undo the customer's
+        // last press.
+        const currentItems = itemsRef.current;
 
-          // ── Legacy ID Migration ──────────────────────────────────────────
-          if (!isValidMongoId(resolvedId)) {
-            const matchByName = allDbProducts.find(
-              (p: any) => p.name?.trim().toLowerCase() === item.name?.trim().toLowerCase()
-            );
-            if (matchByName?._id) {
-              resolvedId = matchByName._id.toString();
-              productMap[resolvedId] = matchByName;
-              needsSync = true;
-            } else {
-              // No match found — product doesn't exist in DB, purge it
-              needsSync = true;
-              return { ...item, quantity: 0 }; // Filtered out below
-            }
+        const validated = currentItems.map(item => {
+          const availability = stockById[item.id];
+
+          // The stock endpoint reports on every product it can find, so no
+          // entry means no such product — deleted, or an id predating MongoDB.
+          // The name-matching migration that used to sit here has been removed
+          // on purpose: it was the third of four copies of one idea, and only
+          // the server's copy is one a customer cannot bypass.
+          if (!availability) {
+            needsSync = true;
+            return { ...item, quantity: 0 }; // Filtered out below
           }
 
-          const product = productMap[resolvedId];
+          // Price already comes from CartContext, which re-read exactly these
+          // products from the batch endpoint on load. Stock comes from here,
+          // uncached, because a cached stock number is how a sold-out item
+          // keeps being offered for another 30 seconds.
+          const livePrice = item.price;
 
-          // Product fetch failed (network error). We do NOT know this item's
-          // stock, and guessing lets an unavailable item through to checkout —
-          // block instead.
-          if (!product) {
-            validationFailed = true;
-            return { ...item, id: resolvedId };
-          }
-
-          // ── Resolve live price & stock ─────────────────────────────────
-          let livePrice = product.price ?? 0;
           // Unknown stock is treated as none. Inventing a ceiling here is what
           // let sold-out items reach the checkout form.
-          let liveStock = typeof product.stock === 'number' ? product.stock : 0;
+          let liveStock = typeof availability.stock === 'number' ? availability.stock : 0;
 
-          if (item.variant && Array.isArray(product.variants)) {
-            const variantMatch = product.variants.find(
+          // A product taken off sale is unavailable however much of it is in
+          // the warehouse.
+          if (availability.isActive === false) {
+            liveStock = 0;
+          }
+
+          if (item.variant) {
+            const variantStock = availability.variants?.find(
               (v: any) => v.name === item.variant?.name
             );
-            if (variantMatch) {
-              if (typeof variantMatch.price === 'number' && variantMatch.price > 0) {
-                livePrice = variantMatch.price;
-              }
-              if (typeof variantMatch.stock === 'number') {
-                liveStock = variantMatch.stock;
-              }
+            if (typeof variantStock?.stock === 'number') {
+              liveStock = availability.isActive === false ? 0 : variantStock.stock;
             }
           }
 
-          prices[priceKey(resolvedId, item.variant?.name)] = livePrice;
+          prices[priceKey(item.id, item.variant?.name)] = livePrice;
 
           // ── Auto-correct quantity against live stock ────────────────────
           let qty = item.quantity;
@@ -193,51 +186,46 @@ const CartPage = () => {
           }
 
           // ── Detect any metadata drift ──────────────────────────────────
-          if (
-            item.id !== resolvedId ||
-            item.stock !== liveStock ||
-            item.price !== livePrice
-          ) {
+          if (item.stock !== liveStock || item.price !== livePrice) {
             needsSync = true;
           }
 
           return {
             ...item,
-            id: resolvedId,
             quantity: qty,
             stock: liveStock,
             price: livePrice,
-            image: product.mainImage || item.image, // Also refresh image URL
           };
         }).filter(item => item.quantity > 0);
 
         // Check if items were removed
-        if (validated.length !== cartState.items.length) {
+        if (validated.length !== currentItems.length) {
           needsSync = true;
         }
 
         setRefreshedPrices(prices);
 
-        if (validationFailed) {
-          setRefreshError('مش قادرين نتأكد من توفر بعض المنتجات دلوقتي. حدّث الصفحة قبل ما تكمل الطلب.');
-        }
-
         // Sync corrected items back to CartContext → localStorage
         if (needsSync && typeof syncItems === 'function') {
           syncItems(validated);
         }
-
-        cartIdentityRef.current = cartIdentity;
       } catch (error) {
         console.error('[Cart] Refresh failed:', error);
-        setRefreshError('فشل تحديث السلة. جرب تاني.');
+        setRefreshError('Could not refresh your cart. Please try again.');
       } finally {
-        setLoading(false);
+        if (!abandoned) setCheckingAvailability(false);
       }
     };
 
     refreshCart();
-  }, [cartState.items, syncItems]);
+
+    return () => {
+      abandoned = true;
+    };
+    // Deliberately keyed on the SET of products, not on `cartState.items` —
+    // changing a quantity must not re-fetch anything. `syncItems` is memoised
+    // in CartContext, so it is stable and safe to depend on.
+  }, [productIdsKey, syncItems]);
 
   // ── Computed: subtotal using refreshed prices ──────────────────────────────
   const subtotal = useMemo(() => {
@@ -283,17 +271,12 @@ const CartPage = () => {
     return cartState.items.reduce((sum, item) => sum + item.quantity, 0);
   }, [cartState.items]);
 
-  // ── Loading state ──────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-stone-900 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-300" />
-          <p className="text-[#b3b3b3] text-sm animate-pulse">Loading cart...</p>
-        </div>
-      </div>
-    );
-  }
+  // The cart itself comes from localStorage and is already known, so there is
+  // nothing to wait for before showing it. This used to be a full-page spinner
+  // held until every product request came back: the customer stared at a blank
+  // screen rather than at the items they had chosen, and on a slow connection
+  // that was seconds of looking at nothing. The check now runs behind the
+  // items, and only the checkout button waits for it.
 
   return (
     <div className="min-h-screen bg-stone-900 text-white">
@@ -485,10 +468,10 @@ const CartPage = () => {
                       "sold out" failures at the final step. */}
                   <button
                     onClick={() => router.push('/checkout')}
-                    disabled={!!refreshError || loading}
+                    disabled={!!refreshError || checkingAvailability}
                     className="w-full bg-transparent border border-white text-white py-4 font-bold uppercase tracking-wider hover:bg-white hover:text-black transition-colors duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-white"
                   >
-                    PROCEED TO CHECKOUT
+                    {checkingAvailability ? 'CHECKING AVAILABILITY…' : 'PROCEED TO CHECKOUT'}
                   </button>
                 </div>
               </div>

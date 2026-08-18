@@ -2,10 +2,18 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
-    domains: [
-      `${process.env.ALKADY_AWS_S3_BUCKET_NAME}.s3.${process.env.ALKADY_AWS_REGION}.amazonaws.com`,
+    // Was `unoptimized: true`, which shipped every product photo at full size —
+    // the single largest thing slowing the store down on mobile data.
+    // Netlify's Next runtime routes next/image through its Image CDN.
+    unoptimized: false,
+    formats: ['image/avif', 'image/webp'],
+    // `domains` is deprecated in favour of remotePatterns.
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: `${process.env.ALKADY_AWS_S3_BUCKET_NAME}.s3.${process.env.ALKADY_AWS_REGION}.amazonaws.com`,
+      },
     ],
-    unoptimized: true,
     qualities: [50, 75, 85, 100],
   },
   async headers() {

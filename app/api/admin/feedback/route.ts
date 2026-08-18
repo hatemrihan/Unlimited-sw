@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Feedback from '../../../../models/feedback';
 import connectToDatabase from '../../../../lib/mongodb';
+import { requireAdmin } from '../../../../lib/requireAdmin';
 
 // GET - Fetch all feedback for admin dashboard
 export async function GET() {
+  // middleware.ts matches '/admin/:path*', which does NOT cover
+  // '/api/admin/...'. Without this the endpoint is open to the internet.
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
   try {
     await connectToDatabase();
 
@@ -23,6 +29,11 @@ export async function GET() {
 
 // PATCH - Toggle approval / visibility for a single feedback item
 export async function PATCH(request: NextRequest) {
+  // middleware.ts matches '/admin/:path*', which does NOT cover
+  // '/api/admin/...'. Without this the endpoint is open to the internet.
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
   try {
     await connectToDatabase();
 

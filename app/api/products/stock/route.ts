@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAvailability } from '../../../../services/inventory.service';
+import { getAvailability } from '@/product/inventory';
 
 /**
  * Live stock, never cached.
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('[api/products/stock] failed:', error);
     return NextResponse.json(
-      { success: false, error: 'فشل تحميل حالة المخزون. جرب تاني.' },
+      { success: false, error: 'Could not load stock availability. Please try again.' },
       { status: 503, headers: { 'Cache-Control': 'no-store' } }
     );
   }

@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { productCache, apiCache } from '../../../../lib/cache';
 import dbConnect from '../../../../lib/mongodb';
+import { requireAdmin } from '../../../../lib/requireAdmin';
 
 export async function GET(request: NextRequest) {
+  // middleware.ts matches '/admin/:path*', which does NOT cover
+  // '/api/admin/...'. Without this the endpoint is open to the internet.
+  const authError = await requireAdmin();
+  if (authError) return authError;
+
   try {
     const startTime = Date.now();
     

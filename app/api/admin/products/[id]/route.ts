@@ -2,15 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { withDb } from '../../../../../lib/withDb';
 import { requireAdmin } from '../../../../../lib/requireAdmin';
-import { invalidateProductCache, invalidateCitiesCache } from '../../../../../lib/cache';
-import Product from '../../../../../models/product';
+import { invalidateProductCache } from '../../../../../lib/cache';
 
 import {
   getProductById,
   updateProduct,
   deleteProduct,
-} from '../../../../../services/product.service';
-import { updateProductSchema } from '../../../../../lib/schemas/product.schema';
+} from '@/product/actions';
+import { updateProductSchema } from '@/product/schema';
 
 type Ctx = { params: Promise<{ id: string }> };
 

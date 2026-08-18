@@ -3,7 +3,7 @@ import { apiCache } from './cache';
 import { CACHE_TTL } from './cache-ttl';
 import { cacheKeys } from './cache-keys';
 import dbConnect from './mongodb';
-import Product from '../models/product';
+import Product from '@/product/model';
 
 const PRODUCT_FIELDS = 'name price originalPrice discount mainImage images videos description promoCode variants stock isActive order showOutOfStockBadge showPreorderBadge category tags specifications shippingInfo faqs detailedDescription cityPricing';
 

@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../lib/mongodb';
-import Order from '../../../models/order';
-import { createOrderTransaction, resolveVariantName, resolveLegacyProductIds } from '../../../services/orderCreationService';
+import { orderQueries } from '@/order/queries';
+import { createOrderTransaction, findOrderByClientId, resolveVariantName, resolveLegacyProductIds } from '../../../services/orderCreationService';
 import { computeOrderPricing, findPricingMismatches, ServerPricing } from '../../../services/orderPricingService';
 import { dispatchOrderPostProcessing } from '../../../services/emailQueueService';
 import { logger } from '../../../utils/logger';
 import { requireAdmin } from '../../../lib/requireAdmin';
+import { createOrderSchema, listOrdersQuerySchema } from '@/order/schema';
+import { consumeRateLimit, clientKey } from '../../../lib/throttle';
 
 const MONGO_BYPASS = process.env.MONGO_BYPASS === 'true';
 
@@ -26,6 +28,43 @@ if (BYPASS_FORBIDDEN) {
 
 // Ensure Node runtime for Nodemailer
 export const runtime = 'nodejs';
+
+/**
+ * Order throttle.
+ *
+ * Deliberately generous. Egyptian mobile networks put very large numbers of
+ * customers behind a single carrier-grade NAT address, so an aggressive
+ * per-IP limit would refuse real orders from people who share an operator —
+ * a far more expensive failure than the scripted abuse it prevents. This is
+ * sized to stop a loop, not to ration customers.
+ */
+const ORDER_RATE_LIMIT = { limit: 20, windowMs: 15 * 60 * 1000 };
+
+/**
+ * The order as the customer's browser is told about it.
+ *
+ * Shared by the two paths that can produce one — a fresh order, and a repeat of
+ * a checkout attempt that already succeeded — so a customer whose connection
+ * dropped sees exactly what they would have seen the first time. Deliberately
+ * not `savedOrder` itself: that document carries internal fields the storefront
+ * has no business receiving.
+ */
+function orderResponsePayload(savedOrder: any) {
+  return {
+    orderId: savedOrder.orderId,
+    customer: savedOrder.customer,
+    products: savedOrder.products,
+    paymentMethod: savedOrder.paymentMethod,
+    transactionScreenshot: savedOrder.transactionScreenshot,
+    totalAmount: savedOrder.totalAmount,
+    subtotal: savedOrder.subtotal,
+    shippingCost: savedOrder.shippingCost,
+    status: savedOrder.status,
+    notes: savedOrder.notes,
+    orderDate: savedOrder.orderDate,
+    createdAt: savedOrder.createdAt,
+  };
+}
 
 /**
  * Prices an order from the database and checks the browser's claims against it.
@@ -50,17 +89,30 @@ async function priceOrder(
   // than silently substituting our own total.
   const mismatches = findPricingMismatches(orderData, pricingResult.pricing);
   if (mismatches.length > 0) {
+    const { promoError } = pricingResult.pricing;
+
     logger.warn('💰 Order pricing mismatch — rejecting', {
       mismatches,
+      promoError,
       customerEmail: orderData.customer?.email,
     });
+
+    // If the customer submitted a promo code the server would not accept, THAT
+    // is what changed the total — say so. Reporting "the prices changed" sends
+    // them off to refresh a page that will show exactly the same number.
     return {
       response: NextResponse.json(
-        {
-          success: false,
-          error: 'الأسعار اتغيرت. من فضلك حدّث الصفحة وراجع الطلب قبل ما تكمل.',
-          code: 'PRICING_MISMATCH',
-        },
+        promoError
+          ? {
+              success: false,
+              error: `${promoError}. Your order total has been updated without the discount — please review it before continuing.`,
+              code: 'PROMO_REJECTED',
+            }
+          : {
+              success: false,
+              error: 'Prices changed while you were checking out. Refresh to see the current total before you continue.',
+              code: 'PRICING_MISMATCH',
+            },
         { status: 409 }
       ),
     };
@@ -76,7 +128,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: 'الطلبات متوقفة مؤقتاً للصيانة. جرب تاني بعد شوية أو تواصل معانا.',
+          error: 'Orders are paused for maintenance right now. Please try again shortly, or contact us.',
           code: 'ORDERS_DISABLED',
         },
         { status: 503 }
@@ -86,99 +138,73 @@ export async function POST(request: NextRequest) {
     // Connect to database
     if (!MONGO_BYPASS) await dbConnect();
 
-    // Parse request body
-    const orderData = await request.json();
+    // Each attempt opens a transaction, reserves stock and sends mail over SMTP,
+    // so an unthrottled loop is expensive well before it is malicious.
+    if (!MONGO_BYPASS) {
+      const throttle = await consumeRateLimit(
+        `order:${clientKey(request.headers)}`,
+        ORDER_RATE_LIMIT
+      );
 
-    // Validate required fields
-    const requiredFields = ['customer', 'products', 'paymentMethod', 'totalAmount', 'subtotal', 'shippingCost'];
-    for (const field of requiredFields) {
-      const value = orderData[field];
-      const hasValue = value !== undefined && value !== null && value !== '';
-
-      if (!hasValue) {
+      if (!throttle.allowed) {
+        logger.warn('🚦 Order refused by rate limit', { retryAfter: throttle.retryAfterSeconds });
         return NextResponse.json(
           {
             success: false,
-            error: `Missing required field: ${field}`
+            error: 'Too many orders in a short time. Please wait a moment and try again, or contact us if you need help.',
+            code: 'RATE_LIMITED',
           },
-          { status: 400 }
+          { status: 429, headers: { 'Retry-After': String(throttle.retryAfterSeconds) } }
         );
       }
     }
 
-    // Validate customer data
-    if (!orderData.customer) {
+    // Parse and validate the request body in one step.
+    //
+    // This replaces ~90 lines of hand-written `if` blocks that only ever checked
+    // for empty strings — no email format, no phone format, and no quantity
+    // validation at all. See order/schema.ts for what each rule is
+    // protecting against.
+    const rawBody = await request.json();
+    const parsed = createOrderSchema.safeParse(rawBody);
+
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      logger.warn('❌ Order rejected by validation', {
+        path: issue?.path.join('.'),
+        message: issue?.message,
+      });
       return NextResponse.json(
-        { success: false, error: 'Customer information is required' },
+        {
+          success: false,
+          error: issue?.message || 'Some of the order details are not valid. Please check and try again.',
+          field: issue?.path.join('.') || undefined,
+          code: 'VALIDATION_FAILED',
+        },
         { status: 400 }
       );
     }
 
-    const customerFields = ['name', 'email', 'phone', 'address'];
-    for (const field of customerFields) {
-      const value = orderData.customer[field];
-      const hasValue = value !== undefined && value !== null && value !== '';
+    // Everything downstream reads the validated, normalised copy — never the raw
+    // body. Quantities are positive integers from here on, so pricing, storage
+    // and stock reservation can no longer disagree about them.
+    const orderData: any = parsed.data;
 
-      if (!hasValue) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: `Missing customer field: ${field}`
-          },
-          { status: 400 }
-        );
+    // A customer whose response was lost pressing "Place order" again. Answer
+    // with the order they already have, before pricing, before reserving
+    // anything — a retry must cost them nothing and cost the warehouse nothing.
+    if (!MONGO_BYPASS && orderData.clientOrderId) {
+      const alreadyPlaced = await findOrderByClientId(orderData.clientOrderId);
+      if (alreadyPlaced) {
+        logger.info('↩️ Returning the order this checkout attempt already placed', {
+          orderId: alreadyPlaced.orderId,
+        });
+        return NextResponse.json({
+          success: true,
+          order: orderResponsePayload(alreadyPlaced),
+          message: 'Order placed successfully!'
+        });
       }
-    }
-
-    // Validate products
-    if (!Array.isArray(orderData.products) || orderData.products.length === 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Order must contain at least one product'
-        },
-        { status: 400 }
-      );
-    }
-
-    // Validate each product
-    // Validate each product synchronously over extreme payloads using native maps instead of unbounded iterations
-    const requiredProductFields = ['productId', 'name', 'price', 'quantity', 'image'];
-    const invalidProductIdx = orderData.products.findIndex((product: any) => 
-      requiredProductFields.some(field => product[field] === undefined || product[field] === null || product[field] === '')
-    );
-
-    if (invalidProductIdx !== -1) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Missing required core fields for product listing at index ${invalidProductIdx + 1}`
-        },
-        { status: 400 }
-      );
-    }
-
-    // Validate payment method
-    if (!['cashOnDelivery', 'instaPay'].includes(orderData.paymentMethod)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Invalid payment method'
-        },
-        { status: 400 }
-      );
-    }
-
-    // If InstaPay is selected, transaction screenshot is required
-    if (orderData.paymentMethod === 'instaPay' && !orderData.transactionScreenshot) {
-      logger.warn('❌ InstaPay payment requires transaction screenshot');
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Transaction screenshot is required for InstaPay payments'
-        },
-        { status: 400 }
-      );
     }
 
     // A cart saved before the static-fallback removal can still hold a
@@ -187,12 +213,12 @@ export async function POST(request: NextRequest) {
     if (!MONGO_BYPASS) {
       const unresolved = await resolveLegacyProductIds(orderData);
       if (unresolved.length > 0) {
-        const names = unresolved.map((line: any) => line.name || 'منتج').join('، ');
+        const names = unresolved.map((line: any) => line.name || 'an item').join(', ');
         logger.warn('🧭 Order rejected: unresolvable legacy product ids', { names });
         return NextResponse.json(
           {
             success: false,
-            error: `المنتجات دي مش متاحة للطلب دلوقتي: ${names}. من فضلك حدّث الصفحة والسلة وجرب تاني.`,
+            error: `These items are not available to order right now: ${names}. Please refresh the page and your cart, then try again.`,
             code: 'UNKNOWN_PRODUCT',
           },
           { status: 400 }
@@ -235,7 +261,9 @@ export async function POST(request: NextRequest) {
           name: prod.name || '',
           // Always the database's price, never the body's.
           price: serverPrice ?? (Number(prod.price) || 0),
-          quantity: Number(prod.quantity) || 1,
+          // Already a validated positive integer — the schema is what makes the
+          // stored quantity, the priced quantity and the reserved quantity agree.
+          quantity: prod.quantity,
           variantName,
           size: prod.size || undefined,
           color: prod.color || undefined,
@@ -252,17 +280,19 @@ export async function POST(request: NextRequest) {
       codFee: pricing ? pricing.codFee : Number(orderData.codFee) || 0,
       status: 'pending',
       notes: orderData.notes?.trim() || undefined,
-      orderDate: new Date()
-
-
+      orderDate: new Date(),
+      // Stored so the unique index can refuse a repeat of this same attempt.
+      // Left undefined rather than null when absent, so the sparse index keeps
+      // ignoring the orders that carry none.
+      clientOrderId: orderData.clientOrderId || undefined
     };
 
 
 
-    // Add promo information to notes if applied
-    if (promoDiscount > 0) {
-      newOrder.notes = `${newOrder.notes || ''}\n\n🎫 Promo Code Applied: ${orderData.promoCode} (Discount: L.E ${promoDiscount})`.trim();
-    }
+    // The promo is NOT appended to `notes` any more. It was being written into
+    // the customer's own free-text field while already being stored properly in
+    // `promoCode` and `discountAmount` — two sources of truth for one fact, and
+    // the customer's note silently rewritten underneath them.
 
     // 🔥 CRITICAL: Delegate Database Write and Stock Mutation to Service Tier!
     logger.info('🔍 Booting Mongoose Transaction payload...');
@@ -278,7 +308,22 @@ export async function POST(request: NextRequest) {
         orderDate: new Date(),
       };
     } else {
-      const txResult = await createOrderTransaction(orderData, newOrder, promoDiscount);
+      const txResult = await createOrderTransaction(orderData, newOrder, pricing?.promoCode);
+
+      // Two requests for the same attempt raced each other and this one lost.
+      // Its transaction aborted whole, so nothing is reserved; the winner's
+      // order is the customer's order.
+      if (!txResult.success && 'duplicate' in txResult && txResult.duplicate) {
+        const alreadyPlaced = await findOrderByClientId(orderData.clientOrderId);
+        if (alreadyPlaced) {
+          return NextResponse.json({
+            success: true,
+            order: orderResponsePayload(alreadyPlaced),
+            message: 'Order placed successfully!'
+          });
+        }
+      }
+
       if (!txResult.success) {
         return NextResponse.json(
           { success: false, error: txResult.error || 'Failed to process order. Stock may fall short.' },
@@ -297,20 +342,7 @@ export async function POST(request: NextRequest) {
     // Return success response with order details instantly
     return NextResponse.json({
       success: true,
-      order: {
-        orderId: savedOrder.orderId,
-        customer: savedOrder.customer,
-        products: savedOrder.products,
-        paymentMethod: savedOrder.paymentMethod,
-        transactionScreenshot: savedOrder.transactionScreenshot,
-        totalAmount: savedOrder.totalAmount,
-        subtotal: savedOrder.subtotal,
-        shippingCost: savedOrder.shippingCost,
-        status: savedOrder.status,
-        notes: savedOrder.notes,
-        orderDate: savedOrder.orderDate,
-        createdAt: savedOrder.createdAt
-      },
+      order: orderResponsePayload(savedOrder),
       message: 'Order placed successfully!'
     });
 
@@ -352,14 +384,54 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Never hand the raw error text to the customer — it is internal wording at
+    // best and leaks implementation detail at worst. Log it in full, answer with
+    // something they can act on.
+    logger.error('❌ Unhandled error while placing an order', error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'Failed to process order. Please try again.'
+        error: 'Something went wrong placing your order. Please try again, or contact us if it keeps happening.'
       },
       { status: 500 }
     );
   }
+}
+
+/** Regex-special characters, so a customer searching for "a+b" is not a syntax error. */
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Builds the MongoDB filter for the admin order list.
+ *
+ * One search box across the four things an admin actually has in hand when a
+ * customer rings: the order number, their name, their phone, or their email.
+ *
+ * Order id, phone and email are anchored with `^` so each can use its index —
+ * those are the three you paste in whole. Name is deliberately unanchored,
+ * because "find me the Ahmed who ordered yesterday" is the common case and an
+ * anchored match would not find "Mohamed Ahmed". That one branch makes the $or
+ * a scan; it stays bounded by the page limit, and the note in order/model.ts
+ * records what to do if it ever stops being cheap.
+ */
+function buildOrderFilter(search?: string, status?: string) {
+  const filter: Record<string, unknown> = {};
+
+  if (status) filter.status = status;
+
+  if (search) {
+    const safe = escapeRegex(search);
+    filter.$or = [
+      { orderId: { $regex: `^${safe}`, $options: 'i' } },
+      { 'customer.phone': { $regex: `^${safe}` } },
+      { 'customer.email': { $regex: `^${safe}`, $options: 'i' } },
+      { 'customer.name': { $regex: safe, $options: 'i' } },
+    ];
+  }
+
+  return filter;
 }
 
 // GET - Fetch orders for admin (optional, for admin dashboard)
@@ -380,25 +452,37 @@ export async function GET(request: NextRequest) {
     if (authError) return authError;
     await dbConnect();
 
+    // `.catch()` on every field means a nonsense query string degrades to the
+    // default rather than producing `skip: NaN` (which is what `?page=abc` used
+    // to do) or an unbounded result set (`?limit=999999`, which returned every
+    // customer's name, email, phone and address in one response).
     const url = new URL(request.url);
-    const page = parseInt(url.searchParams.get('page') || '1');
-    const limit = parseInt(url.searchParams.get('limit') || '50'); // 50 items per page default
+    const { page, limit, search, status, sortBy, sortDir } = listOrdersQuerySchema.parse(
+      Object.fromEntries(url.searchParams)
+    );
     const skip = (page - 1) * limit;
 
-    const totalCount = await Order.countDocuments({});
-    
-    const orders = await Order.find({})
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
+    // Search and status filtering run in the DATABASE, across every order.
+    // They used to run in the browser over the 50 rows already on screen, so
+    // searching for a customer on page 3 confidently reported "no orders match".
+    const filter = buildOrderFilter(search, status);
+
+    const { orders, totalCount } = await orderQueries.listPage(filter, {
+      skip,
+      limit,
+      sortBy,
+      sortDir,
+    });
 
     return NextResponse.json({
       success: true,
       totalCount,
-      totalPages: Math.ceil(totalCount / limit),
+      totalPages: Math.max(1, Math.ceil(totalCount / limit)),
       currentPage: page,
       orders: orders.map(order => ({
-        _id: order._id, // IMPORTANT: Include _id for delete/update operations!
+        // `.lean()` returns a raw ObjectId; the client uses this as a string in
+        // the delete and status-update URLs.
+        _id: String(order._id),
         orderId: order.orderId,
         customer: order.customer,
         products: order.products,
