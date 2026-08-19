@@ -1,12 +1,13 @@
 import type { Metadata } from 'next';
 import ShopClient from './ShopClient';
 import { getActiveProducts } from '@/product/actions';
+import { alternatesFor } from '@/lib/locale';
 
 export const metadata: Metadata = {
   title: 'Shop Calisthenics Equipment in Egypt',
   description:
     'Wall-mounted pull-up bars, dip & parallel bars, parallettes and calisthenics gear made in Egypt. Prices in EGP, delivery across Egypt, cash on delivery.',
-  alternates: { canonical: 'https://unlimited-sw.com/shop' },
+  alternates: alternatesFor('/shop', '/ar/shop', 'en'),
   openGraph: {
     title: 'Shop Calisthenics Equipment in Egypt | Unlimited SW',
     url: 'https://unlimited-sw.com/shop',

@@ -5,6 +5,8 @@ import { CartProvider } from "../contexts/CartContext";
 import { Toaster } from 'sonner';
 import GoogleAnalytics from './components/GoogleAnalytics';
 import AnalyticsProvider from './components/AnalyticsProvider';
+import { directionFor } from '@/lib/locale';
+import { getLocale } from '@/lib/locale.server';
 
 
 
@@ -73,13 +75,22 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({
+/**
+ * The single <html> element for both languages.
+ *
+ * The locale comes from the pathname header middleware.ts sets — a layout
+ * cannot read its own URL any other way. The alternative, a second <html> in
+ * app/ar/layout.tsx, is invalid: layouts nest, so the page would carry two.
+ */
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} dir={directionFor(locale)} suppressHydrationWarning>
       <head>
         <meta name="theme-color" content="#000000" />
       </head>

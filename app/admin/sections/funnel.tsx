@@ -84,11 +84,11 @@ const Funnel = () => {
   );
 
   return (
-    <div className="space-y-8" dir="rtl">
+    <div className="space-y-4" dir="rtl">
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-semibold text-white">مسار التحويل</h2>
+          <h2 className="text-xl font-semibold text-white">مسار التحويل</h2>
           <p className="text-sm text-white/50">
             كل رقم هنا يمثل زائر مختلف، مش عدد الأحداث — بتوقيت القاهرة
           </p>
@@ -112,13 +112,13 @@ const Funnel = () => {
       </div>
 
       {!hasData && (
-        <div className="rounded-lg border border-white/10 bg-white/[0.03] p-8 text-center text-white/60">
+        <div className="rounded-lg border border-white/10 bg-white/[0.03] p-5 text-center text-white/60">
           لسه مفيش بيانات في الفترة دي. الأرقام هتظهر هنا أول ما الزوار يبدأوا يتصفحوا.
         </div>
       )}
 
       {/* ── KPIs ───────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi
           icon={<Users className="w-5 h-5" />}
           label="زوار"
@@ -145,8 +145,8 @@ const Funnel = () => {
       </div>
 
       {/* ── The funnel itself ──────────────────────────────────────────── */}
-      <section className="rounded-lg border border-white/10 bg-white/[0.03] p-6">
-        <h3 className="mb-6 text-lg font-medium text-white">المراحل</h3>
+      <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+        <h3 className="mb-4 text-base font-medium text-white">المراحل</h3>
 
         <div className="space-y-4">
           {report.funnel.map((stage, index) => (
@@ -159,7 +159,7 @@ const Funnel = () => {
                 </span>
               </div>
 
-              <div className="h-3 w-full overflow-hidden rounded-full bg-white/[0.06]">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-white/[0.06]">
                 <div
                   className="h-full rounded-full bg-white/70 transition-all duration-500"
                   style={{ width: `${Math.max(stage.percentOfTop, hasData && stage.sessions > 0 ? 2 : 0)}%` }}
@@ -179,7 +179,7 @@ const Funnel = () => {
       </section>
 
       {/* ── Abandoned baskets ──────────────────────────────────────────── */}
-      <section className="rounded-lg border border-white/10 bg-white/[0.03] p-6">
+      <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
         <h3 className="mb-1 text-lg font-medium text-white">منتجات اتساب في السلة</h3>
         <p className="mb-6 text-sm text-white/50">
           اتحطت في السلة ومحدش من الزوار دول اشترى حاجة
@@ -202,8 +202,8 @@ const Funnel = () => {
       </section>
 
       {/* ── Daily chart ────────────────────────────────────────────────── */}
-      <section className="rounded-lg border border-white/10 bg-white/[0.03] p-6">
-        <h3 className="mb-6 text-lg font-medium text-white">يوم بيوم</h3>
+      <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+        <h3 className="mb-4 text-base font-medium text-white">يوم بيوم</h3>
 
         {report.dailyChart.length === 0 ? (
           <p className="text-sm text-white/40">مفيش بيانات لعرضها.</p>
@@ -211,7 +211,7 @@ const Funnel = () => {
           <div className="flex items-end gap-1 overflow-x-auto pb-2" style={{ minHeight: '9rem' }}>
             {report.dailyChart.map(day => (
               <div key={day.day} className="flex min-w-[1.75rem] flex-1 flex-col items-center gap-1">
-                <div className="flex h-32 w-full flex-col justify-end gap-0.5">
+                <div className="flex h-24 w-full flex-col justify-end gap-0.5">
                   <div
                     className="w-full rounded-sm bg-white/25"
                     style={{ height: `${((day.PageView ?? 0) / busiestDay) * 100}%` }}
@@ -233,7 +233,7 @@ const Funnel = () => {
       </section>
 
       {/* ── Where the numbers come from ────────────────────────────────── */}
-      <section className="rounded-lg border border-white/10 bg-white/[0.03] p-6">
+      <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
         <h3 className="mb-4 text-lg font-medium text-white">مصادر القياس</h3>
 
         <ul className="space-y-3 text-sm">
@@ -272,12 +272,12 @@ function Kpi({
   hint?: string;
 }) {
   return (
-    <div className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
-      <div className="mb-3 flex items-center gap-2 text-white/50">
+    <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3.5">
+      <div className="mb-2 flex items-center gap-2 text-white/50">
         {icon}
         <span className="text-sm">{label}</span>
       </div>
-      <p className="text-2xl font-semibold tabular-nums text-white">{value}</p>
+      <p className="text-xl font-semibold tabular-nums text-white">{value}</p>
       {hint && <p className="mt-1 text-xs text-white/40">{hint}</p>}
     </div>
   );

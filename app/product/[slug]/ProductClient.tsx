@@ -6,6 +6,9 @@ import Image from 'next/image';
 import { Product } from '@/product/model';
 import Nav from '../../sections/Nav';
 import ProductDetailsTabs from './ProductDetailsTabs';
+import { translator } from '@/i18n';
+import type { Locale } from '@/lib/locale';
+import { localized, productPath } from '@/product/seo';
 import { useCart } from '../../../contexts/CartContext';
 import { track } from '../../../analytics/client/track';
 import { motion, AnimatePresence } from 'motion/react';
@@ -37,6 +40,11 @@ type Variant = {
 interface Props {
   product: Product;
   relatedProducts: Product[];
+  /**
+   * Which language this page renders in. Defaults to English so the existing
+   * English route needs no change.
+   */
+  locale?: Locale;
 }
 
 // Helper — detect video URLs
@@ -44,7 +52,10 @@ const isVideoUrl = (url: string) =>
   url.includes('.mp4') || url.includes('.mov') || url.includes('.avi') ||
   url.includes('.webm') || url.includes('video/upload');
 
-export default function ProductClient({ product, relatedProducts }: Props) {
+export default function ProductClient({ product, relatedProducts, locale = 'en' }: Props) {
+  const tr = translator(locale);
+  /** The product's own text in this language, falling back to English. */
+  const displayName = localized(product, 'name', locale);
   const router = useRouter();
   const { addItem } = useCart();
   const galleryRef = useRef<HTMLDivElement>(null);
@@ -304,13 +315,13 @@ export default function ProductClient({ product, relatedProducts }: Props) {
               >
                 {/* Title & Price */}
                 <div>
-                  <h1 className="text-lg lg:text-xl font-bold mb-2 text-center">{product.name}</h1>
+                  <h1 className="text-lg lg:text-xl font-bold mb-2 text-center">{displayName}</h1>
                   <div className="flex items-center justify-center space-x-2 mb-2">
                     {product.discount && product.discount > 0 && product.originalPrice ? (
                       <>
                         <span className="text-base lg:text-lg font-bold">{displayPrice.toLocaleString()} LE</span>
                         <span className="text-sm text-gray-400 line-through">{product.originalPrice.toLocaleString()} LE</span>
-                        <span className="bg-red-600 text-white px-1.5 py-0.5 text-xs font-medium rounded">{product.discount}% OFF</span>
+                        <span className="bg-red-600 text-white px-1.5 py-0.5 text-xs font-medium rounded">{product.discount}% {tr('product.off')}</span>
                       </>
                     ) : (
                       <span className="text-base lg:text-lg font-bold">{displayPrice.toLocaleString()} LE</span>
@@ -321,7 +332,7 @@ export default function ProductClient({ product, relatedProducts }: Props) {
                     )}
                     {/* Standard badge — only when out of stock AND no custom message */}
                     {isOutOfStock && !product.customOutOfStockMessage && (
-                      <span className="bg-gray-700 text-white px-1.5 py-0.5 text-xs font-medium rounded ml-2">OUT OF STOCK</span>
+                      <span className="bg-gray-700 text-white px-1.5 py-0.5 text-xs font-medium rounded ml-2">{tr('product.outOfStock')}</span>
                     )}
                   </div>
                 </div>
@@ -414,7 +425,7 @@ export default function ProductClient({ product, relatedProducts }: Props) {
                   )}
                 </div>
 
-                <ProductDetailsTabs product={product} />
+                <ProductDetailsTabs product={product} locale={locale} />
               </motion.div>
             </div>
 
@@ -445,7 +456,7 @@ export default function ProductClient({ product, relatedProducts }: Props) {
                     <div
                       key={relatedProduct._id}
                       className="group cursor-pointer"
-                      onClick={() => router.push(`/product/${relatedProduct._id}`)}
+                      onClick={() => router.push(productPath(relatedProduct, locale))}
                       role="link"
                       aria-label={`View ${relatedProduct.name}`}
                     >

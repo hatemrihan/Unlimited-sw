@@ -1,37 +1,75 @@
 import { MetadataRoute } from 'next';
 import dbConnect from '../lib/mongodb';
 import Product from '@/product/model';
+import { CATEGORIES, CATEGORY_KEYS } from '@/product/categories';
+
+const baseUrl = 'https://unlimited-sw.com';
+
+/**
+ * Both language versions of one page, as a single sitemap entry.
+ *
+ * Google wants the alternates declared per URL and symmetric. Building the pair
+ * here rather than at each call site means an entry cannot be added in one
+ * language and forgotten in the other.
+ */
+function bilingual(
+  enPath: string,
+  arPath: string,
+  changeFrequency: MetadataRoute.Sitemap[number]['changeFrequency'],
+  priority: number,
+  lastModified: Date = new Date()
+): MetadataRoute.Sitemap {
+  const enUrl = `${baseUrl}${enPath === '/' ? '' : enPath}`;
+  const arUrl = `${baseUrl}${arPath}`;
+  const languages = { 'en-EG': enUrl, 'ar-EG': arUrl };
+
+  return [
+    { url: enUrl, lastModified, changeFrequency, priority, alternates: { languages } },
+    { url: arUrl, lastModified, changeFrequency, priority, alternates: { languages } },
+  ];
+}
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = 'https://unlimited-sw.com';
-  
-  // Static pages
   const staticPages: MetadataRoute.Sitemap = [
-    { url: baseUrl, lastModified: new Date(), changeFrequency: 'daily', priority: 1 },
-    { url: `${baseUrl}/shop`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
-    { url: `${baseUrl}/about`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.7 },
-    { url: `${baseUrl}/contact`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
-    // /cart and /checkout are deliberately absent — they are noindex, and asking
-    // Google to crawl them wastes budget on pages that can never rank.
+    ...bilingual('/', '/ar', 'daily', 1),
+    ...bilingual('/shop', '/ar/shop', 'daily', 0.9),
+    ...bilingual('/about', '/ar/about', 'monthly', 0.7),
+    ...bilingual('/contact', '/ar/contact', 'monthly', 0.5),
+    ...bilingual('/guides', '/ar/guides', 'weekly', 0.7),
+
+    // English-only: legal pages have no Arabic version yet, and listing a URL
+    // that 404s is worse than not listing it.
     { url: `${baseUrl}/terms`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.3 },
     { url: `${baseUrl}/policy`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.3 },
     { url: `${baseUrl}/refund`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.3 },
+
+    // /cart and /checkout are deliberately absent — they are noindex, and asking
+    // Google to crawl them wastes budget on pages that can never rank.
   ];
+
+  const categoryPages: MetadataRoute.Sitemap = CATEGORY_KEYS.flatMap(key =>
+    bilingual(`/shop/${key}`, `/ar/shop/${CATEGORIES[key].slugAr}`, 'weekly', 0.8)
+  );
 
   try {
     await dbConnect();
-    const products = await Product.find({ isActive: true }).select('_id updatedAt').lean();
-    
-    const productPages: MetadataRoute.Sitemap = products.map((product: any) => ({
-      url: `${baseUrl}/product/${product._id.toString()}`,
-      lastModified: product.updatedAt ? new Date(product.updatedAt) : new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    }));
+    const products = await Product.find({ isActive: true })
+      .select('_id slug slugAr updatedAt')
+      .lean();
 
-    return [...staticPages, ...productPages];
+    const productPages: MetadataRoute.Sitemap = products.flatMap((product: any) => {
+      // Products that predate the backfill have no slug; the id URL still works
+      // and redirects, so list that rather than skipping the product entirely.
+      const enSlug = product.slug || product._id.toString();
+      const arSlug = product.slugAr || enSlug;
+      const lastModified = product.updatedAt ? new Date(product.updatedAt) : new Date();
+
+      return bilingual(`/product/${enSlug}`, `/ar/product/${arSlug}`, 'weekly', 0.8, lastModified);
+    });
+
+    return [...staticPages, ...categoryPages, ...productPages];
   } catch (error) {
     console.error('Error generating sitemap for products:', error);
-    return staticPages;
+    return [...staticPages, ...categoryPages];
   }
 }

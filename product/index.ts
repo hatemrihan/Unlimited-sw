@@ -15,6 +15,8 @@ export {
   getAdminProducts,
   getProductById,
   getProductPageData,
+  getProductPageDataBySlug,
+  getProductsByCategory,
   createProduct,
   updateProduct,
   deleteProduct,

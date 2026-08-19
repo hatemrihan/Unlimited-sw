@@ -3,6 +3,7 @@
 import React, { useState, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import type { Locale } from '@/lib/locale';
 // FULL QUALITY IMAGES - No compression or quality loss!
 import oneImage from '@/public/images/all-grayy/1763900966157-avnq5qjndt.png';
 import twoImage from '@/public/images/all-grayy/1763901202402-bdlfhcw2tbu.png';
@@ -10,7 +11,11 @@ import twoImage from '@/public/images/all-grayy/1763901202402-bdlfhcw2tbu.png';
 // 🔥 CACHE BUSTER - Change this number to force browser refresh: v2.0
 const COMPONENT_VERSION = '2.0';
 
-const Explore = () => {
+const Explore = ({ locale = 'en' }: { locale?: Locale }) => {
+  // Linked by slug so the featured tile does not 301 on every click.
+  const featured = locale === 'ar'
+    ? '/ar/product/wall-mounted-pull-up-bar-wall-parallel-bar'
+    : '/product/wall-mounted-pull-up-bar-wall-parallel-bar';
     const containerRef = useRef<HTMLDivElement>(null);
     const [sliderPos, setSliderPos] = useState(50); // Percentage (0-100)
 
@@ -66,7 +71,7 @@ const Explore = () => {
                                 5,400 LE
                             </p>
                             <Link
-                                href="/product/69df958953ccc60ae476918d"
+                                href={featured}
                                 className="w-full py-3 text-sm font-medium tracking-wide transition-colors bg-white hover:bg-white/90 text-black flex items-center justify-center"
                             >
                                 Buy Now
@@ -139,7 +144,7 @@ const Explore = () => {
                                 5,400 LE
                             </p>
                             <Link
-                                href="/product/69df958953ccc60ae476918d"
+                                href={featured}
                                 className="w-full py-2.5 text-xs font-medium tracking-wide transition-colors bg-white hover:bg-white/90 text-black flex items-center justify-center"
                             >
                                 Buy Now

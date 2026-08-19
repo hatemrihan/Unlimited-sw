@@ -3,47 +3,62 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Product } from '@/product/model';
+import { translator } from '@/i18n';
+import type { Locale } from '@/lib/locale';
+import { localized, localizedFaqs } from '@/product/seo';
 
 interface ProductDetailsTabsProps {
   product: Product;
+  /** Defaults to English, so the existing English route is unchanged. */
+  locale?: Locale;
 }
 
-const ProductDetailsTabs: React.FC<ProductDetailsTabsProps> = ({ product }) => {
+const ProductDetailsTabs: React.FC<ProductDetailsTabsProps> = ({ product, locale = 'en' }) => {
   const [activeTab, setActiveTab] = useState<string | null>(null);
+  const tr = translator(locale);
+
+  // Each field falls back to its English value, so a product with partial
+  // Arabic copy shows a filled tab rather than a placeholder sentence.
+  const specifications = localized(product, 'specifications', locale);
+  const detailed = localized(product, 'detailedDescription', locale)
+    || localized(product, 'description', locale);
+  const faqs = localizedFaqs(product, locale);
 
   const tabs = [
     {
       id: 'details',
-      label: 'DETAILS',
-      content: product.specifications || 'Product specifications and technical details will be displayed here.',
-      hasContent: !!product.specifications?.trim()
+      label: tr('product.specifications'),
+      content: specifications || tr('common.loading'),
+      hasContent: !!specifications.trim()
     },
     {
       id: 'description',
-      label: 'DESCRIPTION',
-      content: product.detailedDescription || product.description || 'Detailed product description will be displayed here.',
-      hasContent: !!(product.detailedDescription?.trim() || product.description?.trim())
+      label: tr('product.description'),
+      content: detailed || tr('common.loading'),
+      hasContent: !!detailed.trim()
     },
     {
       id: 'shipping',
-      label: 'SHIPPING',
-      content: product.shippingInfo || 'Shipping information and delivery details will be displayed here.',
+      label: tr('product.shipping'),
+      // Shipping terms are the same for both languages until the owner writes
+      // an Arabic version; there is no shippingInfoAr field.
+      content: product.shippingInfo || '',
       hasContent: !!product.shippingInfo?.trim()
     },
     {
       id: 'faqs',
-      label: 'FAQS',
-      content: product.faqs && product.faqs.length > 0 ? (
+      label: tr('product.faqs'),
+      content: faqs.length > 0 ? (
         <div className="space-y-2 w-full text-center">
-          {product.faqs.map((faq, index) => (
+          {faqs.map((faq: { question: string; answer: string }, index: number) => (
             <div key={index} className="border-b border-gray-600 pb-2 last:border-b-0 flex flex-col items-center text-center">
               <h4 className="font-medium text-[#b3b3b3] mb-1 text-xs text-center">{faq.question}</h4>
               <p className="text-[#b3b3b3]/70 text-xs leading-relaxed text-center">{faq.answer}</p>
             </div>
           ))}
         </div>
-      ) : 'Frequently asked questions will be displayed here.',
-      hasContent: !!(product.faqs && product.faqs.length > 0)
+      ) : '',
+      hasContent: faqs.length > 0
     }
   ];
 

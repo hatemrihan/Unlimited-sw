@@ -3,6 +3,8 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Product } from '@/product/model';
+import type { Locale } from '@/lib/locale';
+import { productPath } from '@/product/seo';
 import { useCart } from '../../contexts/CartContext';
 import Image from "next/image";
 import Link from "next/link";
@@ -20,9 +22,10 @@ import Link from "next/link";
 interface ProductsProps {
   initialProducts: Product[];
   initialHasMore?: boolean;
+  locale?: Locale;
 }
 
-const Products = ({ initialProducts = [], initialHasMore = false }: ProductsProps) => {
+const Products = ({ initialProducts = [], initialHasMore = false, locale = 'en' }: ProductsProps) => {
   const router = useRouter();
   const { addItem } = useCart();
 
@@ -150,7 +153,7 @@ const Products = ({ initialProducts = [], initialHasMore = false }: ProductsProp
                 return (
                   <article key={product._id} className="h-full">
                     <Link
-                      href={`/product/${product._id}`}
+                      href={productPath(product as any, locale)}
                       className="group flex flex-col h-full"
                     >
                       {/* Product Image */}

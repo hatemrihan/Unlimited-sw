@@ -98,6 +98,14 @@ export const createProductSchema = z.object({
   seoTitleAr:       z.string().max(70).optional(),
   seoDescription:   z.string().max(160).optional(),
   seoDescriptionAr: z.string().max(160).optional(),
+
+  // ─── Phase 4: prices in other currencies ──────────────────────────────────
+  // Entered by hand, never derived from an exchange rate — see lib/countries.ts.
+  prices: z.object({
+    SAR: z.number().nonnegative().optional(),
+    AED: z.number().nonnegative().optional(),
+    KWD: z.number().nonnegative().optional(),
+  }).optional(),
 });
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;

@@ -12,6 +12,16 @@ export interface ProductQueries {
   findAllActive(fields: string): Promise<Product[]>;
 
   findById(id: string, fields?: string): Promise<Product | null>;
+  /**
+   * Looks a product up by its public URL segment.
+   *
+   * `locale` picks which slug field to match, so the Arabic route cannot
+   * accidentally resolve an English slug and serve a page whose URL says one
+   * thing and whose canonical says another.
+   */
+  findBySlug(slug: string, locale: 'en' | 'ar'): Promise<Product | null>;
+  /** Active products in one category, cheapest first. */
+  findByCategory(category: string): Promise<Product[]>;
   findByIds(ids: string[]): Promise<Product[]>;
   /** Other active products to show beneath one, in the admin's own order. */
   findRelated(excludeId: string, limit: number): Promise<Product[]>;
@@ -37,7 +47,12 @@ export interface ProductQueries {
 const PRODUCT_FIELDS =
   'name price originalPrice discount mainImage images videos description promoCode ' +
   'variants stock isActive order showOutOfStockBadge showPreorderBadge ' +
-  'customOutOfStockMessage category tags specifications shippingInfo faqs detailedDescription cityPricing';
+  'customOutOfStockMessage category tags specifications shippingInfo faqs detailedDescription cityPricing ' +
+  // Phase 2. A field missing from this list is silently absent on every page
+  // that reads through the cache — the Arabic pages would render English with
+  // no error anywhere.
+  'slug slugAr nameAr descriptionAr detailedDescriptionAr specificationsAr faqsAr ' +
+  'seoTitle seoTitleAr seoDescription seoDescriptionAr';
 
 export class MongoProductQueries implements ProductQueries {
   async findAllActive(fields: string = PRODUCT_FIELDS): Promise<Product[]> {
@@ -54,6 +69,25 @@ export class MongoProductQueries implements ProductQueries {
     const q = ProductModel.findById(id);
     if (fields) q.select(fields);
     return q.lean().exec() as unknown as Product | null;
+  }
+
+  async findBySlug(slug: string, locale: 'en' | 'ar'): Promise<Product | null> {
+    await dbConnect();
+    const field = locale === 'ar' ? 'slugAr' : 'slug';
+    return ProductModel.findOne({ [field]: slug, isActive: true })
+      .select(PRODUCT_FIELDS)
+      .lean()
+      .exec() as unknown as Product | null;
+  }
+
+  async findByCategory(category: string): Promise<Product[]> {
+    await dbConnect();
+    // Matches the { category, isActive, price } index — the sort is free.
+    return ProductModel.find({ category, isActive: true })
+      .select(PRODUCT_FIELDS)
+      .sort({ price: 1 })
+      .lean()
+      .exec() as unknown as Product[];
   }
 
   /**

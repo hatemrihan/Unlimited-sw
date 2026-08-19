@@ -33,6 +33,7 @@ const navItems = [
 
 ];
 
+
 const Nav: FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [navScope, navAnimate] = useAnimate();
@@ -372,23 +373,10 @@ const Nav: FC = () => {
                     <div className="absolute bottom-0 left-0 w-0 h-0.5 bg-white transition-all duration-300 group-hover:w-full"></div>
                   </div>
 
-                  {/* Desktop Account Icon
-                      A link, not a session.
-                      Reading the session here made every anonymous shopper pay
-                      for /api/auth/session on every page — to render an icon
-                      that, for a customer, never changes: the storefront has no
-                      accounts and checkout is a guest flow. The only people who
-                      sign in are admins, and /admin/login is where they do it. */}
-                  <Link
-                    href="/admin"
-                    className="text-[#b3b3b3] hover:text-gray-400 transition-colors duration-300 p-2 hover:bg-gray-700/30 rounded-lg cursor-pointer"
-                    aria-label="Admin sign in"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" className="w-6 h-6 fill-current">
-                      <path fillRule="evenodd" d="M10 3a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm-2 3.5a2 2 0 1 1 4 0 2 2 0 0 1-4 0Z" />
-                      <path fillRule="evenodd" d="M15.484 14.227a6.274 6.274 0 0 0-10.968 0l-.437.786a1.338 1.338 0 0 0 1.17 1.987h9.502a1.338 1.338 0 0 0 1.17-1.987l-.437-.786Zm-9.657.728a4.773 4.773 0 0 1 8.346 0l.302.545h-8.95l.302-.545Z" />
-                    </svg>
-                  </Link>
+                  {/* The admin link and the EN/AR toggle were both removed from
+                      the storefront nav. The Arabic pages still exist and are
+                      still declared to Google via hreflang and the sitemap —
+                      there is simply no visible switch in the header. */}
                 </div>
 
                 {/* Mobile Cart and Account Icons */}
@@ -414,18 +402,8 @@ const Nav: FC = () => {
                     <div className="absolute bottom-0 left-0 w-0 h-0.5 bg-current transition-all duration-300 group-hover:w-full"></div>
                   </div>
 
-                  {/* Mobile Account Icon — see the desktop one above */}
-                  <Link
-                    href="/admin"
-                    className="text-[#b3b3b3] hover:text-gray-400 transition-colors duration-300 p-2 hover:bg-gray-700/30 rounded-lg cursor-pointer"
-                    data-dynamic-color="true"
-                    aria-label="Admin sign in"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" className="w-5 h-5 fill-current">
-                      <path fillRule="evenodd" d="M10 3a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm-2 3.5a2 2 0 1 1 4 0 2 2 0 0 1-4 0Z" />
-                      <path fillRule="evenodd" d="M15.484 14.227a6.274 6.274 0 0 0-10.968 0l-.437.786a1.338 1.338 0 0 0 1.17 1.987h9.502a1.338 1.338 0 0 0 1.17-1.987l-.437-.786Zm-9.657.728a4.773 4.773 0 0 1 8.346 0l.302.545h-8.95l.302-.545Z" />
-                    </svg>
-                  </Link>
+                  {/* The admin link was removed from the storefront — see the
+                      desktop block above. */}
                 </div>
               </div>
             </div>

@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { adminEmails } from '@/lib/admins';
 import { verifyAdminCookie, ADMIN_COOKIE_NAME } from '@/login/adminCookie';
+import { PATHNAME_HEADER } from '@/lib/locale';
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
@@ -64,9 +65,31 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  return NextResponse.next();
+  // 3. Everything else: pass the path along so server components can tell which
+  //    language they are rendering.
+  //
+  //    A layout cannot read its own URL — `headers()` is the only channel. The
+  //    alternative was a second <html> element inside app/ar/layout.tsx, which
+  //    is invalid HTML and would have meant two `lang` attributes on the page.
+  return NextResponse.next({
+    request: { headers: withPathname(request) },
+  });
+}
+
+/** Clones the incoming headers with the pathname attached. */
+function withPathname(request: NextRequest): Headers {
+  const headers = new Headers(request.headers);
+  headers.set(PATHNAME_HEADER, request.nextUrl.pathname);
+  return headers;
 }
 
 export const config = {
-  matcher: '/admin/:path*',
+  /**
+   * The admin branch, plus every public page.
+   *
+   * The second pattern deliberately excludes `api`, `_next` and anything with a
+   * file extension: those never render a layout, so tagging them with a
+   * pathname header is pure overhead on every asset request.
+   */
+  matcher: ['/admin/:path*', '/((?!api|_next|.*\\..*).*)'],
 };

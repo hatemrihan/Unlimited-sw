@@ -8,6 +8,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import Nav from '../sections/Nav';
 import Footer from '../sections/Footer';
 import { useCart } from '../../contexts/CartContext';
+import { translator } from '@/i18n';
+import type { Locale } from '@/lib/locale';
+import { localized, productPath } from '@/product/seo';
+import { CATEGORIES, CATEGORY_KEYS, categorySlug } from '@/product/categories';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -62,20 +66,24 @@ interface ProductCardProps {
   product: Product;
   onAddToCart: (product: Product) => void;
   index: number;
+  locale: Locale;
 }
 
-const ProductCard = ({ product, onAddToCart, index }: ProductCardProps) => {
+const ProductCard = ({ product, onAddToCart, index, locale }: ProductCardProps) => {
+  const tr = translator(locale);
+  const href = productPath(product as any, locale);
+  const name = localized(product as any, 'name', locale);
   const hasDiscount = Number(product.discount) > 0 && !!product.originalPrice;
   const isOutOfStock = getAvailableStock(product) === 0;
 
   return (
     <article className="group relative flex flex-col h-full">
-      <Link href={`/product/${product._id}`} className="block">
+      <Link href={href} className="block">
         <div className="relative aspect-[3/4] w-full overflow-hidden bg-gray-800 mb-3 max-w-[180px] mx-auto">
           {product.mainImage ? (
             <Image
               src={product.mainImage}
-              alt={product.name}
+              alt={name}
               fill
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
               className="object-cover object-center group-hover:scale-105 transition-transform duration-300"
@@ -91,7 +99,7 @@ const ProductCard = ({ product, onAddToCart, index }: ProductCardProps) => {
           <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
             {hasDiscount && (
               <div className="bg-stone-900 text-white px-1.5 py-0.5 text-[10px] font-medium uppercase">
-                {product.discount}% OFF
+                {product.discount}% {tr('product.off')}
               </div>
             )}
             {isOutOfStock && (
@@ -103,11 +111,11 @@ const ProductCard = ({ product, onAddToCart, index }: ProductCardProps) => {
                 )}
                 {product.showPreorderBadge ? (
                   <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase w-fit">
-                    PREORDER
+                    {tr('product.preorder')}
                   </div>
                 ) : (
                   <div className="bg-black text-white px-1.5 py-0.5 text-[10px] font-medium uppercase w-fit">
-                    OUT OF STOCK
+                    {tr('product.outOfStock')}
                   </div>
                 )}
               </>
@@ -117,17 +125,17 @@ const ProductCard = ({ product, onAddToCart, index }: ProductCardProps) => {
       </Link>
 
       <div className="text-center flex flex-col flex-grow mt-2">
-        <Link href={`/product/${product._id}`}>
+        <Link href={href}>
           <h3 className="text-sm font-light text-[#b3b3b3] mb-1 hover:underline line-clamp-2">
-            {product.name}
+            {name}
           </h3>
         </Link>
 
         <div className="font-light text-sm mb-2">
-          <span className="text-[#b3b3b3]">{product.price.toLocaleString()} L.E</span>
+          <span className="text-[#b3b3b3]">{product.price.toLocaleString('en-US')} {tr('product.currency')}</span>
           {hasDiscount && product.originalPrice && (
             <span className="ml-2 text-gray-500 line-through text-xs">
-              {product.originalPrice.toLocaleString()} L.E
+              {product.originalPrice.toLocaleString('en-US')} {tr('product.currency')}
             </span>
           )}
         </div>
@@ -135,7 +143,7 @@ const ProductCard = ({ product, onAddToCart, index }: ProductCardProps) => {
         <div className="mt-auto pt-4 pb-2">
           {isOutOfStock ? (
             <span className="inline-block pb-1 border-b border-stone-600 text-stone-600 uppercase tracking-[0.15em] text-[10px] sm:text-xs font-bold cursor-not-allowed">
-              OUT OF STOCK
+              {tr('product.outOfStock')}
             </span>
           ) : (
             <button
@@ -145,7 +153,7 @@ const ProductCard = ({ product, onAddToCart, index }: ProductCardProps) => {
               }}
               className="inline-block pb-1 border-b border-[#b3b3b3] text-[#b3b3b3] hover:text-white hover:border-white uppercase tracking-[0.15em] text-[10px] sm:text-xs font-bold transition-colors duration-300"
             >
-              ADD TO CART
+              {tr('product.addToCart')}
             </button>
           )}
         </div>
@@ -156,7 +164,15 @@ const ProductCard = ({ product, onAddToCart, index }: ProductCardProps) => {
 
 // ─── Shop Page ────────────────────────────────────────────────────────────────
 
-export default function ShopClient({ initialProducts }: { initialProducts: Product[] }) {
+export default function ShopClient({
+  initialProducts,
+  locale = 'en',
+}: {
+  initialProducts: Product[];
+  locale?: Locale;
+}) {
+  const tr = translator(locale);
+  const shopPath = locale === 'ar' ? '/ar/shop' : '/shop';
   // Rendered on the server so crawlers see every /product/ link in the HTML.
   const [products] = useState<Product[]>(initialProducts);
   const [error] = useState('');
@@ -250,7 +266,7 @@ export default function ShopClient({ initialProducts }: { initialProducts: Produ
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
           >
-            <h1 className="text-3xl font-light text-[#b3b3b3]">Shop Collection</h1>
+            <h1 className="text-3xl font-light text-[#b3b3b3]">{tr('shop.title')}</h1>
             {error && (
               <motion.p className="mt-4 text-sm text-red-500" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                 {error}
@@ -270,7 +286,7 @@ export default function ShopClient({ initialProducts }: { initialProducts: Produ
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Search products..."
+                  placeholder={tr('shop.search')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full px-4 py-3 pl-12 text-sm bg-transparent border border-white/20 text-white rounded-none focus:outline-none focus:ring-2 focus:ring-white/20 placeholder-[#b3b3b3]"
@@ -293,24 +309,25 @@ export default function ShopClient({ initialProducts }: { initialProducts: Produ
               </div>
             </div>
 
-            {/* Category Tabs */}
-            {categories.length > 1 && (
-              <div className="flex gap-6 overflow-x-auto pb-2">
-                {categories.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat)}
-                    className={`px-4 py-2 text-sm whitespace-nowrap transition-colors duration-300 ${
-                      selectedCategory === cat
-                        ? 'border-b-2 border-gray-400 font-medium text-[#b3b3b3]'
-                        : 'text-gray-400 hover:text-[#b3b3b3]'
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-            )}
+            {/*
+              Category tabs are links, not client-side filters.
+
+              As buttons they changed only React state, so the four category
+              pages had no route pointing at them and Google had no way to reach
+              them. A link is crawlable; the filtering still happens instantly
+              because the target pages are prerendered.
+            */}
+            <nav className="flex gap-6 overflow-x-auto pb-2">
+              {CATEGORY_KEYS.map((key) => (
+                <Link
+                  key={key}
+                  href={`${shopPath}/${categorySlug(key, locale)}`}
+                  className="px-4 py-2 text-sm whitespace-nowrap text-gray-400 hover:text-[#b3b3b3] transition-colors duration-300"
+                >
+                  {locale === 'ar' ? CATEGORIES[key].ar : CATEGORIES[key].en}
+                </Link>
+              ))}
+            </nav>
           </motion.div>
 
           {/* Product Grid — flex layout to ensure centering on all screen sizes */}
@@ -321,7 +338,7 @@ export default function ShopClient({ initialProducts }: { initialProducts: Produ
           >
             {filteredProducts.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-gray-400">No products found matching your criteria.</p>
+                <p className="text-gray-400">{tr('shop.empty')}</p>
               </div>
             ) : (
               <div className="flex flex-wrap justify-center gap-4 sm:gap-6 lg:gap-12">
@@ -331,6 +348,7 @@ export default function ShopClient({ initialProducts }: { initialProducts: Produ
                       product={product}
                       onAddToCart={handleAddToCart}
                       index={index}
+                      locale={locale}
                     />
                   </div>
                 ))}
@@ -351,7 +369,7 @@ export default function ShopClient({ initialProducts }: { initialProducts: Produ
             exit={{ y: -50, opacity: 0 }}
             className="fixed top-4 right-4 bg-black text-white px-6 py-3 rounded-lg z-50"
           >
-            Added to cart!
+            {tr('product.addedToCart')}
           </motion.div>
         )}
       </AnimatePresence>

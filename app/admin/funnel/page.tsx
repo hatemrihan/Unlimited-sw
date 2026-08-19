@@ -14,7 +14,7 @@ export const metadata = {
 
 export default function FunnelPage() {
   return (
-    <main className="min-h-screen bg-black px-4 py-10 sm:px-8">
+    <main className="min-h-screen bg-black px-4 py-6 sm:px-6">
       <div className="mx-auto w-full max-w-5xl">
         <FunnelSection />
       </div>

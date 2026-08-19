@@ -350,6 +350,55 @@ export async function getProductPageData(
 }
 
 /**
+ * The same page data, addressed by slug instead of id.
+ *
+ * `locale` decides which slug field is matched. Resolving an Arabic URL against
+ * the English slug would render a page whose address and canonical disagree,
+ * which is precisely the duplicate-content problem hreflang exists to avoid.
+ */
+export async function getProductPageDataBySlug(
+  slug: string,
+  locale: 'en' | 'ar'
+): Promise<{ product: Product; related: Product[] } | null> {
+  if (!slug) return null;
+
+  try {
+    const read = unstable_cache(
+      async () => {
+        const product = await productQueries.findBySlug(slug, locale);
+        if (!product) return null;
+
+        const id = String(product._id);
+        return { product, related: await productQueries.findRelated(id, 4) };
+      },
+      ['product:page:slug', locale, slug],
+      { tags: [PRODUCTS_TAG], revalidate: CACHE_TTL.PRODUCT_DETAIL / 1000 }
+    );
+
+    return await read();
+  } catch (err) {
+    console.error('[product.actions] product slug read failed:', err instanceof Error ? err.message : String(err));
+    return null;
+  }
+}
+
+/** Active products in one category, cheapest first — the category page read. */
+export async function getProductsByCategory(category: string): Promise<Product[]> {
+  try {
+    const read = unstable_cache(
+      async () => productQueries.findByCategory(category),
+      ['product:category', category],
+      { tags: [PRODUCTS_TAG], revalidate: CACHE_TTL.PRODUCTS / 1000 }
+    );
+
+    return await read();
+  } catch (err) {
+    console.error('[product.actions] category read failed:', err instanceof Error ? err.message : String(err));
+    return [];
+  }
+}
+
+/**
  * Fetches a single product by ID (used by admin [id] GET).
  * Throws NotFoundError if not found.
  */

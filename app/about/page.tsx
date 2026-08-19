@@ -5,6 +5,8 @@ import Image from 'next/image';
 import aboutImage from '../../public/images/about-image.jpg';
 import Link from 'next/link';
 import HeaderTypewriter from './HeaderTypewriter';
+import { alternatesFor } from '@/lib/locale';
+import { personJsonLd } from '@/lib/aboutSchema';
 
 export const metadata: Metadata = {
   // `absolute` because this title already carries the brand; the root template
@@ -14,11 +16,18 @@ export const metadata: Metadata = {
   },
   description:
     'Unlimited SW designs and manufactures calisthenics equipment in Egypt, founded by Dr. Mohamed Alkady, PhD in sports biomechanics with 14+ years of coaching.',
-  alternates: { canonical: 'https://unlimited-sw.com/about' },
+  alternates: alternatesFor('/about', '/ar/about', 'en'),
 };
 
 export default function AboutPage() {
   return (
+    <>
+      {/* Who is behind the shop. For a small store a named founder with a
+          stated qualification is the strongest trust signal available, and
+          Google reads it from here rather than from the prose. */}
+      <script type="application/ld+json" suppressHydrationWarning>
+        {JSON.stringify(personJsonLd('en'))}
+      </script>
     <div className="min-h-screen bg-stone-900 text-[#b3b3b3] font-sans selection:bg-white selection:text-black flex flex-col">
       <Nav />
 
@@ -76,5 +85,6 @@ export default function AboutPage() {
 
       <Footer />
     </div>
+    </>
   );
 }

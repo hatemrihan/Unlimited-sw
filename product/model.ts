@@ -63,6 +63,20 @@ export interface Product {
   seoDescription?: string;
   seoDescriptionAr?: string;
 
+  /**
+   * Phase 4 — explicit prices per currency, set by hand.
+   *
+   * Never computed from an FX rate at render time: a price that moves with the
+   * rate differs between the page, the cart, and Merchant Center's crawl, and
+   * that mismatch is what gets a Shopping account suspended. `price` stays the
+   * EGP base.
+   */
+  prices?: {
+    SAR?: number;
+    AED?: number;
+    KWD?: number;
+  };
+
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -234,6 +248,14 @@ const ProductSchema = new mongoose.Schema({
   seoTitleAr:       { type: String, default: '' },
   seoDescription:   { type: String, default: '' },
   seoDescriptionAr: { type: String, default: '' },
+
+  // Phase 4. Absent until a Gulf country is opened; a product with no price in
+  // a country's currency is hidden there rather than shown at the EGP number.
+  prices: {
+    SAR: { type: Number, min: 0 },
+    AED: { type: Number, min: 0 },
+    KWD: { type: Number, min: 0 },
+  },
 }, {
   // Add timestamps for tracking 
   timestamps: true,

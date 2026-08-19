@@ -6,6 +6,8 @@ import Footer from "./sections/Footer";
 import WhatsAppButton from "../components/WhatsAppButton";
 import Explore from "./sections/Explore";
 import { getActiveProducts } from "@/product/actions";
+import { storeJsonLd } from "@/lib/storeSchema";
+import { alternatesFor } from "@/lib/locale";
 
 export const metadata = {
   // `absolute` — the brand is already in this title; the root template must not
@@ -41,9 +43,7 @@ export const metadata = {
     description: "Premium calisthenics equipment in Egypt.",
     images: ["https://unlimited-sw.com/og-image.jpg"],
   },
-  alternates: {
-    canonical: "https://unlimited-sw.com",
-  },
+  alternates: alternatesFor('/', '/ar', 'en'),
 };
 
 export default async function Home() {
@@ -63,82 +63,6 @@ export default async function Home() {
     console.error('Failed to fetch initial products:', error);
   }
 
-  const structuredData = {
-    "@context": "https://schema.org",
-    // SportingGoodsStore is a subtype of Store/LocalBusiness — it tells Google
-    // what kind of shop this is, which plain "Store" does not.
-    "@type": "SportingGoodsStore",
-    "name": "Unlimited SW",
-    "description": "Premium calisthenics equipment and training gear in Egypt. Shop pull-up bars, resistance bands, gymnastic rings, and professional workout equipment.",
-    "url": "https://unlimited-sw.com",
-    "logo": "https://unlimited-sw.com/logo.png",
-    "image": "https://unlimited-sw.com/og-image.jpg",
-    // "telephone" is intentionally absent until the owner supplies the real
-    // number in E.164 form (+20XXXXXXXXXX). A placeholder here is worse than
-    // nothing — Google would publish it.
-    "email": "Muhamed.alkady@gmail.com",
-    "address": {
-      "@type": "PostalAddress",
-      "addressCountry": "EG",
-      "addressLocality": "Cairo",
-      "addressRegion": "Cairo"
-    },
-    "geo": {
-      "@type": "GeoCoordinates",
-      "latitude": "30.0444",
-      "longitude": "31.2357"
-    },
-    "openingHours": "Mo-Su 09:00-21:00",
-    "areaServed": {
-      "@type": "Country",
-      "name": "Egypt"
-    },
-    "paymentAccepted": ["Cash", "Credit Card", "InstaPay"],
-    "currenciesAccepted": "EGP",
-    "priceRange": "$$",
-    "hasOfferCatalog": {
-      "@type": "OfferCatalog",
-      "name": "Calisthenics Equipment",
-      "itemListElement": [
-        {
-          "@type": "Offer",
-          "itemOffered": {
-            "@type": "Product",
-            "name": "Pull-up Bars",
-            "category": "Fitness Equipment"
-          }
-        },
-        {
-          "@type": "Offer",
-          "itemOffered": {
-            "@type": "Product",
-            "name": "Resistance Bands",
-            "category": "Fitness Equipment"
-          }
-        },
-        {
-          "@type": "Offer",
-          "itemOffered": {
-            "@type": "Product",
-            "name": "Gymnastic Rings",
-            "category": "Fitness Equipment"
-          }
-        }
-      ]
-    },
-    "founder": {
-      "@type": "Person",
-      "name": "Mohamed Alkady",
-      "jobTitle": "Founder & Calisthenics Coach",
-      "description": "Ph.D. in Biomechanics in Sports Training with over 14 years of coaching experience"
-    },
-    // A site is not "sameAs" itself — that entry is removed. TikTok and YouTube
-    // go here once the owner sends the real URLs.
-    "sameAs": [
-      "https://www.instagram.com/unlimited_sw",
-      "https://www.facebook.com/unlimited.sw"
-    ]
-  };
 
   return (
     <>
@@ -148,7 +72,7 @@ export default async function Home() {
         id="structured-data"
         suppressHydrationWarning
       >
-        {JSON.stringify(structuredData)}
+        {JSON.stringify(storeJsonLd('en'))}
       </script>
 
       <Nav />
