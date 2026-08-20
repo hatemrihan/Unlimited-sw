@@ -3,9 +3,9 @@ import { BRAND, CURRENCY, currentYear } from '../config';
 /**
  * The shell every UNLIMITED email shares, plus the small helpers templates need.
  *
- * Design: a narrow centred column on white, left-aligned text, generous space,
- * one typeface, and structure made from spacing and thin rules rather than
- * coloured boxes. No gradients, no borders in brand colours, no emoji headings.
+ * Design: the original UNLIMITED-SW look — a black wordmark banner, a white
+ * card on a light grey page, and content organised into boxes with a coloured
+ * left border rather than hairline rules.
  *
  * Why it is built from <table> elements: email clients are not browsers. Outlook
  * renders with Microsoft Word's engine, and Gmail strips <style> blocks in many
@@ -14,14 +14,18 @@ import { BRAND, CURRENCY, currentYear } from '../config';
  */
 
 export const TOKENS = {
-  pageBg: '#f6f6f4',
+  pageBg: '#f5f5f5',
   surface: '#ffffff',
-  text: '#191919',
-  muted: '#767676',
-  faint: '#a3a3a3',
-  rule: '#e8e6e2',
-  width: 560,
-  font: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif",
+  text: '#333333',
+  muted: '#666666',
+  faint: '#999999',
+  rule: '#eeeeee',
+  cardBorder: '#dddddd',
+  headerBg: '#000000',
+  headerText: '#ffffff',
+  accent: '#4CAF50',
+  width: 600,
+  font: "Arial, Helvetica, sans-serif",
 } as const;
 
 /**
@@ -57,14 +61,14 @@ export function subtle(html: string, marginTop = 4): string {
   return `<p style="margin:${marginTop}px 0 0 0;padding:0;font-size:14px;line-height:1.6;color:${TOKENS.muted};">${html}</p>`;
 }
 
-/** A hairline separator. */
-export function rule(margin = 32): string {
-  return `<div style="height:1px;line-height:1px;font-size:0;background-color:${TOKENS.rule};margin:${margin}px 0;">&nbsp;</div>`;
+/** Vertical space between sections. */
+export function rule(margin = 30): string {
+  return `<div style="height:${margin}px;line-height:${margin}px;font-size:0;">&nbsp;</div>`;
 }
 
-/** Section label above a block — small, uppercase, quiet. */
+/** Section label above a block — bold, plain case, dark. */
 export function sectionLabel(text: string): string {
-  return `<p style="margin:0 0 12px 0;padding:0;font-size:11px;line-height:1.4;letter-spacing:0.12em;text-transform:uppercase;color:${TOKENS.faint};">${escapeHtml(text)}</p>`;
+  return `<p style="margin:0 0 12px 0;padding:0;font-size:15px;line-height:1.5;font-weight:bold;color:${TOKENS.text};">${escapeHtml(text)}</p>`;
 }
 
 interface LayoutOptions {
@@ -97,10 +101,10 @@ export function layout({
 
   const links = footerLinks
     .map(
-      link =>
-        `<a href="${escapeHtml(link.href)}" style="color:${TOKENS.muted};text-decoration:underline;">${escapeHtml(link.label)}</a>`
+      (link, i) =>
+        `<a href="${escapeHtml(link.href)}" style="color:${TOKENS.text};text-decoration:none;font-weight:${i === 0 ? 'bold' : 'normal'};">${escapeHtml(link.label)}</a>`
     )
-    .join('<span style="color:#d5d2cc;"> &nbsp;·&nbsp; </span>');
+    .join(`<span style="color:${TOKENS.faint};"> &nbsp;|&nbsp; </span>`);
 
   return `<!DOCTYPE html>
 <html lang="en" dir="${dir}">
@@ -112,41 +116,43 @@ export function layout({
 <meta name="supported-color-schemes" content="light">
 <title>${escapeHtml(title)}</title>
 </head>
-<body style="margin:0;padding:0;background-color:${TOKENS.pageBg};">
+<body style="margin:0;padding:0;background-color:${TOKENS.pageBg};color:${TOKENS.text};">
 <!-- Inbox preview text: shown beside the subject, then hidden in the message. -->
 <div style="display:none;font-size:1px;color:${TOKENS.pageBg};line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${escapeHtml(preheader)}</div>
 
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:${TOKENS.pageBg};">
   <tr>
-    <td align="center" style="padding:40px 16px;">
+    <td align="center" style="padding:20px 16px;">
 
-      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="${TOKENS.width}" style="width:100%;max-width:${TOKENS.width}px;background-color:${TOKENS.surface};border:1px solid ${TOKENS.rule};">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="${TOKENS.width}" style="width:100%;max-width:${TOKENS.width}px;background-color:${TOKENS.surface};border:1px solid ${TOKENS.cardBorder};">
+
+        <!-- Header -->
         <tr>
-          <td dir="${dir}" align="${align}" style="padding:48px 40px;font-family:${TOKENS.font};text-align:${align};">
+          <td align="center" style="background-color:${TOKENS.headerBg};padding:20px;font-family:${TOKENS.font};">
+            <p style="margin:0;padding:0;font-size:28px;line-height:1;letter-spacing:2px;font-weight:bold;color:${TOKENS.headerText};">${escapeHtml(BRAND.name)}</p>
+          </td>
+        </tr>
 
-            <!-- Wordmark -->
-            <p style="margin:0;padding:0;font-size:12px;line-height:1;letter-spacing:0.32em;font-weight:700;color:${TOKENS.text};">${escapeHtml(BRAND.name)}</p>
+        <!-- Body -->
+        <tr>
+          <td dir="${dir}" align="${align}" style="padding:30px 40px;font-family:${TOKENS.font};text-align:${align};">
 
             <!-- Identity -->
-            <p style="margin:36px 0 0 0;padding:0;font-size:20px;line-height:1.35;font-weight:600;color:${TOKENS.text};">${escapeHtml(title)}</p>
-            ${subtitle ? subtle(escapeHtml(subtitle), 2) : ''}
-
-            <div style="height:28px;line-height:28px;font-size:0;">&nbsp;</div>
+            <p style="margin:0 0 20px 0;padding:0;font-size:16px;line-height:1.5;font-weight:bold;color:${TOKENS.text};">${escapeHtml(title)}${subtitle ? ` — ${escapeHtml(subtitle)}` : ''}</p>
 
             ${body}
 
           </td>
         </tr>
-      </table>
 
-      <!-- Footer, outside the card -->
-      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="${TOKENS.width}" style="width:100%;max-width:${TOKENS.width}px;">
+        <!-- Footer -->
         <tr>
-          <td align="center" style="padding:24px 40px 8px 40px;font-family:${TOKENS.font};text-align:center;">
+          <td align="center" style="background-color:${TOKENS.pageBg};padding:20px;border-top:1px solid ${TOKENS.cardBorder};font-family:${TOKENS.font};text-align:center;">
             <p style="margin:0;padding:0;font-size:13px;line-height:1.6;color:${TOKENS.muted};">${links}</p>
             <p style="margin:10px 0 0 0;padding:0;font-size:12px;line-height:1.6;color:${TOKENS.faint};">© ${currentYear()} ${escapeHtml(BRAND.name)}. All rights reserved.</p>
           </td>
         </tr>
+
       </table>
 
     </td>
