@@ -16,19 +16,6 @@ function variantLabel(item: OrderLineItem): string {
   return variant.size || variant.color || variant.name || '';
 }
 
-/**
- * `wa.me` needs digits only, with the country code and no leading zero —
- * customer phones arrive either as a local `01xxxxxxxxx` number or already
- * `+20 1xx xxx xxxx`, so both are normalised to the same international form.
- */
-function whatsappLink(phone: string): string {
-  let digits = phone.replace(/\D/g, '');
-  if (digits.startsWith('00')) digits = digits.slice(2);
-  if (digits.startsWith('0')) digits = `20${digits.slice(1)}`;
-  else if (!digits.startsWith('20')) digits = `20${digits}`;
-  return `https://wa.me/${digits}`;
-}
-
 export function itemsList(items: OrderLineItem[]): string {
   const rows = items
     .map(item => {
@@ -74,7 +61,7 @@ export function contactBlock(name: string, phone: string, email: string, notes?:
     <div style="background-color:${TOKENS.pageBg};padding:10px 14px;border-left:4px solid #000000;">
       <p style="margin:0;padding:0;font-size:14px;line-height:1.5;color:${TOKENS.text};">
         <strong>${escapeHtml(name)}</strong><br>
-        <a href="${escapeHtml(whatsappLink(phone))}" style="color:${TOKENS.link};text-decoration:underline;">${escapeHtml(phone)}</a><br>
+        <a href="tel:${escapeHtml(phone)}" style="color:${TOKENS.link};text-decoration:underline;">${escapeHtml(phone)}</a><br>
         <a href="mailto:${escapeHtml(email)}" style="color:${TOKENS.link};text-decoration:underline;">${escapeHtml(email)}</a>
       </p>
       ${
