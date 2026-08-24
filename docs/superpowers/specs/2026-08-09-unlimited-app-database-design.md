@@ -1,6 +1,6 @@
 # Unlimited coach app — Step 1: complete database design
 
-**Status:** draft for Hatem's review · **Version target:** 0.1.0 (v1 = head coach only)
+**Status:** ✅ APPROVED by Hatem 20 Aug 2026 (with his amendments: split snapshot, enrollment extension, richer programs, multi-currency orders, direct DB access) · **Version target:** 0.1.0 (v1 = head coach only)
 **Stack:** Flutter + Supabase (Postgres). Program checkout happens on the website (Apple-safe); the app sells nothing in-app, so Apple/Google take 0%.
 
 This document is the full answer to "what must the system remember?" — every table, every column, and why it exists. Names are proposals until Hatem approves them.
@@ -64,6 +64,8 @@ erDiagram
 
 **`coaches`** — the coach *business* card (the human stays in `profiles`): `split_percent` (60 = coach keeps 60%), `status` (`pending`/`active`/`suspended` — v2 marketplace onboarding seam), `is_accepting_athletes` (coach flips it when full; programs show "fully booked"), bilingual `headline`.
 
+**Split editing (Hatem, 20 Aug):** `split_percent` is editable by the head coach/admin **only** (security rule — a coach can never raise his own cut), and every change is written to `audit_log`. Because splits change, each order **snapshots** the split at payment time into `orders.coach_split_percent` — earnings reports read the snapshot, so changing a split never rewrites history.
+
 Sign-in doors: email+password, Google, **Sign in with Apple** (Apple requires it). In-app account deletion is mandatory (Apple rule): auth record + personal fields erased, content remains as "Deleted user".
 
 ## 3. Training content — `programs`, `plans`, `plan_weeks`, `plan_days`, `plan_exercises`, `videos`, `video_categories`
@@ -81,7 +83,7 @@ erDiagram
 
 **Core idea (approved):** what's *sold* (`programs`) and what's *delivered* (`plans`) are different objects. A pre-test is just a small plan. Templates are plans with `is_template = true`.
 
-- **`programs`** — the shop card: `coach_id`, `title_en/_ar`, `description_en/_ar`, `cover_image_url`, `price_egp`, `duration_days`, `is_published`, `created_at`.
+- **`programs`** — the shop card (expanded per Hatem's review, 20 Aug): `coach_id`, `title_en/_ar`, `description_en/_ar`, `cover_image_url`, `slug` (unique — the website checkout URL `/programs/[slug]`), `level` (`beginner`/`intermediate`/`advanced`/`all`), `what_you_get_en/_ar` (the sales-page bullet list), `requirements_en/_ar` (equipment needed — cross-sells the shop), `preview_video_id` (free teaser), `price_egp`, `original_price_egp` (nullable — shows discounts like the shop), `price_sar`, `price_aed` (nullable — null = not sold in that currency; explicit prices, never auto-converted), `duration_days` (the expiry clock: enrollment `ends_at = starts_at + duration_days`), `max_active_athletes` (nullable — coach time is finite; null = unlimited), `position` (display order), `is_published`, `created_at`, `updated_at`.
 - **`plans`** — `coach_id`, `title` (single field — written for a specific athlete or template audience in the coach's chosen language), `is_template`, `created_at`.
 - **`plan_weeks`** — `plan_id`, `week_number`, `title`.
 - **`plan_days`** — `week_id`, `day_number`, `title`, `is_rest_day`.
@@ -99,8 +101,10 @@ erDiagram
   PLANS |o--o{ ENROLLMENTS : fulfills
 ```
 
-- **`orders`** (approved): `order_number` (human code `UNL-1042` for support calls), `athlete_id`, `program_id`, `amount_egp` (**copied** at purchase — orders remember what was actually paid), `payment_method` (`paymob_card`/`apple_pay`/`instapay`), `status` (`pending` → `awaiting_review` → `paid` / `rejected` / `refunded`), `instapay_screenshot_url`, `rejected_reason` (athlete sees why, can re-upload), `paymob_transaction_id`, `created_at`, `paid_at`.
-- **`enrollments`** (approved): `order_id`, `athlete_id`, `program_id` (kept alongside `order_id` deliberately — security rules and queries read them directly), `plan_id` (**empty until the coach assigns** — the emptiness *is* the "waiting for coach" state), `status` (`awaiting_assessment` → `awaiting_coach` → `active` → `expired`, plus `refunded`), `starts_at`, `ends_at`.
+- **`orders`** (amended 20 Aug — multi-currency): `order_number` (human code `UNL-1042` for support calls), `athlete_id`, `program_id`, `amount` + `currency` (`EGP`/`SAR`/`AED` — both **copied** at purchase from the program's price in that currency; orders remember what was actually paid and in what money), `coach_split_percent` (**copied** at purchase — see §2), `payment_method` (`paymob_card`/`apple_pay`/`instapay`), `status` (`pending` → `awaiting_review` → `paid` / `rejected` / `refunded`), `instapay_screenshot_url`, `rejected_reason` (athlete sees why, can re-upload), `paymob_transaction_id`, `created_at`, `paid_at`. Paymob covers EGP; the Gulf payment provider (Tap / checkout.com class) is a later decision and does not change this table.
+- **`enrollments`** (amended 20 Aug — extension): `order_id`, `athlete_id`, `program_id` (kept alongside `order_id` deliberately — security rules and queries read them directly), `plan_id` (**empty until the coach assigns** — the emptiness *is* the "waiting for coach" state), `status` (`awaiting_assessment` → `awaiting_coach` → `active` → `expired`, plus `refunded`), `starts_at`, `ends_at`, `extended_days` (default 0 — total extra days granted).
+
+**Extending access (Hatem, 20 Aug):** injured or travelling athletes get extra days via the `extend_enrollment(enrollment_id, extra_days, reason)` database function — head coach/admin only, pushes `ends_at` forward, adds to `extended_days`, writes `audit_log`, and notifies the athlete. Timestamps are never edited by hand.
 
 Coach earnings screen = computed from paid orders of his programs minus refunds. Stored nowhere.
 
@@ -165,7 +169,7 @@ Feed = newest-first, paginated 20 at a time. No algorithm in v1.
 
 ## 10. Notifications — `notifications`, `device_tokens`, `notification_preferences`
 
-- **`notifications`** — `recipient_id`, `type` (`order_paid`, `order_rejected`, `plan_assigned`, `expiry_soon`, `chat_message`, `post_liked`, `post_commented`, `competition_reminder`, `announcement`), `data` (the details as JSON: which order, which post), `is_read`, `created_at`. The app renders the text in the user's language from `type` + `data` — so we never store bilingual copies per notification.
+- **`notifications`** — `recipient_id`, `type` (`order_paid`, `order_rejected`, `plan_assigned`, `enrollment_extended`, `expiry_soon`, `chat_message`, `post_liked`, `post_commented`, `competition_reminder`, `announcement`), `data` (the details as JSON: which order, which post), `is_read`, `created_at`. The app renders the text in the user's language from `type` + `data` — so we never store bilingual copies per notification.
 - **`device_tokens`** — `profile_id`, `fcm_token`, `platform` (`ios`/`android`/`web`), `last_seen_at`. One person, many devices.
 - **`notification_preferences`** — `profile_id`, `community_enabled`, `chat_enabled`, `marketing_enabled` (store rule: users must be able to mute).
 
@@ -182,6 +186,8 @@ Feed = newest-first, paginated 20 at a time. No algorithm in v1.
 | `profile_status` | `active`, `banned` |
 | `coach_status` | `pending`, `active`, `suspended` |
 | `payment_method` | `paymob_card`, `apple_pay`, `instapay` |
+| `currency` | `EGP`, `SAR`, `AED` |
+| `program_level` | `beginner`, `intermediate`, `advanced`, `all` |
 | `order_status` | `pending`, `awaiting_review`, `paid`, `rejected`, `refunded` |
 | `enrollment_status` | `awaiting_assessment`, `awaiting_coach`, `active`, `expired`, `refunded` |
 | `question_type` | `text`, `number`, `choice`, `photo`, `video` |
@@ -190,7 +196,7 @@ Feed = newest-first, paginated 20 at a time. No algorithm in v1.
 | `report_target` | `post`, `comment`, `review`, `profile` |
 | `report_status` | `open`, `actioned`, `dismissed` |
 | `competition_status` | `draft`, `published`, `registration_closed`, `finished` |
-| `notification_type` | `order_paid`, `order_rejected`, `plan_assigned`, `expiry_soon`, `chat_message`, `post_liked`, `post_commented`, `competition_reminder`, `announcement` |
+| `notification_type` | `order_paid`, `order_rejected`, `plan_assigned`, `enrollment_extended`, `expiry_soon`, `chat_message`, `post_liked`, `post_commented`, `competition_reminder`, `announcement` |
 | `device_platform` | `ios`, `android`, `web` |
 
 ## 13. File storage buckets (Supabase Storage)
@@ -221,6 +227,18 @@ Program *training videos* are not in Supabase at all — they live at the video 
 4. Feed is chronological in v1.
 5. Plan titles are single-language (coach writes for a known audience).
 6. The InstaPay receiving number lives in `app_settings`, changeable without app updates.
+
+## 16. Your direct access to the database (Hatem, 20 Aug)
+
+You always have a live view of every table through **Supabase Studio** — the dashboard of the project. Its Table Editor shows each table as a spreadsheet: browse, filter, sort, edit cells, add rows, even add columns; the SQL editor runs any query. No code, no deploy.
+
+One rule keeps the system truthful:
+
+| Tables | Direct editing |
+|---|---|
+| `programs`, `plans` + weeks/days/exercises, `videos`, `video_categories`, `competitions`, `app_settings`, `assessment_questions`, `profiles` (bio fields) | ✅ Edit freely — these are content |
+| `orders`, `enrollments`, `coaches.split_percent`, bans, refunds | ⚠️ **Use the admin buttons / database functions** (`mark_order_paid`, `reject_order`, `extend_enrollment`, …) — hand-editing a status cell skips the side-effects (enrollment creation, notifications, audit trail) |
+| `audit_log` | 🔒 Read-only — it is the evidence |
 
 ## Next step
 

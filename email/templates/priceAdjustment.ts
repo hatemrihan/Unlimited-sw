@@ -58,7 +58,7 @@ export function priceAdjustmentEmail(data: PriceAdjustmentData): EmailMessage {
       totalLabel: 'Amount to pay',
     })}
 
-    <div style="height:14px;line-height:14px;font-size:0;">&nbsp;</div>
+    ${rule(8)}
     ${detailLine('Payment', paymentMethodLabel(data.paymentMethod))}
 
     ${rule()}

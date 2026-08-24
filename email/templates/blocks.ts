@@ -16,21 +16,34 @@ function variantLabel(item: OrderLineItem): string {
   return variant.size || variant.color || variant.name || '';
 }
 
+/**
+ * `wa.me` needs digits only, with the country code and no leading zero —
+ * customer phones arrive either as a local `01xxxxxxxxx` number or already
+ * `+20 1xx xxx xxxx`, so both are normalised to the same international form.
+ */
+function whatsappLink(phone: string): string {
+  let digits = phone.replace(/\D/g, '');
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  if (digits.startsWith('0')) digits = `20${digits.slice(1)}`;
+  else if (!digits.startsWith('20')) digits = `20${digits}`;
+  return `https://wa.me/${digits}`;
+}
+
 export function itemsList(items: OrderLineItem[]): string {
   const rows = items
     .map(item => {
       const label = variantLabel(item);
       return `
-        <p style="font-size:16px;line-height:1.8;margin:8px 0;padding-bottom:8px;border-bottom:1px solid ${TOKENS.cardBorder};color:${TOKENS.text};">
-          <span style="background-color:#000000;color:#ffffff;padding:2px 6px;border-radius:3px;font-weight:bold;margin-right:8px;">${escapeHtml(String(item.quantity))}x</span>
-          <strong style="text-decoration:underline;font-size:17px;">${escapeHtml(item.name)}</strong>
-          ${label ? `<br><span style="color:${TOKENS.muted};font-size:14px;margin-left:35px;">Variant: ${escapeHtml(label)}</span>` : ''}
+        <p style="font-size:14px;line-height:1.4;margin:0 0 5px 0;padding-bottom:5px;border-bottom:1px solid ${TOKENS.cardBorder};color:${TOKENS.text};">
+          <span style="background-color:#000000;color:#ffffff;padding:1px 5px;border-radius:3px;font-weight:bold;margin-right:6px;">${escapeHtml(String(item.quantity))}x</span>
+          <strong style="text-decoration:underline;font-size:15px;">${escapeHtml(item.name)}</strong>
+          ${label ? `<br><span style="color:${TOKENS.muted};font-size:12px;margin-left:30px;">Variant: ${escapeHtml(label)}</span>` : ''}
         </p>`;
     })
     .join('');
 
   return `
-    <div style="background-color:${TOKENS.pageBg};padding:15px 20px;border-left:4px solid ${TOKENS.accent};">
+    <div style="background-color:${TOKENS.pageBg};padding:10px 14px;border-left:4px solid ${TOKENS.accent};">
       ${rows}
     </div>`;
 }
@@ -45,8 +58,8 @@ export function addressBlock(
 
   return `
     ${sectionLabel(label)}
-    <div style="background-color:${TOKENS.pageBg};padding:20px;border-left:4px solid #000000;">
-      <p style="margin:0;padding:0;font-size:15px;line-height:1.8;color:${TOKENS.text};">
+    <div style="background-color:${TOKENS.pageBg};padding:10px 14px;border-left:4px solid #000000;">
+      <p style="margin:0;padding:0;font-size:14px;line-height:1.5;color:${TOKENS.text};">
         <strong>${escapeHtml(customerName)}</strong><br>
         ${line2}${line2 ? '<br>' : ''}
         ${line3}${line3 ? '<br>' : ''}
@@ -58,15 +71,15 @@ export function addressBlock(
 export function contactBlock(name: string, phone: string, email: string, notes?: string): string {
   return `
     ${sectionLabel('Customer')}
-    <div style="background-color:${TOKENS.pageBg};padding:20px;border-left:4px solid #000000;">
-      <p style="margin:0;padding:0;font-size:15px;line-height:1.8;color:${TOKENS.text};">
+    <div style="background-color:${TOKENS.pageBg};padding:10px 14px;border-left:4px solid #000000;">
+      <p style="margin:0;padding:0;font-size:14px;line-height:1.5;color:${TOKENS.text};">
         <strong>${escapeHtml(name)}</strong><br>
-        <a href="tel:${escapeHtml(phone)}" style="color:${TOKENS.text};text-decoration:none;">${escapeHtml(phone)}</a><br>
-        <a href="mailto:${escapeHtml(email)}" style="color:${TOKENS.text};text-decoration:none;">${escapeHtml(email)}</a>
+        <a href="${escapeHtml(whatsappLink(phone))}" style="color:${TOKENS.link};text-decoration:underline;">${escapeHtml(phone)}</a><br>
+        <a href="mailto:${escapeHtml(email)}" style="color:${TOKENS.link};text-decoration:underline;">${escapeHtml(email)}</a>
       </p>
       ${
         notes
-          ? `<p style="margin:14px 0 0 0;padding:0;font-size:14px;line-height:1.6;color:${TOKENS.text};"><strong>Note:</strong> ${escapeHtml(notes)}</p>`
+          ? `<p style="margin:8px 0 0 0;padding:0;font-size:13px;line-height:1.4;color:${TOKENS.text};"><strong>Note:</strong> ${escapeHtml(notes)}</p>`
           : ''
       }
     </div>`;
@@ -86,8 +99,8 @@ export interface TotalsInput {
 function totalsRow(label: string, value: string, muted = true): string {
   return `
     <tr>
-      <td style="padding:7px 0;font-size:14px;line-height:1.5;color:${muted ? TOKENS.muted : TOKENS.text};">${label}</td>
-      <td style="padding:7px 0;font-size:14px;line-height:1.5;color:${TOKENS.text};text-align:right;white-space:nowrap;">${value}</td>
+      <td style="padding:3px 0;font-size:13px;line-height:1.4;color:${muted ? TOKENS.muted : TOKENS.text};">${label}</td>
+      <td style="padding:3px 0;font-size:13px;line-height:1.4;color:${TOKENS.text};text-align:right;white-space:nowrap;">${value}</td>
     </tr>`;
 }
 
@@ -96,7 +109,7 @@ export function totalsTable(input: TotalsInput): string {
   const cod = input.codFee ?? 0;
 
   return `
-    <div style="border-top:2px solid ${TOKENS.rule};border-bottom:2px solid ${TOKENS.rule};padding:20px 0;">
+    <div style="border-top:2px solid ${TOKENS.rule};border-bottom:2px solid ${TOKENS.rule};padding:10px 0;">
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%;border-collapse:collapse;">
       ${totalsRow('Subtotal', money(input.subtotal))}
       ${totalsRow('Shipping', money(input.shippingCost))}
@@ -110,15 +123,15 @@ export function totalsTable(input: TotalsInput): string {
           : ''
       }
       <tr>
-        <td style="padding:12px 0;font-size:17px;line-height:1.5;font-weight:bold;color:${TOKENS.text};border-top:2px solid #000000;">${escapeHtml(input.totalLabel ?? 'Total')}</td>
-        <td style="padding:12px 0;font-size:17px;line-height:1.5;font-weight:bold;color:${TOKENS.text};text-align:right;white-space:nowrap;border-top:2px solid #000000;">${money(input.totalAmount)}</td>
+        <td style="padding:6px 0;font-size:15px;line-height:1.4;font-weight:bold;color:${TOKENS.text};border-top:2px solid #000000;">${escapeHtml(input.totalLabel ?? 'Total')}</td>
+        <td style="padding:6px 0;font-size:15px;line-height:1.4;font-weight:bold;color:${TOKENS.text};text-align:right;white-space:nowrap;border-top:2px solid #000000;">${money(input.totalAmount)}</td>
       </tr>
     </table>
     </div>`;
 }
 
 export function detailLine(label: string, value: string): string {
-  return `<p style="margin:0;padding:0;font-size:15px;line-height:1.6;color:${TOKENS.text};"><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</p>`;
+  return `<p style="margin:0;padding:0;font-size:13px;line-height:1.4;color:${TOKENS.text};"><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</p>`;
 }
 
 /** The one call to action an email should ever have — a plain bold black link. */

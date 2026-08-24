@@ -49,10 +49,10 @@ export function adminNewOrderEmail(order: OrderEmailData, to: string[]): EmailMe
       totalLabel: 'Collect',
     })}
 
-    <div style="height:14px;line-height:14px;font-size:0;">&nbsp;</div>
+    ${rule(8)}
     ${detailLine('Payment', paymentMethodLabel(order.paymentMethod))}
 
-    <div style="height:32px;line-height:32px;font-size:0;">&nbsp;</div>
+    ${rule(16)}
     ${button('Open dashboard', BRAND.adminUrl)}
   `;
 

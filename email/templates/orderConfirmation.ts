@@ -50,13 +50,13 @@ export function orderConfirmationEmail(order: OrderEmailData): EmailMessage {
       totalAmount: order.totalAmount,
     })}
 
-    <div style="height:14px;line-height:14px;font-size:0;">&nbsp;</div>
+    ${rule(8)}
     ${detailLine('Payment', paymentMethodLabel(order.paymentMethod))}
 
     ${rule()}
     ${paragraph('We will be in touch as soon as your order is on its way. Reply to this email if anything looks wrong.')}
 
-    <div style="height:28px;line-height:28px;font-size:0;">&nbsp;</div>
+    ${rule(16)}
     ${button('Continue shopping', BRAND.shopUrl)}
   `;
 
