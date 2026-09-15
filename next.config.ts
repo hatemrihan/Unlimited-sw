@@ -84,7 +84,7 @@ const nextConfig: NextConfig = {
               // already `https:`, which covers where GA sends its hits — but
               // scripts are named explicitly, because an open script-src is the
               // one that turns any injection into a full compromise.
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com https://www.googletagmanager.com",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com https://www.googletagmanager.com https://connect.facebook.net",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https:",
               "media-src 'self' https: data: blob:",
