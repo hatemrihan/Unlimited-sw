@@ -1,5 +1,20 @@
 import type { NextConfig } from "next";
 
+/**
+ * The coaching platform's origin, named in `connect-src`. `https:` already
+ * covers production; this is what lets a dev server pointed at the local
+ * stack (http://127.0.0.1:54321) reach it. Without it the browser blocked
+ * every coach-apply request before it left, and supabase-js reported an
+ * empty error (`{}`) — found 12 Sep 2026.
+ */
+const supabaseOrigin = (() => {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').origin;
+  } catch {
+    return '';
+  }
+})();
+
 const nextConfig: NextConfig = {
   images: {
     /**
@@ -74,7 +89,7 @@ const nextConfig: NextConfig = {
               "img-src 'self' data: https:",
               "media-src 'self' https: data: blob:",
               "font-src 'self' data:",
-              "connect-src 'self' https:",
+              `connect-src 'self' https: ${supabaseOrigin}`.trim(),
               "form-action 'self' https://accounts.google.com",
               "frame-src 'self' https://accounts.google.com",
             ].join('; '),

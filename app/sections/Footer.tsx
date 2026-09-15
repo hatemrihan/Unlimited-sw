@@ -46,6 +46,13 @@ const navItems = [
     label: 'Contact',
     isExternal: false
   },
+  // The footer is where people look for "work with us", and it is on every
+  // page rather than only the home page.
+  {
+    href: '/coaches/apply',
+    label: 'Become a coach',
+    isExternal: false
+  },
 
   {
     href: 'https://www.instagram.com/unlimited.sw/',

@@ -4,6 +4,7 @@ import { cn } from "../lib/utils";
 import { CartProvider } from "../contexts/CartContext";
 import { Toaster } from 'sonner';
 import GoogleAnalytics from './components/GoogleAnalytics';
+import MetaPixel from './components/MetaPixel';
 import AnalyticsProvider from './components/AnalyticsProvider';
 import { directionFor } from '@/lib/locale';
 import { getLocale } from '@/lib/locale.server';
@@ -107,6 +108,7 @@ export default async function RootLayout({
           <Toaster position="top-right" />
         </CartProvider>
         <GoogleAnalytics />
+        <MetaPixel />
       </body>
 
     </html>

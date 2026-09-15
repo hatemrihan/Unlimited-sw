@@ -234,27 +234,71 @@ const Funnel = () => {
 
       {/* ── Where the numbers come from ────────────────────────────────── */}
       <section className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
-        <h3 className="mb-4 text-lg font-medium text-white">مصادر القياس</h3>
+        <h3 className="mb-5 text-lg font-medium text-white">مصادر القياس</h3>
 
-        <ul className="space-y-3 text-sm">
-          <li className="flex items-center justify-between">
-            <span className="text-white/70">التحليلات الداخلية (MongoDB)</span>
-            <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs text-emerald-300">
+        {/* ── Internal analytics ── */}
+        <div className="mb-4 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.06] p-4">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
+            </span>
+            <div>
+              <p className="text-sm font-medium text-white">التحليلات الداخلية</p>
+              <p className="text-xs text-white/40">MongoDB — الأرقام اللي في التقرير ده</p>
+            </div>
+            <span className="mr-auto rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-medium text-emerald-300">
               يعمل
             </span>
-          </li>
-          <li className="flex items-center justify-between">
-            <span className="text-white/70">Google Analytics 4</span>
-            <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/60">
-              مستقل عن التقرير ده
-            </span>
-          </li>
-        </ul>
+          </div>
+          <p className="text-xs leading-relaxed text-white/40 mt-1">
+            بتتحسب من الطلبات نفسها، مش من المتصفح — يعني بتفضل صح حتى لو
+            الزائر مركّب مانع إعلانات أو قفل الصفحة بسرعة.
+          </p>
+        </div>
 
-        <p className="mt-4 text-xs leading-relaxed text-white/40">
-          الأرقام دي بتتحسب من الطلبات نفسها، مش من المتصفح — يعني بتفضل صح حتى لو
-          الزائر مركّب مانع إعلانات أو قفل الصفحة بسرعة.
-        </p>
+        {/* ── Third-party trackers ── */}
+        <div className="rounded-lg border border-white/[0.08] bg-white/[0.02] p-4">
+          <p className="text-xs font-medium uppercase tracking-wider text-white/30 mb-3">أدوات خارجية</p>
+
+          <div className="space-y-3">
+            {/* Google Analytics */}
+            <div className="flex items-center gap-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F4B400]/15">
+                <svg className="w-4 h-4 text-[#F4B400]" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M22.84 2.9982V21.0018C22.84 22.1044 21.9426 22.9982 20.84 22.9982H18.84C17.7354 22.9982 16.84 22.1044 16.84 21.0018V2.9982C16.84 1.8956 17.7354 1.0018 18.84 1.0018H20.84C21.9426 1.0018 22.84 1.8956 22.84 2.9982Z" />
+                  <path d="M14.42 11.0018V21.0018C14.42 22.1044 13.5246 22.9982 12.42 22.9982H10.42C9.31543 22.9982 8.42 22.1044 8.42 21.0018V11.0018C8.42 9.8992 9.31543 9.0018 10.42 9.0018H12.42C13.5246 9.0018 14.42 9.8992 14.42 11.0018Z" />
+                  <circle cx="3.66" cy="20.5" r="2.5" />
+                </svg>
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-white/80">Google Analytics 4</p>
+                <p className="text-xs text-white/35">الجمهور والاكتساب والسلوك</p>
+              </div>
+              <span className="shrink-0 rounded-full bg-[#F4B400]/10 px-3 py-1 text-xs text-[#F4B400]/80">
+                مستقل
+              </span>
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-white/[0.06]" />
+
+            {/* Meta Pixel */}
+            <div className="flex items-center gap-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0081FB]/15">
+                <svg className="w-4 h-4 text-[#0081FB]" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2.04C6.5 2.04 2 6.53 2 12.06C2 17.06 5.66 21.21 10.44 21.96V14.96H7.9V12.06H10.44V9.85C10.44 7.34 11.93 5.96 14.22 5.96C15.31 5.96 16.45 6.15 16.45 6.15V8.62H15.19C13.95 8.62 13.56 9.39 13.56 10.18V12.06H16.34L15.89 14.96H13.56V21.96C18.34 21.21 22 17.06 22 12.06C22 6.53 17.5 2.04 12 2.04Z" />
+                </svg>
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-white/80">Meta Pixel</p>
+                <p className="text-xs text-white/35">إعادة الاستهداف وتتبع حملات الإعلانات</p>
+              </div>
+              <span className="shrink-0 rounded-full bg-[#0081FB]/10 px-3 py-1 text-xs text-[#0081FB]/80">
+                مستقل
+              </span>
+            </div>
+          </div>
+        </div>
       </section>
     </div>
   );

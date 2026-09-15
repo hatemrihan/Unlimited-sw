@@ -1,0 +1,274 @@
+/*
+ * ============================================================
+ * unlimited-sw · coach apply · CoachApply.module.css
+ * JOB: the coach application and welcome pages, in the shop's own design.
+ * USED BY: CoachApplyPage.tsx, ApplyForm.tsx and WelcomePage.tsx.
+ * RULES: · one system with app/contact/ConactClient.tsx: stone-900 ground,
+ *          a centred column, a small bold white title, text-sm body,
+ *          underline inputs with floating labels, a full-width #222
+ *          uppercase submit. Change one, change both
+ *        · nothing here uses `left` or `right`. Every edge is logical, so
+ *          the Arabic page is the same file mirrored
+ * ============================================================
+ *
+ * 12 Sep 2026: this page used to be its own printed object (a cream
+ * card, red ink, its own fonts). It now matches the contact page so the
+ * site reads as one product.
+ */
+
+/* ---------- the ground (contact: bg-stone-900 pt-20) ---------- */
+.board {
+  background: #1c1917;
+  color: #d6d3d1;
+  min-height: 100vh;
+  padding-top: 80px;
+}
+
+/* contact: px-4 py-16 → max-w-4xl mx-auto px-10 */
+.card {
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 64px 16px 48px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+@media (min-width: 640px) {
+  .card { padding-inline: 40px; }
+}
+
+/* Arabic: no tracking (it pulls letters out of their joins), no capitals. */
+.card[dir='rtl'] .headline,
+.card[dir='rtl'] .doneTitle,
+.card[dir='rtl'] .label,
+.card[dir='rtl'] .eyebrow,
+.card[dir='rtl'] .pill,
+.card[dir='rtl'] .go { letter-spacing: 0; text-transform: none; }
+
+/* Digits, times and the domain stay Latin — an Egyptian phone shows them
+   that way, and isolating them stops bidi reordering a phone number. */
+.latin { direction: ltr; unicode-bidi: isolate; }
+
+/* ---------- top row: section name + language ---------- */
+.corners {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 42rem;
+  margin: 0 auto;
+}
+.mark { display: flex; align-items: center; gap: 8px; }
+.glyph { width: 16px; height: 16px; flex: none; background: #fafaf9; }
+.wordmark { font-size: 13px; font-weight: 700; color: #fff; }
+.pill {
+  border: 1px solid #44403c;
+  padding: 6px 14px;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #e7e5e4;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+.pill:hover { background: #fafaf9; color: #1c1917; }
+.dot { display: none; }
+
+.eyebrow {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #a8a29e;
+}
+
+/* ---------- title (contact: text-lg font-bold text-white text-center) ---------- */
+.headline {
+  margin: 28px auto 16px;
+  max-width: 42rem;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: #fff;
+  text-align: center;
+  text-wrap: balance;
+}
+.headline strong { font-weight: 700; }
+.under {
+  margin: 0 auto;
+  max-width: 42rem;
+  font-size: 14px;
+  color: #d6d3d1;
+}
+
+.rule { height: 1px; background: #292524; max-width: 42rem; margin: 40px auto; }
+
+/* ---------- sections ---------- */
+.cols {
+  max-width: 42rem;
+  margin: 56px auto 0;
+  /* "#apply" lands below the fixed Nav, not under it. */
+  scroll-margin-top: 96px;
+}
+.label {
+  margin: 0 0 16px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #fff;
+}
+.body p { margin: 0 0 12px; font-size: 14px; color: #d6d3d1; }
+.body p:last-child { margin-bottom: 0; }
+.body u { text-decoration: none; font-weight: 600; color: #fff; }
+
+.terms { border-top: 1px solid #292524; }
+.term {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid #292524;
+}
+.termNumber { padding-top: 2px; font-size: 11px; color: #78716c; }
+.term h3 { margin: 0 0 2px; font-size: 14px; font-weight: 600; color: #fff; }
+.term p { margin: 0; font-size: 13px; color: #a8a29e; }
+
+/* ---------- the form (contact: max-w-xl, underline inputs) ---------- */
+.formWrap { max-width: 36rem; }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 32px 24px; }
+@media (max-width: 640px) { .grid2 { grid-template-columns: 1fr; } }
+
+.field { position: relative; display: flex; flex-direction: column; padding-top: 14px; }
+
+.field input,
+.field textarea {
+  font: inherit;
+  /* 16px on phones: anything smaller makes iOS Safari zoom on focus. */
+  font-size: 16px;
+  color: #fafaf9;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0;
+  padding: 8px 0;
+  width: 100%;
+  transition: border-color 0.15s;
+}
+@media (min-width: 641px) {
+  .field input,
+  .field textarea { font-size: 12px; }
+}
+.field textarea { resize: vertical; min-height: 72px; line-height: 1.6; }
+.field input::placeholder,
+.field textarea::placeholder { color: transparent; }
+.field input:focus,
+.field textarea:focus { outline: none; border-bottom-color: #fafaf9; }
+.field input[type='date'] { color-scheme: dark; }
+
+/* The floating label — the contact form's pattern. It sits inside the
+   empty field and moves above it on focus or once something is typed. */
+.fieldLabel {
+  position: absolute;
+  inset-inline-start: 0;
+  top: 0;
+  font-size: 12px;
+  color: #a8a29e;
+  pointer-events: none;
+  transition: top 0.15s, color 0.15s;
+}
+.field input:placeholder-shown + .fieldLabel,
+.field textarea:placeholder-shown + .fieldLabel { top: 22px; color: #78716c; }
+.field input:focus + .fieldLabel,
+.field textarea:focus + .fieldLabel { top: 0; color: #a8a29e; }
+
+/* A label over something that is not a text box (the interview times). */
+.fieldStatic { padding-top: 0; }
+.fieldStatic .fieldLabel { position: static; margin-bottom: 12px; }
+
+/* Email, phone and a portfolio URL are typed left-to-right even on the
+   Arabic page — forcing them RTL puts the +20 on the wrong end. */
+.card[dir='rtl'] .ltrField { direction: ltr; text-align: right; }
+
+.hint { margin-top: 6px; font-size: 11px; color: #78716c; }
+.wide { grid-column: 1 / -1; }
+
+/* A field no human can see. Bots fill everything in. */
+.trap { position: absolute; inset-inline-start: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
+/* ---------- interview times ---------- */
+.slots { display: flex; flex-wrap: wrap; gap: 8px; }
+.slot {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  border: 1px solid #44403c;
+  background: transparent;
+  color: #d6d3d1;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.slot time { font-size: 11px; color: #a8a29e; }
+.slot:hover { border-color: #a8a29e; }
+.slotOn { background: #fafaf9; border-color: #fafaf9; color: #1c1917; }
+.slotOn time { color: #57534e; }
+.tz { margin-top: 10px; font-size: 11px; color: #78716c; }
+
+/* "Try again", shown only when the interview times could not be read. */
+.retry {
+  font: inherit;
+  color: #fff;
+  background: none;
+  border: 0;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+.retry:hover { color: #a8a29e; }
+
+/* ---------- submit (contact: w-full bg-[#222] py-4 text-xs uppercase tracking-[0.2em]) ---------- */
+.actions { display: flex; flex-direction: column; gap: 12px; margin-top: 48px; }
+.go {
+  display: block;
+  width: 100%;
+  background: #222;
+  color: #fff;
+  border: 1px solid #333;
+  padding: 16px 32px;
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.go:hover { background: #000; }
+.go:disabled { opacity: 0.5; cursor: not-allowed; }
+.note { margin: 0; font-size: 11px; line-height: 1.5; color: #78716c; text-align: center; }
+
+.problem { margin-top: 24px; font-size: 14px; color: #f87171; text-align: center; }
+
+/* ---------- finished (contact: text-2xl font-light, centred) ---------- */
+.done { padding: 24px 0; text-align: center; }
+.doneTitle { margin: 0 0 12px; font-size: 24px; font-weight: 300; color: #fff; }
+.done p { margin: 0 auto; max-width: 28rem; color: #a8a29e; }
+
+.strip {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 24px;
+  max-width: 42rem;
+  margin: 56px auto 0;
+  padding-top: 16px;
+  border-top: 1px solid #292524;
+  font-size: 11px;
+  color: #78716c;
+}
+.strip b { font-weight: 400; color: #a8a29e; }

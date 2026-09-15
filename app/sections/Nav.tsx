@@ -30,6 +30,17 @@ const navItems = [
     label: "Get in touch",
     href: "#contact",
   },
+  // Coaching applications. It sits last on purpose: this nav is for
+  // customers, and a coach arriving to apply usually comes from a link
+  // somebody sent rather than from the shop's menu. Being findable here
+  // costs nothing; being first would push a shopper past it.
+  //
+  // A real href, not a hash — the other two above scroll the home page,
+  // and this one leaves it.
+  // {
+  //   label: "Become a coach",
+  //   href: "/coaches/apply",
+  // },
 
 ];
 

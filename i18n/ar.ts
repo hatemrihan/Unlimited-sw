@@ -77,6 +77,22 @@ export const ar: Record<StringKey, string> = {
   'reviews.basedOn': 'بناءً على',
   'reviews.reviewsWord': 'تقييم',
 
+  // ─── Coaches ───────────────────────────────────────────────────
+  'coach.breadcrumb': 'المدربون',
+  'coach.notFound': 'المدرب غير موجود',
+  'coach.programmes': 'البرامج',
+  'coach.noProgrammes': 'لا توجد برامج منشورة حتى الآن.',
+  'coach.about': 'نبذة',
+  'coach.reviews': 'تقييم',
+  'coach.noRating': 'لا توجد تقييمات بعد',
+  'coach.followers': 'متابع',
+  'coach.accepting': 'يستقبل متدربين جدد',
+  'coach.notAccepting': 'لا يستقبل متدربين جدد حاليًا',
+  'coach.days': 'يوم',
+  'coach.ctaTitle': 'تدرب مع هذا المدرب',
+  'coach.ctaBody': 'التدريب يتم داخل تطبيق Unlimited — خطتك، متابعتك، وتواصل مباشر مع مدربك.',
+  'coach.ctaButton': 'تواصل معنا',
+
   // ─── Footer ───────────────────────────────────────────────────────────────
   'footer.rights': 'جميع الحقوق محفوظة.',
   'footer.terms': 'الشروط والأحكام',

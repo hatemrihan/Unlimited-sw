@@ -2,6 +2,7 @@ import { MetadataRoute } from 'next';
 import dbConnect from '../lib/mongodb';
 import Product from '@/product/model';
 import { CATEGORIES, CATEGORY_KEYS } from '@/product/categories';
+import { listCoachUsernames } from '@/coaches/api';
 
 const baseUrl = 'https://unlimited-sw.com';
 
@@ -37,6 +38,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...bilingual('/contact', '/ar/contact', 'monthly', 0.5),
     ...bilingual('/guides', '/ar/guides', 'weekly', 0.7),
 
+    // The coach application page. Listed because being found by a coach
+    // searching "coaching jobs Cairo" is the entire point of it living on
+    // the shop. /coaches/welcome is deliberately absent — it is noindex,
+    // addressed to one person who has just been approved.
+    ...bilingual('/coaches/apply', '/ar/coaches/apply', 'monthly', 0.6),
+
     // English-only: legal pages have no Arabic version yet, and listing a URL
     // that 404s is worse than not listing it.
     { url: `${baseUrl}/terms`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.3 },
@@ -50,6 +57,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const categoryPages: MetadataRoute.Sitemap = CATEGORY_KEYS.flatMap(key =>
     bilingual(`/shop/${key}`, `/ar/shop/${CATEGORIES[key].slugAr}`, 'weekly', 0.8)
   );
+
+  // Coach pages come from the coaching platform's database, not Mongo, so they
+  // get their own try/catch: that database being unreachable — or its env vars
+  // simply not set on a preview deploy — must not cost the sitemap its products.
+  let coachPages: MetadataRoute.Sitemap = [];
+  try {
+    const usernames = await listCoachUsernames();
+    coachPages = usernames.flatMap(username =>
+      bilingual(`/coaches/${username}`, `/ar/coaches/${username}`, 'weekly', 0.7)
+    );
+  } catch (error) {
+    console.error('sitemap: coach lookup failed', error);
+  }
 
   try {
     await dbConnect();
@@ -67,9 +87,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       return bilingual(`/product/${enSlug}`, `/ar/product/${arSlug}`, 'weekly', 0.8, lastModified);
     });
 
-    return [...staticPages, ...categoryPages, ...productPages];
+    return [...staticPages, ...categoryPages, ...coachPages, ...productPages];
   } catch (error) {
     console.error('Error generating sitemap for products:', error);
-    return [...staticPages, ...categoryPages];
+    return [...staticPages, ...categoryPages, ...coachPages];
   }
 }

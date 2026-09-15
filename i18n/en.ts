@@ -73,6 +73,26 @@ export const en = {
   'reviews.basedOn': 'based on',
   'reviews.reviewsWord': 'reviews',
 
+  // ─── Coaches ───────────────────────────────────────────────────
+  // These strings dress facts the store does not own. The facts themselves are
+  // listed in `coaches/schema.ts` → PROFILE_FIELDS, and the mobile app renders
+  // the same list. A string added here for a fact the app does not show breaks
+  // the parity rule; add it to both surfaces or to neither.
+  'coach.breadcrumb': 'Coaches',
+  'coach.notFound': 'Coach not found',
+  'coach.programmes': 'Programmes',
+  'coach.noProgrammes': 'No programmes published yet.',
+  'coach.about': 'About',
+  'coach.reviews': 'reviews',
+  'coach.noRating': 'No reviews yet',
+  'coach.followers': 'followers',
+  'coach.accepting': 'Taking new athletes',
+  'coach.notAccepting': 'Not taking new athletes right now',
+  'coach.days': 'days',
+  'coach.ctaTitle': 'Train with this coach',
+  'coach.ctaBody': 'Coaching runs inside the Unlimited app — your plan, your check-ins, and a direct line to your coach.',
+  'coach.ctaButton': 'Talk to us',
+
   // ─── Footer ───────────────────────────────────────────────────────────────
   'footer.rights': 'All rights reserved.',
   'footer.terms': 'Terms',
