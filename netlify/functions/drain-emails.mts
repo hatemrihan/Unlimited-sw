@@ -48,5 +48,5 @@ export default async function drainEmails() {
 // and adding one for a single type would be the tail wagging the dog. Netlify
 // reads this export as it is.
 export const config = {
-  schedule: '* * * * *',
+  schedule: '*/30 * * * *',
 };

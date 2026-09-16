@@ -11,6 +11,7 @@ import { useCheckoutForm } from './hooks/useCheckoutForm';
 import { City } from './types';
 import { newClientOrderId } from '../../lib/clientOrderId';
 import { track, getSessionId, isEnabled } from '../../analytics/client/track';
+import { META_PURCHASE_STORAGE_KEY } from '../../analytics/client/metaPixel';
 
 /**
  * One way of writing an amount, across the whole checkout.
@@ -292,6 +293,19 @@ export default function CheckoutPage() {
             paymentMethod: formData.paymentMethod,
             totalAmount: totalWithShipping,
             customer: data.order.customer
+          }));
+
+          // Separate hand-off for the Meta Pixel Purchase event.
+          // Deliberately excludes customer name, email, phone, and address —
+          // the adapter's parser drops unknown keys as a second safety net.
+          sessionStorage.setItem(META_PURCHASE_STORAGE_KEY, JSON.stringify({
+            orderId: data.order.orderId,
+            value: totalWithShipping,
+            items: cartItems.map(item => ({
+              id: item.id,
+              quantity: item.quantity,
+              itemPrice: item.price,
+            })),
           }));
         } catch (e) {
           // Safely catch scenarios where storage is disabled / full

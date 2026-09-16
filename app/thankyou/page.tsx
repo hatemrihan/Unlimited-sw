@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { consumeMetaPurchase } from '../../analytics/client/metaPixel'
 
 const Typewriter = ({
   text,
@@ -64,6 +65,7 @@ function ThankYouContent() {
 
     if (orderIdParam) {
       setOrderId(orderIdParam)
+      consumeMetaPurchase()
       try {
         const orderData = sessionStorage.getItem('lastOrder')
         if (orderData) {

@@ -79,12 +79,12 @@ const Hero: FC<{ locale?: Locale }> = ({ locale = 'en' }) => {
   const floatingElements = [
     // Top Left Zone
     { src: oneImage, top: '5%', left: '5%', width: '12vw', speed: 1.5, zIndex: 10, type: 'image' },
-    { src: '/images/one.MP4', type: 'video', top: '30%', left: '15%', width: '10vw', speed: 3.2, zIndex: 5 },
+    { src: '/images/one-compressed.mp4', type: 'video', top: '30%', left: '15%', width: '10vw', speed: 3.2, zIndex: 5 },
     // Bottom Left Zone
     { src: twoImage, top: '60%', left: '8%', width: '14vw', speed: 2.1, zIndex: 15, type: 'image' },
     // Top Right Zone
     { src: threeImage, top: '8%', left: '75%', width: '13vw', speed: 2.8, zIndex: 12, type: 'image' },
-    { src: '/images/two.mov', type: 'video', top: '78%', left: '40%', width: '12vw', speed: 1.4, zIndex: 8 },
+    { src: '/images/two.mp4', type: 'video', top: '78%', left: '40%', width: '12vw', speed: 1.4, zIndex: 8 },
     { src: fourImage, top: '32%', left: '85%', width: '9vw', speed: 0.9, zIndex: 6, type: 'image' },
     // Bottom Right Zone
     { src: aboutImage, top: '65%', left: '72%', width: '16vw', speed: 1.7, zIndex: 20, type: 'image' },
@@ -117,7 +117,7 @@ const Hero: FC<{ locale?: Locale }> = ({ locale = 'en' }) => {
               }}
             >
               {elem.type === 'video' ? (
-                <video src={elem.src as string} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+                <video src={elem.src as string} autoPlay loop muted playsInline preload="none" className="w-full h-full object-cover" />
               ) : (
                 <Image src={elem.src as any} fill sizes="(max-width: 768px) 30vw, 15vw" alt="" className="object-cover" />
               )}

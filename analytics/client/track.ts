@@ -6,6 +6,12 @@ import {
   type EventName,
   type EventPayload,
 } from '../events';
+import {
+  trackMetaAddToCart,
+  trackMetaInitiateCheckout,
+  trackMetaPageView,
+  trackMetaViewContent,
+} from './metaPixel';
 
 /**
  * The browser side of the funnel.
@@ -131,10 +137,65 @@ export function isEnabled(): boolean {
 }
 
 /**
+ * Sends the non-PII browser copy of a funnel event to Meta Pixel.
+ *
+ * Meta and the first-party funnel intentionally have independent switches:
+ * internal reporting may be disabled on a preview while an advertising Pixel
+ * remains configured, and an ad blocker must not prevent the first-party
+ * event from being queued. Incomplete payloads still go to the first-party
+ * funnel, but are not useful standard commerce events for Meta.
+ */
+function trackMetaFunnelEvent(name: EventName, payload: EventPayload): void {
+  switch (name) {
+    case 'PageView':
+      trackMetaPageView();
+      return;
+
+    case 'ViewContent':
+      if (!payload.productId || !payload.productName || typeof payload.value !== 'number') return;
+      trackMetaViewContent({
+        productId: payload.productId,
+        productName: payload.productName,
+        value: payload.value,
+      });
+      return;
+
+    case 'AddToCart':
+      if (
+        !payload.productId ||
+        !payload.productName ||
+        typeof payload.quantity !== 'number' ||
+        typeof payload.value !== 'number'
+      ) return;
+      trackMetaAddToCart({
+        productId: payload.productId,
+        productName: payload.productName,
+        variantName: payload.variantName,
+        quantity: payload.quantity,
+        value: payload.value,
+      });
+      return;
+
+    case 'InitiateCheckout':
+      if (typeof payload.itemCount !== 'number' || typeof payload.value !== 'number') return;
+      trackMetaInitiateCheckout({ itemCount: payload.itemCount, value: payload.value });
+      return;
+
+    // A purchase is recorded on the server. Its browser Pixel copy is emitted
+    // only by the thank-you page, where the confirmed order and an idempotency
+    // key are both available.
+    case 'Purchase':
+      return;
+  }
+}
+
+/**
  * Queues an event. Returns its `eventId`, so a pixel can be fired with the same
  * one and the two copies deduplicate instead of double-counting.
  */
 export function track(name: EventName, payload: EventPayload = {}): string | null {
+  trackMetaFunnelEvent(name, payload);
+
   if (!isEnabled()) return null;
 
   const eventId = newUuid();
