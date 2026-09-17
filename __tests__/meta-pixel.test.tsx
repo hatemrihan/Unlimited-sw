@@ -58,7 +58,7 @@ describe('the bootstrap', () => {
   });
 
   it('renders the bootstrap script when configured', () => {
-    process.env.NEXT_PUBLIC_META_PIXEL_ID = '28393868796876018';
+    process.env.NEXT_PUBLIC_META_PIXEL_ID = '2956055868064274';
 
     const { container } = render(<MetaPixel />);
 
@@ -67,11 +67,12 @@ describe('the bootstrap', () => {
     const script = container.querySelector('script[data-testid="meta-pixel"]');
     expect(script).toBeTruthy();
     expect(script!.textContent).toContain('fbevents.js');
-    expect(script!.textContent).toContain('28393868796876018');
+    expect(script!.textContent).toContain('2956055868064274');
+    expect(script!.textContent).toContain("fbq('track', 'PageView')");
   });
 
   it('keeps a PageView fallback for visitors without JavaScript', () => {
-    process.env.NEXT_PUBLIC_META_PIXEL_ID = '28393868796876018';
+    process.env.NEXT_PUBLIC_META_PIXEL_ID = '2956055868064274';
 
     const { container } = render(<MetaPixel />);
 
@@ -79,7 +80,7 @@ describe('the bootstrap', () => {
     // the DOM tree.  The raw HTML of the container still contains them.
     const html = container.innerHTML;
     expect(html).toContain('noscript');
-    expect(html).toContain('28393868796876018');
+    expect(html).toContain('2956055868064274');
   });
 });
 

@@ -2,7 +2,7 @@
 
 import Script from 'next/script';
 import { usePathname } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { trackMetaPageView } from '../../analytics/client/metaPixel';
 
 /**
@@ -20,15 +20,19 @@ import { trackMetaPageView } from '../../analytics/client/metaPixel';
  * the first route-change effect fires.  The external library (fbevents.js) is
  * still loaded asynchronously, so it does not delay first paint.
  *
- * The inline PageView that Meta's snippet template includes has been removed.
- * `MetaPixelRouteTracker` fires PageView on every `usePathname()` change
- * instead, which covers both the initial load and client-side navigations
- * without duplicating the first one.
+ * The initial PageView fires directly in the bootstrap script (matching Meta's
+ * standard snippet). `MetaPixelRouteTracker` uses a ref to skip the initial mount
+ * and fires PageView on subsequent client-side `usePathname()` navigations.
  */
 function MetaPixelRouteTracker() {
   const pathname = usePathname();
+  const isFirstRender = useRef(true);
 
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     if (!pathname) return;
     trackMetaPageView();
   }, [pathname]);
@@ -54,6 +58,7 @@ export default function MetaPixel() {
           s.parentNode.insertBefore(t,s)}(window, document,'script',
           'https://connect.facebook.net/en_US/fbevents.js');
           fbq('init', '${pixelId}');
+          fbq('track', 'PageView');
         `}
       </Script>
       <MetaPixelRouteTracker />
