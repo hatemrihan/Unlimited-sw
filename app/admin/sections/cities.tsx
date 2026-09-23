@@ -16,26 +16,53 @@ interface FreeShippingState {
   expiresAt: string | null;
   enabledBy: string | null;
   enabledAt: string | null;
+  applyToAll: boolean;
+  productIds: string[];
+}
+
+interface ProductOption {
+  _id: string;
+  name: string;
+  price: number;
+  mainImage?: string;
 }
 
 // ── Free Shipping Toggle Card ─────────────────────────────────────────────
 
 function FreeShippingCard() {
   const [state, setState] = useState<FreeShippingState>({
-    enabled: false, expiresAt: null, enabledBy: null, enabledAt: null,
+    enabled: false,
+    expiresAt: null,
+    enabledBy: null,
+    enabledAt: null,
+    applyToAll: true,
+    productIds: [],
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [expiryInput, setExpiryInput] = useState('');
   const [countdown, setCountdown] = useState('');
+  const [applyToAll, setApplyToAll] = useState<boolean>(true);
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [products, setProducts] = useState<ProductOption[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [productSearch, setProductSearch] = useState('');
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchState = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/free-shipping');
       const data = await res.json();
-      if (data.success) setState(data.freeShipping);
+      if (data.success) {
+        setState({
+          ...data.freeShipping,
+          applyToAll: data.freeShipping.applyToAll ?? true,
+          productIds: Array.isArray(data.freeShipping.productIds) ? data.freeShipping.productIds : [],
+        });
+        setApplyToAll(data.freeShipping.applyToAll ?? true);
+        setSelectedProductIds(Array.isArray(data.freeShipping.productIds) ? data.freeShipping.productIds : []);
+      }
     } catch {
       console.error('Failed to load free-shipping state');
     } finally {
@@ -44,6 +71,27 @@ function FreeShippingCard() {
   }, []);
 
   useEffect(() => { fetchState(); }, [fetchState]);
+
+  // Load products when modal opens
+  useEffect(() => {
+    if (showConfirm && products.length === 0) {
+      setLoadingProducts(true);
+      fetch('/api/admin/products?limit=100')
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data && data.success && Array.isArray(data.products)) {
+            setProducts(data.products.map((p: any) => ({
+              _id: String(p._id),
+              name: p.name || 'بدون اسم',
+              price: p.price || 0,
+              mainImage: p.mainImage || '',
+            })));
+          }
+        })
+        .catch(err => console.error('Failed to load products:', err))
+        .finally(() => setLoadingProducts(false));
+    }
+  }, [showConfirm, products.length]);
 
   // ── Live countdown ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -77,6 +125,11 @@ function FreeShippingCard() {
 
   // ── Turn ON ─────────────────────────────────────────────────────────────
   const handleEnable = async () => {
+    if (!applyToAll && selectedProductIds.length === 0) {
+      toast.error('يرجى اختيار منتج واحد على الأقل');
+      return;
+    }
+
     if (!expiryInput) {
       toast.error('يرجى تحديد تاريخ ووقت الانتهاء');
       return;
@@ -93,7 +146,12 @@ function FreeShippingCard() {
       const res = await fetch('/api/admin/free-shipping', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled: true, expiresAt: expiry.toISOString() }),
+        body: JSON.stringify({
+          enabled: true,
+          expiresAt: expiry.toISOString(),
+          applyToAll,
+          productIds: applyToAll ? [] : selectedProductIds,
+        }),
       });
       const data = await res.json();
       if (data.success) {
@@ -134,13 +192,16 @@ function FreeShippingCard() {
     }
   };
 
-  // Min datetime for the picker — now + 1 minute, in local format
   const minDatetime = () => {
     const d = new Date(Date.now() + 60_000);
     return d.toISOString().slice(0, 16);
   };
 
-  // Format date for display
+  const maxDatetime = () => {
+    const d = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    return d.toISOString().slice(0, 16);
+  };
+
   const formatExpiry = (iso: string) => {
     try {
       return new Date(iso).toLocaleString('ar-EG', {
@@ -149,6 +210,10 @@ function FreeShippingCard() {
       });
     } catch { return iso; }
   };
+
+  const filteredProducts = products.filter(p =>
+    p.name.toLowerCase().includes(productSearch.toLowerCase().trim())
+  );
 
   if (loading) {
     return (
@@ -185,17 +250,19 @@ function FreeShippingCard() {
               </div>
               <div>
                 <h3 className="text-[14px] font-semibold text-white flex items-center gap-2">
-                  شحن مجاني لجميع المحافظات
+                  شحن مجاني للمحافظات
                   {state.enabled && (
                     <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-medium rounded-full">
-                      مُفعّل
+                      مُفعّل ({state.applyToAll ? 'جميع المنتجات' : `${state.productIds.length} منتجات`})
                     </span>
                   )}
                 </h3>
                 <p className="text-[11px] text-white/40 mt-0.5">
                   {state.enabled
-                    ? 'الشحن ورسوم الدفع عند الاستلام مجاني حالياً لجميع المحافظات'
-                    : 'تفعيل الشحن المجاني لفترة محددة لجميع المحافظات'}
+                    ? state.applyToAll
+                      ? 'الشحن ورسوم الدفع عند الاستلام مجاني حالياً لجميع المحافظات (جميع المنتجات)'
+                      : `الشحن ورسوم الدفع عند الاستلام مجاني حالياً لـ (${state.productIds.length}) منتجات محددة`
+                    : 'تفعيل الشحن المجاني لفترة محددة (لجميع المنتجات أو منتجات محددة)'}
                 </p>
 
                 {/* Active state details */}
@@ -242,10 +309,10 @@ function FreeShippingCard() {
 
       {/* ── Confirmation Dialog ──────────────────────────────────────────── */}
       {showConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-[#111] border border-white/[0.1] rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6" dir="rtl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-[#111] border border-white/[0.1] rounded-2xl shadow-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto" dir="rtl">
             {/* Header */}
-            <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-lg bg-emerald-500/20">
                   <Truck className="h-5 w-5 text-emerald-400" />
@@ -260,10 +327,128 @@ function FreeShippingCard() {
               </button>
             </div>
 
+            {/* Scope selection */}
+            <div className="mb-4">
+              <label className="block text-[12px] text-white/70 mb-2 font-medium">نطاق تطبيق الشحن المجاني:</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setApplyToAll(true)}
+                  className={`p-2.5 rounded-xl border text-[12px] font-medium transition-all text-center ${
+                    applyToAll
+                      ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
+                      : 'bg-white/[0.03] border-white/[0.08] text-white/60 hover:bg-white/[0.06]'
+                  }`}
+                >
+                  جميع المنتجات
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setApplyToAll(false)}
+                  className={`p-2.5 rounded-xl border text-[12px] font-medium transition-all text-center ${
+                    !applyToAll
+                      ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
+                      : 'bg-white/[0.03] border-white/[0.08] text-white/60 hover:bg-white/[0.06]'
+                  }`}
+                >
+                  منتجات محددة
+                </button>
+              </div>
+            </div>
+
+            {/* Specific products picker */}
+            {!applyToAll && (
+              <div className="mb-4 p-3 bg-white/[0.02] border border-white/[0.08] rounded-xl">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] text-white/60">
+                    اختر المنتجات المؤهلة ({selectedProductIds.length} محددة)
+                  </span>
+                  {products.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedProductIds.length === products.length) {
+                          setSelectedProductIds([]);
+                        } else {
+                          setSelectedProductIds(products.map(p => p._id));
+                        }
+                      }}
+                      className="text-[11px] text-emerald-400 hover:underline"
+                    >
+                      {selectedProductIds.length === products.length ? 'إلغاء التحديد' : 'تحديد الكل'}
+                    </button>
+                  )}
+                </div>
+
+                <div className="mb-2">
+                  <input
+                    type="text"
+                    placeholder="ابحث عن منتج..."
+                    value={productSearch}
+                    onChange={(e) => setProductSearch(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-white/[0.04] border border-white/[0.08] rounded-lg text-white text-[12px] focus:outline-none focus:border-emerald-500/40"
+                  />
+                </div>
+
+                <div className="max-h-44 overflow-y-auto space-y-1 pr-1">
+                  {loadingProducts ? (
+                    <div className="py-4 text-center text-white/40 text-[11px] flex items-center justify-center gap-1.5">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> جاري تحميل المنتجات...
+                    </div>
+                  ) : filteredProducts.length === 0 ? (
+                    <div className="py-3 text-center text-white/40 text-[11px]">
+                      لا توجد منتجات مطابقة
+                    </div>
+                  ) : (
+                    filteredProducts.map((p) => {
+                      const isSelected = selectedProductIds.includes(p._id);
+                      return (
+                        <div
+                          key={p._id}
+                          onClick={() => {
+                            setSelectedProductIds(prev =>
+                              isSelected ? prev.filter(id => id !== p._id) : [...prev, p._id]
+                            );
+                          }}
+                          className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${
+                            isSelected
+                              ? 'bg-emerald-500/10 border border-emerald-500/30'
+                              : 'bg-white/[0.02] border border-transparent hover:bg-white/[0.04]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              readOnly
+                              className="accent-emerald-500 h-3.5 w-3.5 rounded pointer-events-none"
+                            />
+                            {p.mainImage ? (
+                              <img src={p.mainImage} alt="" className="h-7 w-7 rounded object-cover border border-white/10" />
+                            ) : (
+                              <div className="h-7 w-7 rounded bg-white/10 flex items-center justify-center text-[10px] text-white/40">
+                                📦
+                              </div>
+                            )}
+                            <span className="text-[12px] text-white truncate max-w-[210px]">
+                              {p.name}
+                            </span>
+                          </div>
+                          <span className="text-[11px] text-white/50 font-mono flex-shrink-0">
+                            {p.price} ج.م
+                          </span>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Warning */}
             <div className="p-3 bg-amber-500/[0.08] border border-amber-500/20 rounded-lg mb-4">
               <p className="text-[11px] text-amber-400 leading-relaxed">
-                ⚠️ هذا سيجعل الشحن ورسوم الدفع عند الاستلام <strong>مجاني تماماً</strong> لجميع المحافظات حتى التاريخ المحدد. سيتأثر جميع الطلبات الجديدة.
+                ⚠️ سيتم إعفاء {applyToAll ? 'جميع المنتجات' : `${selectedProductIds.length} منتج محدد`} من رسوم الشحن ورسوم الدفع عند الاستلام حتى التاريخ المحدد.
               </p>
             </div>
 
@@ -274,6 +459,7 @@ function FreeShippingCard() {
                 type="datetime-local"
                 value={expiryInput}
                 min={minDatetime()}
+                max={maxDatetime()}
                 onChange={(e) => setExpiryInput(e.target.value)}
                 className="w-full px-3 py-2.5 bg-white/[0.04] border border-white/[0.1] rounded-lg text-white text-[13px] focus:outline-none focus:border-emerald-500/50 transition-colors"
                 dir="ltr"
@@ -284,7 +470,7 @@ function FreeShippingCard() {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleEnable}
-                disabled={saving || !expiryInput}
+                disabled={saving || !expiryInput || (!applyToAll && selectedProductIds.length === 0)}
                 className="flex-1 h-10 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[13px] font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Truck className="h-4 w-4" />}

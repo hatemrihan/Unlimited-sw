@@ -241,7 +241,7 @@ export function useCheckoutPricing({ cartItems, paymentMethod, cityName }: UseCh
     totalWithShipping,
     appliedPromo,
     promoError,
-    shouldWaiveShipping: shouldWaiveShipping || freeShippingActive,
+    shouldWaiveShipping: Boolean(shouldWaiveShipping || (freeShippingActive && finalShippingCost === 0 && selectedGovernorate)),
     freeShippingActive,
     applyPromoCode,
   };

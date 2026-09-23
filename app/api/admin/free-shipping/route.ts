@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import { withDb } from '../../../../lib/withDb';
 import { requireAdmin } from '../../../../lib/requireAdmin';
 import { invalidateFreeShippingCache } from '../../../../lib/cache';
@@ -8,7 +9,7 @@ import FreeShippingOverride, { type IFreeShippingOverride } from '../../../../mo
  * Admin API for the global free-shipping override.
  *
  * GET  → current state
- * PUT  → toggle on/off with expiry
+ * PUT  → toggle on/off with expiry and scope (applyToAll vs specific productIds)
  */
 
 export const GET = withDb(async (_request: NextRequest) => {
@@ -25,6 +26,8 @@ export const GET = withDb(async (_request: NextRequest) => {
         expiresAt: null,
         enabledBy: null,
         enabledAt: null,
+        applyToAll: true,
+        productIds: [],
       },
     });
   }
@@ -48,6 +51,8 @@ export const GET = withDb(async (_request: NextRequest) => {
       expiresAt: doc.expiresAt,
       enabledBy: doc.enabledBy,
       enabledAt: doc.enabledAt,
+      applyToAll: doc.applyToAll ?? true,
+      productIds: Array.isArray(doc.productIds) ? doc.productIds : [],
     },
   });
 });
@@ -66,7 +71,13 @@ export const PUT = withDb(async (request: NextRequest) => {
   if (enabled === false) {
     await FreeShippingOverride.updateOne(
       { key: 'global' },
-      { $set: { enabled: false } },
+      {
+        $set: {
+          enabled: false,
+          applyToAll: body.applyToAll ?? true,
+          productIds: Array.isArray(body.productIds) ? body.productIds : [],
+        },
+      },
       { upsert: true }
     );
     invalidateFreeShippingCache();
@@ -109,6 +120,26 @@ export const PUT = withDb(async (request: NextRequest) => {
     );
   }
 
+  const applyToAll = body.applyToAll !== false;
+  let productIds: string[] = [];
+
+  if (!applyToAll) {
+    if (!Array.isArray(body.productIds) || body.productIds.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'At least one product must be selected when applyToAll is false.' },
+        { status: 400 }
+      );
+    }
+    const invalidIds = body.productIds.filter((id: any) => typeof id !== 'string' || !mongoose.Types.ObjectId.isValid(id));
+    if (invalidIds.length > 0) {
+      return NextResponse.json(
+        { success: false, error: 'One or more selected product IDs are invalid.' },
+        { status: 400 }
+      );
+    }
+    productIds = body.productIds.map(String);
+  }
+
   await FreeShippingOverride.updateOne(
     { key: 'global' },
     {
@@ -117,6 +148,8 @@ export const PUT = withDb(async (request: NextRequest) => {
         expiresAt: expiry,
         enabledBy: enabledBy || 'admin',
         enabledAt: now,
+        applyToAll,
+        productIds,
       },
     },
     { upsert: true }
@@ -132,6 +165,9 @@ export const PUT = withDb(async (request: NextRequest) => {
       expiresAt: expiry,
       enabledBy: enabledBy || 'admin',
       enabledAt: now,
+      applyToAll,
+      productIds,
     },
   });
 });
+

@@ -9,7 +9,7 @@ import { getActiveProducts } from "@/product/actions";
 import { storeJsonLd } from "@/lib/storeSchema";
 import { alternatesFor } from "@/lib/locale";
 import CounterDown from "./sections/CounterDown";
-import { getFreeShippingStatus } from "@/lib/freeShippingCheck";
+import { getFreeShippingStatus, type FreeShippingStatus } from "@/lib/freeShippingCheck";
 
 export const metadata = {
   // `absolute` — the brand is already in this title; the root template must not
@@ -55,7 +55,7 @@ export default async function Home() {
   let initialProducts: any[] = [];
   let initialHasMore = false;
 
-  let freeShippingStatus = { active: false, expiresAt: null as string | null };
+  let freeShippingStatus: FreeShippingStatus = { active: false, expiresAt: null, applyToAll: true, productIds: [] };
 
   try {
     const allProducts = await getActiveProducts();
@@ -89,6 +89,7 @@ export default async function Home() {
       <CounterDown
         initialActive={freeShippingStatus.active}
         initialExpiresAt={freeShippingStatus.expiresAt}
+        initialApplyToAll={freeShippingStatus.applyToAll}
       />
       <Products initialProducts={initialProducts} initialHasMore={initialHasMore} />
       <Explore />

@@ -18,7 +18,7 @@ import Product from '@/product/model';
 import Promo from '../models/promo';
 import FreeShippingOverride from '../models/freeShippingOverride';
 import { computeOrderPricing } from '../services/orderPricingService';
-import { isFreeShippingActive, getFreeShippingStatus } from '../lib/freeShippingCheck';
+import { isFreeShippingActive, getFreeShippingStatus, isProductShippingWaived } from '../lib/freeShippingCheck';
 import { apiCache } from '../lib/cache';
 
 jest.setTimeout(120_000);
@@ -70,10 +70,21 @@ function orderPayload(products: any[], extra: any = {}) {
 async function setOverride(enabled: boolean, expiresAt: Date) {
   await FreeShippingOverride.updateOne(
     { key: 'global' },
-    { $set: { enabled, expiresAt, enabledBy: 'test', enabledAt: new Date() } },
+    { $set: { enabled, expiresAt, enabledBy: 'test', enabledAt: new Date(), applyToAll: true, productIds: [] } },
     { upsert: true }
   );
   apiCache.delete('free-shipping:status');
+  apiCache.delete('free-shipping:full-status');
+}
+
+async function setProductOverride(enabled: boolean, expiresAt: Date, productIds: string[]) {
+  await FreeShippingOverride.updateOne(
+    { key: 'global' },
+    { $set: { enabled, expiresAt, enabledBy: 'test', enabledAt: new Date(), applyToAll: false, productIds } },
+    { upsert: true }
+  );
+  apiCache.delete('free-shipping:status');
+  apiCache.delete('free-shipping:full-status');
 }
 
 // ── isFreeShippingActive() ─────────────────────────────────────────────────
@@ -290,4 +301,94 @@ describe('free-shipping override in order pricing', () => {
     expect(result.pricing!.codFee).toBe(0);
     expect(result.pricing!.totalAmount).toBe(500);
   });
+
+  // ── Finding #1 Regression Test: Legacy Document Compatibility ────────────
+  it('CRITICAL: handles legacy pre-existing document missing applyToAll and productIds without throwing', async () => {
+    const product = await seedProduct({
+      price: 1000,
+      cityPricing: [{ governorate: 'Cairo', shippingCost: 80, codFee: 30, isActive: true }],
+    });
+
+    // Directly insert raw document into MongoDB with NO applyToAll and NO productIds
+    // exactly matching what exists in production before migration
+    await mongoose.connection.collection('freeshippingoverrides').insertOne({
+      key: 'global',
+      enabled: true,
+      expiresAt: new Date(Date.now() + 3600_000),
+      enabledBy: 'admin',
+      enabledAt: new Date(),
+    });
+    apiCache.delete('free-shipping:status');
+    apiCache.delete('free-shipping:full-status');
+
+    // Must NOT throw TypeError: Cannot read properties of undefined (reading 'includes')
+    const result = await computeOrderPricing(
+      orderPayload([{ productId: String(product._id), name: 'Bar', price: 1000, quantity: 1 }])
+    );
+
+    expect(result.success).toBe(true);
+    // Defaults safely to apply-to-all: zero shipping and zero COD
+    expect(result.pricing!.shippingCost).toBe(0);
+    expect(result.pricing!.codFee).toBe(0);
+    expect(result.pricing!.totalAmount).toBe(1000);
+  });
+
+  // ── Product-Specific Free Shipping ───────────────────────────────────────
+  it('only waives shipping and COD for eligible products when applyToAll is false', async () => {
+    const p1 = await seedProduct({
+      name: 'Eligible Bar',
+      price: 1000,
+      cityPricing: [{ governorate: 'Cairo', shippingCost: 50, codFee: 20, isActive: true }],
+    });
+    const p2 = await seedProduct({
+      name: 'Non-Eligible Ring',
+      price: 500,
+      cityPricing: [{ governorate: 'Cairo', shippingCost: 30, codFee: 15, isActive: true }],
+    });
+
+    // Only p1 is in productIds
+    await setProductOverride(true, new Date(Date.now() + 3600_000), [String(p1._id)]);
+
+    const result = await computeOrderPricing(
+      orderPayload([
+        { productId: String(p1._id), name: 'Eligible Bar', price: 1000, quantity: 1 },
+        { productId: String(p2._id), name: 'Non-Eligible Ring', price: 500, quantity: 1 },
+      ])
+    );
+
+    expect(result.success).toBe(true);
+    // p1 has 0 shipping + 0 COD; p2 charges 30 shipping + 15 COD
+    expect(result.pricing!.shippingCost).toBe(30);
+    expect(result.pricing!.codFee).toBe(15);
+    // Total = 1000 + 500 + 30 + 15 = 1545
+    expect(result.pricing!.totalAmount).toBe(1545);
+  });
 });
+
+describe('isProductShippingWaived() helper', () => {
+  it('returns false when override is null or undefined', () => {
+    expect(isProductShippingWaived(null, '123')).toBe(false);
+    expect(isProductShippingWaived(undefined, '123')).toBe(false);
+  });
+
+  it('returns true when applyToAll is true', () => {
+    expect(isProductShippingWaived({ applyToAll: true, productIds: [] }, '123')).toBe(true);
+  });
+
+  it('returns true when applyToAll is undefined (legacy fallback)', () => {
+    expect(isProductShippingWaived({}, '123')).toBe(true);
+  });
+
+  it('matches productIds when applyToAll is false', () => {
+    const override = { applyToAll: false, productIds: ['prod-1', 'prod-2'] };
+    expect(isProductShippingWaived(override, 'prod-1')).toBe(true);
+    expect(isProductShippingWaived(override, 'prod-2')).toBe(true);
+    expect(isProductShippingWaived(override, 'prod-3')).toBe(false);
+  });
+
+  it('safely handles non-array productIds when applyToAll is false', () => {
+    const override = { applyToAll: false, productIds: undefined as any };
+    expect(isProductShippingWaived(override, 'prod-1')).toBe(false);
+  });
+});
+

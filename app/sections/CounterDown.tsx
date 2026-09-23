@@ -6,12 +6,14 @@ import { motion, useInView } from "motion/react";
 interface CounterDownProps {
   initialActive?: boolean;
   initialExpiresAt?: string | null;
+  initialApplyToAll?: boolean;
 }
 
-const CounterDown = ({ initialActive, initialExpiresAt }: CounterDownProps) => {
+const CounterDown = ({ initialActive, initialExpiresAt, initialApplyToAll }: CounterDownProps) => {
   const [mounted, setMounted] = useState(false);
   const [active, setActive] = useState<boolean>(Boolean(initialActive));
   const [expiresAt, setExpiresAt] = useState<string | null>(initialExpiresAt ?? null);
+  const [applyToAll, setApplyToAll] = useState<boolean>(initialApplyToAll ?? true);
   const [timeLeft, setTimeLeft] = useState<number>(() => {
     if (!initialActive || !initialExpiresAt) return 0;
     const diff = new Date(initialExpiresAt).getTime() - Date.now();
@@ -34,6 +36,9 @@ const CounterDown = ({ initialActive, initialExpiresAt }: CounterDownProps) => {
             if (diff > 0) {
               setActive(true);
               setExpiresAt(data.expiresAt);
+              if (typeof data.applyToAll === 'boolean') {
+                setApplyToAll(data.applyToAll);
+              }
               setTimeLeft(diff);
             } else {
               setActive(false);
@@ -101,7 +106,7 @@ const CounterDown = ({ initialActive, initialExpiresAt }: CounterDownProps) => {
               FREE SHIPPING
             </span>
             <span className="text-gray-300">
-              Limited-Time All Governorates Offer Ends In:
+              {applyToAll ? "All Governorates Free Shipping Offer Ends In:" : "Selected Products Free Shipping Ends In:"}
             </span>
             <span className="font-mono text-amber-400 font-bold tracking-normal">
               {countdownText}

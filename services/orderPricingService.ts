@@ -2,7 +2,7 @@ import dbConnect from '../lib/mongodb';
 import { productQueries } from '@/product/queries';
 import { validatePromo } from './promoService';
 import { resolveVariantName } from './orderCreationService';
-import { isFreeShippingActive } from '../lib/freeShippingCheck';
+import { getFreeShippingStatus, isProductShippingWaived } from '../lib/freeShippingCheck';
 
 /**
  * Server-side authority for order money.
@@ -98,6 +98,18 @@ export async function computeOrderPricing(orderData: any): Promise<PricingResult
   let shippingCost = 0;
   let codFee = 0;
 
+  // ── Global free-shipping override ────────────────────────────────────
+  // Read status once (cached in memory) before processing item lines.
+  let freeShippingStatus = { active: false, applyToAll: true, productIds: [] as string[] };
+  try {
+    const fs = await getFreeShippingStatus();
+    if (fs.active) {
+      freeShippingStatus = fs;
+    }
+  } catch (err) {
+    console.error('[OrderPricing] Failed to fetch free-shipping status:', err);
+  }
+
   for (const item of orderData.products || []) {
     const product = productMap.get(String(item.productId));
     if (!product) {
@@ -116,22 +128,17 @@ export async function computeOrderPricing(orderData: any): Promise<PricingResult
 
     // Shipping and COD are charged per unit, per product, exactly as the
     // checkout hook displays them.
+    // If the override is active and waives this product, shipping and COD are 0 for this item.
     const cityPrice = cityPricingFor(product, governorate);
     if (cityPrice) {
-      shippingCost += cityPrice.shippingCost * quantity;
-      if (isCashOnDelivery) codFee += cityPrice.codFee * quantity;
+      const isWaived = freeShippingStatus.active && isProductShippingWaived(freeShippingStatus, String(item.productId));
+      if (!isWaived) {
+        shippingCost += cityPrice.shippingCost * quantity;
+        if (isCashOnDelivery) codFee += cityPrice.codFee * quantity;
+      }
     }
 
     lines.push({ productId: String(item.productId), variantName, quantity, price, lineTotal });
-  }
-
-  // ── Global free-shipping override ────────────────────────────────────
-  // Zeroes both shipping and COD when the admin toggle is active.
-  // Checked BEFORE the promo waiveShipping so either mechanism can work.
-  const globalFreeShipping = await isFreeShippingActive();
-  if (globalFreeShipping) {
-    shippingCost = 0;
-    codFee = 0;
   }
 
   // Re-validate the promo against the server's subtotal, never the client's.

@@ -734,7 +734,7 @@ export default function CheckoutPage() {
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
                     <span className="text-white">Shipping</span>
-                    {freeShippingActive && (
+                    {freeShippingActive && shouldWaiveShipping && (
                       <span className="text-[10px] font-bold tracking-wide uppercase bg-green-500/20 text-green-400 border border-green-500/30 px-1.5 py-0.5 rounded">
                         Free Promo
                       </span>

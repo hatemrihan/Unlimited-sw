@@ -17,6 +17,8 @@ export const GET = withDb(async () => {
         success: true,
         active: status.active,
         expiresAt: status.expiresAt,
+        applyToAll: status.applyToAll,
+        productIds: status.productIds,
       },
       {
         headers: {
@@ -31,6 +33,8 @@ export const GET = withDb(async () => {
         success: true,
         active: false,
         expiresAt: null,
+        applyToAll: true,
+        productIds: [],
       },
       { status: 200 }
     );

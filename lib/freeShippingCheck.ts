@@ -1,4 +1,5 @@
 import FreeShippingOverride, { type IFreeShippingOverride } from '../models/freeShippingOverride';
+import dbConnect from './mongodb';
 import { apiCache } from './cache';
 
 /**
@@ -28,6 +29,7 @@ export async function isFreeShippingActive(): Promise<boolean> {
   // 2. Read the singleton document
   let doc;
   try {
+    await dbConnect();
     doc = await FreeShippingOverride.findOne({ key: 'global' }).lean() as IFreeShippingOverride | null;
   } catch (err) {
     // If MongoDB is unreachable, fail safe → normal shipping.
@@ -71,9 +73,29 @@ export async function isFreeShippingActive(): Promise<boolean> {
 export interface FreeShippingStatus {
   active: boolean;
   expiresAt: string | null;
+  applyToAll: boolean;
+  productIds: string[];
 }
 
 const STATUS_CACHE_KEY = 'free-shipping:full-status';
+
+/**
+ * Single source of truth for product free-shipping eligibility.
+ *
+ * Guaranteed fail-safe against pre-existing legacy MongoDB documents
+ * where `applyToAll` or `productIds` are missing (`undefined` under `.lean()`).
+ */
+export function isProductShippingWaived(
+  override: { applyToAll?: boolean; productIds?: string[] } | null | undefined,
+  productId: string
+): boolean {
+  if (!override) return false;
+  // If applyToAll is true (or undefined in pre-existing legacy documents), ALL products are waived
+  if (override.applyToAll ?? true) return true;
+  // Specific products: check the array safely with fallback
+  const productIds = Array.isArray(override.productIds) ? override.productIds : [];
+  return productIds.includes(String(productId));
+}
 
 export async function getFreeShippingStatus(): Promise<FreeShippingStatus> {
   const cached = apiCache.get<FreeShippingStatus>(STATUS_CACHE_KEY);
@@ -81,16 +103,22 @@ export async function getFreeShippingStatus(): Promise<FreeShippingStatus> {
 
   let doc;
   try {
+    await dbConnect();
     doc = await FreeShippingOverride.findOne({ key: 'global' }).lean() as IFreeShippingOverride | null;
   } catch (err) {
     console.error('[FreeShipping] DB read failed, defaulting to OFF:', err);
-    const fallback: FreeShippingStatus = { active: false, expiresAt: null };
+    const fallback: FreeShippingStatus = { active: false, expiresAt: null, applyToAll: true, productIds: [] };
     apiCache.set(STATUS_CACHE_KEY, fallback, CACHE_TTL_MS);
     return fallback;
   }
 
   if (!doc || !doc.enabled) {
-    const res: FreeShippingStatus = { active: false, expiresAt: null };
+    const res: FreeShippingStatus = {
+      active: false,
+      expiresAt: null,
+      applyToAll: doc ? (doc.applyToAll ?? true) : true,
+      productIds: doc && Array.isArray(doc.productIds) ? doc.productIds : [],
+    };
     apiCache.set(STATUS_CACHE_KEY, res, CACHE_TTL_MS);
     return res;
   }
@@ -105,15 +133,31 @@ export async function getFreeShippingStatus(): Promise<FreeShippingStatus> {
     } catch (err) {
       console.error('[FreeShipping] Failed to auto-disable expired override:', err);
     }
-    const res: FreeShippingStatus = { active: false, expiresAt: null };
+    const res: FreeShippingStatus = {
+      active: false,
+      expiresAt: null,
+      applyToAll: doc.applyToAll ?? true,
+      productIds: Array.isArray(doc.productIds) ? doc.productIds : [],
+    };
     apiCache.set(STATUS_CACHE_KEY, res, CACHE_TTL_MS);
     return res;
+  }
+
+  // Idempotent auto-backfill: if legacy document is missing applyToAll in DB, backfill silently
+  if (doc.applyToAll === undefined) {
+    FreeShippingOverride.updateOne(
+      { key: 'global', applyToAll: { $exists: false } },
+      { $set: { applyToAll: true, productIds: [] } }
+    ).catch(err => console.error('[FreeShipping] Auto-backfill non-fatal error:', err));
   }
 
   const res: FreeShippingStatus = {
     active: true,
     expiresAt: doc.expiresAt ? new Date(doc.expiresAt).toISOString() : null,
+    applyToAll: doc.applyToAll ?? true,
+    productIds: Array.isArray(doc.productIds) ? doc.productIds : [],
   };
   apiCache.set(STATUS_CACHE_KEY, res, CACHE_TTL_MS);
   return res;
 }
+

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../../lib/mongodb';
 import { productQueries } from '@/product/queries';
 import mongoose from 'mongoose';
-import { isFreeShippingActive } from '../../../../lib/freeShippingCheck';
+import { getFreeShippingStatus, isProductShippingWaived, type FreeShippingStatus } from '../../../../lib/freeShippingCheck';
 
 /**
  * Checkout Cities API — Product-Level City Pricing ONLY
@@ -80,20 +80,27 @@ export async function GET(request: NextRequest) {
     const cities = Object.values(govMap);
 
     // ── Global free-shipping override ────────────────────────────────────
-    // Zero out shipping AND COD at the display layer so the checkout UI
-    // matches what orderPricingService will compute at submit time.
-    let freeShippingActive = false;
+    // Zero out shipping AND COD for eligible products at the display layer so
+    // the checkout UI matches what orderPricingService will compute at submit time.
+    let freeShippingStatus: FreeShippingStatus = {
+      active: false,
+      expiresAt: null,
+      applyToAll: true,
+      productIds: [],
+    };
     try {
-      freeShippingActive = await isFreeShippingActive();
+      freeShippingStatus = await getFreeShippingStatus();
     } catch {
       // Fail safe: if the check fails, show normal prices.
     }
 
-    if (freeShippingActive) {
+    if (freeShippingStatus.active) {
       for (const gov of cities) {
         for (const pid of Object.keys(gov.productPricing || {})) {
-          gov.productPricing[pid].shippingCost = 0;
-          gov.productPricing[pid].codFee = 0;
+          if (isProductShippingWaived(freeShippingStatus, pid)) {
+            gov.productPricing[pid].shippingCost = 0;
+            gov.productPricing[pid].codFee = 0;
+          }
         }
       }
     }
@@ -101,7 +108,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       cities,
-      freeShippingActive,
+      freeShippingActive: freeShippingStatus.active,
+      freeShippingApplyToAll: freeShippingStatus.applyToAll,
       source: 'product_city_pricing'
     });
 

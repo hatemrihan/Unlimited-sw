@@ -21,6 +21,8 @@ export interface IFreeShippingOverride {
   expiresAt: Date;
   enabledBy: string;
   enabledAt: Date;
+  applyToAll?: boolean;
+  productIds?: string[];
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -57,6 +59,18 @@ const FreeShippingOverrideSchema = new mongoose.Schema({
   enabledAt: {
     type: Date,
     default: Date.now,
+  },
+
+  /** Whether the promotion applies to all products (true) or specific ones (false). */
+  applyToAll: {
+    type: Boolean,
+    default: true,
+  },
+
+  /** List of eligible product IDs when applyToAll is false. */
+  productIds: {
+    type: [String],
+    default: [],
   },
 }, {
   timestamps: true,
