@@ -162,7 +162,7 @@ describe('getFreeShippingStatus()', () => {
 // ── computeOrderPricing() with free-shipping override ──────────────────────
 
 describe('free-shipping override in order pricing', () => {
-  it('zeroes shipping AND COD when the global override is active', async () => {
+  it('zeroes shipping and keeps COD fee when the global override is active', async () => {
     const product = await seedProduct({
       price: 1000,
       cityPricing: [{ governorate: 'Cairo', shippingCost: 80, codFee: 30, isActive: true }],
@@ -183,8 +183,8 @@ describe('free-shipping override in order pricing', () => {
       orderPayload([{ productId: String(product._id), name: 'X', price: 1000, quantity: 2 }])
     );
     expect(free.pricing!.shippingCost).toBe(0);
-    expect(free.pricing!.codFee).toBe(0);
-    expect(free.pricing!.totalAmount).toBe(2000); // Just the product price
+    expect(free.pricing!.codFee).toBe(60); // COD fee kept
+    expect(free.pricing!.totalAmount).toBe(2060); // Product price + COD fee
   });
 
   it('returns normal shipping when override is expired', async () => {
@@ -245,11 +245,11 @@ describe('free-shipping override in order pricing', () => {
       )
     );
 
-    // Both mechanisms: global override zeroes shipping first, promo discount applies to subtotal
+    // Both mechanisms: global override zeroes shipping first, promo discount applies to subtotal, COD kept
     expect(result.pricing!.shippingCost).toBe(0);
-    expect(result.pricing!.codFee).toBe(0);
+    expect(result.pricing!.codFee).toBe(25);
     expect(result.pricing!.discountAmount).toBe(50);
-    expect(result.pricing!.totalAmount).toBe(950); // 1000 - 50 discount, free ship
+    expect(result.pricing!.totalAmount).toBe(975); // 1000 - 50 discount + 25 COD
   });
 
   it('handles multiple products with different governorate pricing', async () => {
@@ -274,11 +274,11 @@ describe('free-shipping override in order pricing', () => {
       ])
     );
 
-    // All shipping and COD should be zero
+    // Shipping is zero, but COD is kept: 40 + (25*2) = 90
     expect(result.pricing!.shippingCost).toBe(0);
-    expect(result.pricing!.codFee).toBe(0);
-    // Total = 3000 + (1500*2) = 6000
-    expect(result.pricing!.totalAmount).toBe(6000);
+    expect(result.pricing!.codFee).toBe(90);
+    // Total = 3000 + (1500*2) + 90 = 6090
+    expect(result.pricing!.totalAmount).toBe(6090);
   });
 
   it('instaPay still has zero COD even without the override', async () => {
@@ -327,14 +327,14 @@ describe('free-shipping override in order pricing', () => {
     );
 
     expect(result.success).toBe(true);
-    // Defaults safely to apply-to-all: zero shipping and zero COD
+    // Defaults safely to apply-to-all: zero shipping and kept COD (30)
     expect(result.pricing!.shippingCost).toBe(0);
-    expect(result.pricing!.codFee).toBe(0);
-    expect(result.pricing!.totalAmount).toBe(1000);
+    expect(result.pricing!.codFee).toBe(30);
+    expect(result.pricing!.totalAmount).toBe(1030);
   });
 
   // ── Product-Specific Free Shipping ───────────────────────────────────────
-  it('only waives shipping and COD for eligible products when applyToAll is false', async () => {
+  it('only waives shipping and keeps COD for eligible products when applyToAll is false', async () => {
     const p1 = await seedProduct({
       name: 'Eligible Bar',
       price: 1000,
@@ -357,11 +357,11 @@ describe('free-shipping override in order pricing', () => {
     );
 
     expect(result.success).toBe(true);
-    // p1 has 0 shipping + 0 COD; p2 charges 30 shipping + 15 COD
+    // p1 has 0 shipping + 20 COD; p2 charges 30 shipping + 15 COD
     expect(result.pricing!.shippingCost).toBe(30);
-    expect(result.pricing!.codFee).toBe(15);
-    // Total = 1000 + 500 + 30 + 15 = 1545
-    expect(result.pricing!.totalAmount).toBe(1545);
+    expect(result.pricing!.codFee).toBe(35); // 20 + 15 = 35
+    // Total = 1000 + 500 + 30 + 35 = 1565
+    expect(result.pricing!.totalAmount).toBe(1565);
   });
 });
 

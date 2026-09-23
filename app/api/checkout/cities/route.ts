@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
         for (const pid of Object.keys(gov.productPricing || {})) {
           if (isProductShippingWaived(freeShippingStatus, pid)) {
             gov.productPricing[pid].shippingCost = 0;
-            gov.productPricing[pid].codFee = 0;
+            // COD fee is kept as configured per product/governorate
           }
         }
       }

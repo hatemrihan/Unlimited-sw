@@ -7,9 +7,11 @@ import FeedbackFormLazy from '@/app/sections/FeedbackFormLazy';
 import Footer from '@/app/sections/Footer';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import Explore from '@/app/sections/Explore';
+import CounterDown from '@/app/sections/CounterDown';
 import { getActiveProducts } from '@/product';
 import { alternatesFor, absoluteUrl } from '@/lib/locale';
 import { storeJsonLd } from '@/lib/storeSchema';
+import { getFreeShippingStatus, type FreeShippingStatus } from '@/lib/freeShippingCheck';
 
 export const metadata: Metadata = {
   title: { absolute: 'Unlimited SW | أجهزة كاليسثينكس صناعة مصرية' },
@@ -30,6 +32,7 @@ export const metadata: Metadata = {
 export default async function ArabicHome() {
   let initialProducts: any[] = [];
   let initialHasMore = false;
+  let freeShippingStatus: FreeShippingStatus = { active: false, expiresAt: null, applyToAll: true, productIds: [] };
 
   try {
     const serialized = JSON.parse(JSON.stringify(await getActiveProducts()));
@@ -37,6 +40,12 @@ export default async function ArabicHome() {
     initialHasMore = serialized.length > 6;
   } catch (error) {
     console.error('ar: failed to fetch initial products:', error);
+  }
+
+  try {
+    freeShippingStatus = await getFreeShippingStatus();
+  } catch (error) {
+    console.error('ar: failed to fetch free shipping status:', error);
   }
 
   return (
@@ -47,6 +56,11 @@ export default async function ArabicHome() {
 
       <Nav />
       <Hero locale="ar" />
+      <CounterDown
+        initialActive={freeShippingStatus.active}
+        initialExpiresAt={freeShippingStatus.expiresAt}
+        initialApplyToAll={freeShippingStatus.applyToAll}
+      />
       <Products initialProducts={initialProducts} initialHasMore={initialHasMore} locale="ar" />
       <Explore locale="ar" />
       <FeedbackFormLazy />

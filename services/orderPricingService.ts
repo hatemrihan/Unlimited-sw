@@ -126,15 +126,17 @@ export async function computeOrderPricing(orderData: any): Promise<PricingResult
 
     subtotal += lineTotal;
 
-    // Shipping and COD are charged per unit, per product, exactly as the
-    // checkout hook displays them.
-    // If the override is active and waives this product, shipping and COD are 0 for this item.
+    // Shipping is charged per unit, per product.
+    // If the override is active and waives this product, shipping is 0 for this item.
+    // COD fee is always charged normally when payment method is Cash on Delivery.
     const cityPrice = cityPricingFor(product, governorate);
     if (cityPrice) {
       const isWaived = freeShippingStatus.active && isProductShippingWaived(freeShippingStatus, String(item.productId));
       if (!isWaived) {
         shippingCost += cityPrice.shippingCost * quantity;
-        if (isCashOnDelivery) codFee += cityPrice.codFee * quantity;
+      }
+      if (isCashOnDelivery) {
+        codFee += cityPrice.codFee * quantity;
       }
     }
 
