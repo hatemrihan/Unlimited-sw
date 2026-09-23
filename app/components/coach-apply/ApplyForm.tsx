@@ -80,6 +80,7 @@ export default function ApplyForm({
       .catch((error) => {
         setProblem(applyError(error, locale));
         setConfirming(false);
+        setChosen(null);
         // His first choice went while he was reading his email; offer him
         // whatever is left.
         loadSlots();
@@ -132,10 +133,16 @@ export default function ApplyForm({
     setBusy(true);
     setProblem(null);
     try {
-      await submitApplication(draft, locale);
-      setSent(true);
+      const result = await submitApplication(draft, locale);
+      if (result.startsAt) {
+        setBookedFor(result.startsAt);
+      } else {
+        setSent(true);
+      }
     } catch (error) {
       setProblem(applyError(error, locale));
+      setChosen(null);
+      loadSlots();
     } finally {
       setBusy(false);
     }
@@ -150,6 +157,8 @@ export default function ApplyForm({
       setBookedFor(await confirmApplication(confirmToken, slotId));
     } catch (error) {
       setProblem(applyError(error, locale));
+      setChosen(null);
+      loadSlots();
     } finally {
       setBusy(false);
     }
@@ -210,6 +219,20 @@ export default function ApplyForm({
           <div className={styles.slots}>
             {slots.map((slot) => {
               const { day, time } = formatSlot(slot);
+              if (slot.isBooked) {
+                return (
+                  <button
+                    key={slot.id}
+                    type="button"
+                    disabled
+                    aria-disabled="true"
+                    className={`${styles.slot} ${styles.slotFilled}`}
+                  >
+                    {day} <time className={styles.latin}>{time}</time>
+                    <span className={styles.slotBadge}>{copy.slotFilled}</span>
+                  </button>
+                );
+              }
               const on = chosen === slot.id;
               return (
                 <button

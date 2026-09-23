@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '../../../../lib/mongodb';
 import { productQueries } from '@/product/queries';
 import mongoose from 'mongoose';
+import { isFreeShippingActive } from '../../../../lib/freeShippingCheck';
 
 /**
  * Checkout Cities API — Product-Level City Pricing ONLY
@@ -78,9 +79,29 @@ export async function GET(request: NextRequest) {
 
     const cities = Object.values(govMap);
 
+    // ── Global free-shipping override ────────────────────────────────────
+    // Zero out shipping AND COD at the display layer so the checkout UI
+    // matches what orderPricingService will compute at submit time.
+    let freeShippingActive = false;
+    try {
+      freeShippingActive = await isFreeShippingActive();
+    } catch {
+      // Fail safe: if the check fails, show normal prices.
+    }
+
+    if (freeShippingActive) {
+      for (const gov of cities) {
+        for (const pid of Object.keys(gov.productPricing || {})) {
+          gov.productPricing[pid].shippingCost = 0;
+          gov.productPricing[pid].codFee = 0;
+        }
+      }
+    }
+
     return NextResponse.json({
       success: true,
       cities,
+      freeShippingActive,
       source: 'product_city_pricing'
     });
 

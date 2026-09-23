@@ -184,6 +184,14 @@ export const invalidateCitiesCache = () => {
   }
 };
 
+export const invalidateFreeShippingCache = () => {
+  apiCache.delete('free-shipping:status');
+  apiCache.delete('free-shipping:full-status');
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🗑️ Free-shipping override cache invalidated');
+  }
+};
+
 export const invalidateAllCaches = () => {
   productCache.clear();
   apiCache.clear();

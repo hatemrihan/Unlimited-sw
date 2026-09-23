@@ -2,6 +2,7 @@ import dbConnect from '../lib/mongodb';
 import { productQueries } from '@/product/queries';
 import { validatePromo } from './promoService';
 import { resolveVariantName } from './orderCreationService';
+import { isFreeShippingActive } from '../lib/freeShippingCheck';
 
 /**
  * Server-side authority for order money.
@@ -122,6 +123,15 @@ export async function computeOrderPricing(orderData: any): Promise<PricingResult
     }
 
     lines.push({ productId: String(item.productId), variantName, quantity, price, lineTotal });
+  }
+
+  // ── Global free-shipping override ────────────────────────────────────
+  // Zeroes both shipping and COD when the admin toggle is active.
+  // Checked BEFORE the promo waiveShipping so either mechanism can work.
+  const globalFreeShipping = await isFreeShippingActive();
+  if (globalFreeShipping) {
+    shippingCost = 0;
+    codFee = 0;
   }
 
   // Re-validate the promo against the server's subtotal, never the client's.

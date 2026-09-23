@@ -32,6 +32,7 @@ export interface InterviewSlot {
   id: string;
   startsAt: string;
   endsAt: string;
+  isBooked: boolean;
 }
 
 export interface ApplicationDraft {
@@ -102,10 +103,11 @@ export async function listOpenSlots(locale: 'en' | 'ar'): Promise<SlotsResult> {
 
   return {
     status: 'ok',
-    slots: (data ?? []).map((row: Record<string, string>) => ({
+    slots: (data ?? []).map((row: Record<string, any>) => ({
       id: row.id,
       startsAt: row.starts_at,
       endsAt: row.ends_at,
+      isBooked: Boolean(row.is_booked),
     })),
   };
 }
@@ -176,8 +178,8 @@ const MESSAGES: Record<string, { en: string; ar: string }> = {
     ar: 'أنت مدرب معنا بالفعل. سجّل الدخول بدلًا من ذلك.',
   },
   SLOT_TAKEN: {
-    en: 'Somebody booked that time while you were reading your email. Choose another below.',
-    ar: 'حُجز هذا الموعد قبلك. اختر موعدًا آخر بالأسفل.',
+    en: 'That slot was just taken — please choose another available time below.',
+    ar: 'تم حجز هذا الموعد للتو — يرجى اختيار موعد آخر متاح بالأسفل.',
   },
   SLOT_UNAVAILABLE: {
     en: 'That time is no longer available. Choose another below.',
@@ -266,18 +268,24 @@ export function checkDraft(draft: ApplicationDraft, locale: 'en' | 'ar'): string
   return null;
 }
 
+export type SubmitApplicationResult = {
+  status: string;
+  startsAt: string | null;
+  endsAt: string | null;
+  meetLink: string | null;
+};
+
 /**
  * Send the application.
  *
- * Returns nothing on success, exactly as the door does: there is no id and
- * no token to hand back. The applicant's next step arrives by email, which
- * is the entire point — it is what proves the address is his.
+ * Directly claims the interview slot if one was selected and returns
+ * the booked interview details.
  */
 export async function submitApplication(
   draft: ApplicationDraft,
   locale: 'en' | 'ar'
-): Promise<void> {
-  const { error } = await coachDatabase().rpc('apply_to_coach', {
+): Promise<SubmitApplicationResult> {
+  const { data, error } = await coachDatabase().rpc('apply_to_coach', {
     p_full_name: draft.fullName,
     p_email: draft.email,
     p_phone: draft.phone,
@@ -296,6 +304,13 @@ export async function submitApplication(
   });
 
   if (error) throw error;
+  const res = (data || {}) as Record<string, unknown>;
+  return {
+    status: typeof res.status === 'string' ? res.status : 'unconfirmed',
+    startsAt: typeof res.starts_at === 'string' ? res.starts_at : null,
+    endsAt: typeof res.ends_at === 'string' ? res.ends_at : null,
+    meetLink: typeof res.meet_link === 'string' ? res.meet_link : null,
+  };
 }
 
 /**

@@ -50,6 +50,7 @@ export function useCheckoutPricing({ cartItems, paymentMethod, cityName }: UseCh
   const [loadingCities, setLoadingCities] = useState(true);
   const [appliedPromo, setAppliedPromo] = useState<PromoData | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
+  const [freeShippingActive, setFreeShippingActive] = useState<boolean>(false);
 
   /**
    * The subtotal the applied code was last checked against.
@@ -84,6 +85,9 @@ export function useCheckoutPricing({ cartItems, paymentMethod, cityName }: UseCh
         if (response.ok) {
           const data = await response.json();
           setGovernorates(data.cities || []);
+          if (typeof data.freeShippingActive === 'boolean') {
+            setFreeShippingActive(data.freeShippingActive);
+          }
         }
       } catch (error) {
         console.error('Error fetching governorates:', error);
@@ -237,7 +241,8 @@ export function useCheckoutPricing({ cartItems, paymentMethod, cityName }: UseCh
     totalWithShipping,
     appliedPromo,
     promoError,
-    shouldWaiveShipping,
+    shouldWaiveShipping: shouldWaiveShipping || freeShippingActive,
+    freeShippingActive,
     applyPromoCode,
   };
 }

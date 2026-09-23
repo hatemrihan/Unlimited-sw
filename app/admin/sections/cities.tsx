@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { Loader2, Save, Plus, Download, FileSpreadsheet, FileText, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Loader2, Save, Plus, Download, FileSpreadsheet, FileText, AlertCircle, Truck, Clock, Power, X } from 'lucide-react';
 import { toast } from "sonner";
 
 interface GovernorateData {
@@ -11,6 +11,300 @@ interface GovernorateData {
   isActive: boolean;
 }
 
+interface FreeShippingState {
+  enabled: boolean;
+  expiresAt: string | null;
+  enabledBy: string | null;
+  enabledAt: string | null;
+}
+
+// ── Free Shipping Toggle Card ─────────────────────────────────────────────
+
+function FreeShippingCard() {
+  const [state, setState] = useState<FreeShippingState>({
+    enabled: false, expiresAt: null, enabledBy: null, enabledAt: null,
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [expiryInput, setExpiryInput] = useState('');
+  const [countdown, setCountdown] = useState('');
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetchState = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/free-shipping');
+      const data = await res.json();
+      if (data.success) setState(data.freeShipping);
+    } catch {
+      console.error('Failed to load free-shipping state');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchState(); }, [fetchState]);
+
+  // ── Live countdown ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (!state.enabled || !state.expiresAt) { setCountdown(''); return; }
+
+    const tick = () => {
+      const diff = new Date(state.expiresAt!).getTime() - Date.now();
+      if (diff <= 0) {
+        setCountdown('انتهى');
+        setState(prev => ({ ...prev, enabled: false }));
+        if (timerRef.current) clearInterval(timerRef.current);
+        return;
+      }
+      const d = Math.floor(diff / 86400000);
+      const h = Math.floor((diff % 86400000) / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      const parts: string[] = [];
+      if (d > 0) parts.push(`${d} يوم`);
+      if (h > 0) parts.push(`${h} ساعة`);
+      if (m > 0) parts.push(`${m} دقيقة`);
+      if (d === 0) parts.push(`${s} ثانية`);
+      setCountdown(parts.join(' و '));
+    };
+
+    tick();
+    timerRef.current = setInterval(tick, 1000);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [state.enabled, state.expiresAt]);
+
+  // ── Turn ON ─────────────────────────────────────────────────────────────
+  const handleEnable = async () => {
+    if (!expiryInput) {
+      toast.error('يرجى تحديد تاريخ ووقت الانتهاء');
+      return;
+    }
+
+    const expiry = new Date(expiryInput);
+    if (expiry <= new Date()) {
+      toast.error('يجب أن يكون التاريخ في المستقبل');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await fetch('/api/admin/free-shipping', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: true, expiresAt: expiry.toISOString() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('تم تفعيل الشحن المجاني! 🎉');
+        setState(data.freeShipping);
+        setShowConfirm(false);
+        setExpiryInput('');
+      } else {
+        toast.error(data.error || 'فشل في التفعيل');
+      }
+    } catch {
+      toast.error('حدث خطأ');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ── Turn OFF ────────────────────────────────────────────────────────────
+  const handleDisable = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/admin/free-shipping', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: false }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('تم إيقاف الشحن المجاني');
+        setState(prev => ({ ...prev, enabled: false }));
+      } else {
+        toast.error(data.error || 'فشل في الإيقاف');
+      }
+    } catch {
+      toast.error('حدث خطأ');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Min datetime for the picker — now + 1 minute, in local format
+  const minDatetime = () => {
+    const d = new Date(Date.now() + 60_000);
+    return d.toISOString().slice(0, 16);
+  };
+
+  // Format date for display
+  const formatExpiry = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleString('ar-EG', {
+        year: 'numeric', month: 'long', day: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+      });
+    } catch { return iso; }
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white/[0.02] border border-white/[0.08] rounded-xl p-5">
+        <div className="flex items-center gap-2 text-white/40 text-[12px]">
+          <Loader2 className="h-4 w-4 animate-spin" /> جاري التحميل...
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className={`relative overflow-hidden rounded-xl border transition-all duration-300 ${
+        state.enabled
+          ? 'bg-gradient-to-l from-emerald-500/[0.08] to-emerald-500/[0.02] border-emerald-500/30'
+          : 'bg-white/[0.02] border-white/[0.08]'
+      }`}>
+        {/* Active pulse indicator */}
+        {state.enabled && (
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-l from-emerald-400 to-emerald-600">
+            <div className="absolute inset-0 bg-gradient-to-l from-emerald-300 to-emerald-500 animate-pulse" />
+          </div>
+        )}
+
+        <div className="p-5">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+            {/* Left: Info */}
+            <div className="flex items-start gap-3">
+              <div className={`p-2.5 rounded-lg ${
+                state.enabled ? 'bg-emerald-500/20' : 'bg-white/[0.06]'
+              }`}>
+                <Truck className={`h-5 w-5 ${state.enabled ? 'text-emerald-400' : 'text-white/40'}`} />
+              </div>
+              <div>
+                <h3 className="text-[14px] font-semibold text-white flex items-center gap-2">
+                  شحن مجاني لجميع المحافظات
+                  {state.enabled && (
+                    <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-medium rounded-full">
+                      مُفعّل
+                    </span>
+                  )}
+                </h3>
+                <p className="text-[11px] text-white/40 mt-0.5">
+                  {state.enabled
+                    ? 'الشحن ورسوم الدفع عند الاستلام مجاني حالياً لجميع المحافظات'
+                    : 'تفعيل الشحن المجاني لفترة محددة لجميع المحافظات'}
+                </p>
+
+                {/* Active state details */}
+                {state.enabled && state.expiresAt && (
+                  <div className="mt-3 space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-[11px] text-emerald-400/80">
+                      <Clock className="h-3 w-3" />
+                      <span>ينتهي: {formatExpiry(state.expiresAt)}</span>
+                    </div>
+                    {countdown && (
+                      <div className="text-[13px] font-mono font-semibold text-emerald-400" dir="ltr">
+                        ⏱ {countdown}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right: Toggle button */}
+            <div className="flex items-center gap-2 sm:mt-1">
+              {state.enabled ? (
+                <button
+                  onClick={handleDisable}
+                  disabled={saving}
+                  className="h-9 px-4 flex items-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 hover:border-red-500/40 rounded-lg text-[12px] font-medium transition-all disabled:opacity-50"
+                >
+                  {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Power className="h-3.5 w-3.5" />}
+                  إيقاف الشحن المجاني
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowConfirm(true)}
+                  className="h-9 px-4 flex items-center gap-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/40 rounded-lg text-[12px] font-medium transition-all"
+                >
+                  <Truck className="h-3.5 w-3.5" />
+                  تفعيل الشحن المجاني
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Confirmation Dialog ──────────────────────────────────────────── */}
+      {showConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#111] border border-white/[0.1] rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6" dir="rtl">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-emerald-500/20">
+                  <Truck className="h-5 w-5 text-emerald-400" />
+                </div>
+                <h3 className="text-[15px] font-semibold text-white">تفعيل الشحن المجاني</h3>
+              </div>
+              <button
+                onClick={() => { setShowConfirm(false); setExpiryInput(''); }}
+                className="p-1.5 rounded-lg hover:bg-white/[0.08] transition-colors"
+              >
+                <X className="h-4 w-4 text-white/40" />
+              </button>
+            </div>
+
+            {/* Warning */}
+            <div className="p-3 bg-amber-500/[0.08] border border-amber-500/20 rounded-lg mb-4">
+              <p className="text-[11px] text-amber-400 leading-relaxed">
+                ⚠️ هذا سيجعل الشحن ورسوم الدفع عند الاستلام <strong>مجاني تماماً</strong> لجميع المحافظات حتى التاريخ المحدد. سيتأثر جميع الطلبات الجديدة.
+              </p>
+            </div>
+
+            {/* Date picker */}
+            <div className="mb-5">
+              <label className="block text-[12px] text-white/60 mb-2">ينتهي الشحن المجاني في:</label>
+              <input
+                type="datetime-local"
+                value={expiryInput}
+                min={minDatetime()}
+                onChange={(e) => setExpiryInput(e.target.value)}
+                className="w-full px-3 py-2.5 bg-white/[0.04] border border-white/[0.1] rounded-lg text-white text-[13px] focus:outline-none focus:border-emerald-500/50 transition-colors"
+                dir="ltr"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleEnable}
+                disabled={saving || !expiryInput}
+                className="flex-1 h-10 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[13px] font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Truck className="h-4 w-4" />}
+                تأكيد التفعيل
+              </button>
+              <button
+                onClick={() => { setShowConfirm(false); setExpiryInput(''); }}
+                className="h-10 px-4 flex items-center justify-center bg-white/[0.06] hover:bg-white/[0.1] text-white/60 rounded-lg text-[13px] transition-colors"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ── Main Component ────────────────────────────────────────────────────────
 
 const CitiesManagement = () => {
   const [governorates, setGovernorates] = useState<GovernorateData[]>([]);
@@ -229,6 +523,9 @@ const CitiesManagement = () => {
           </button>
         </div>
       </div>
+
+      {/* 🆕 Free Shipping Toggle */}
+      <FreeShippingCard />
 
       {/* Action Buttons */}
       <div className="flex flex-wrap items-center gap-2">

@@ -90,17 +90,18 @@ export const APPLY_COPY = {
     slotsLoading: 'Loading the times…',
     slotsUnavailable: 'We could not load the interview times just now.',
     slotsRetry: 'Try again',
-    timezone: 'Shown in your timezone. The time is held once you confirm your email.',
+    slotFilled: 'Filled',
+    timezone: 'Shown in your timezone.',
 
     send: 'Send application',
     sending: 'Sending…',
-    sendNote: 'We will email you a link. Your interview is held once you click it.',
+    sendNote: 'Your interview time is confirmed immediately upon submission. We will email you the Google Meet link and calendar invite.',
 
-    doneTitle: 'Check your inbox.',
-    doneBody: 'Click the link we sent. Your time is held after that.',
+    doneTitle: 'We received your application... You are on the waiting list',
+    doneBody: 'No open interview times were available. We will email you as soon as a slot opens.',
 
     confirmedTitle: 'Your interview is booked.',
-    confirmedBody: 'We have sent it to your calendar. See you then.',
+    confirmedBody: 'We have sent your Google Meet link and interview details to your email and calendar. See you then.',
     confirming: 'One moment…',
 
     stripLeft: 'Applications are read by the head coach.',
@@ -193,17 +194,18 @@ export const APPLY_COPY = {
     slotsLoading: 'جارٍ تحميل المواعيد…',
     slotsUnavailable: 'تعذّر تحميل مواعيد المقابلات الآن.',
     slotsRetry: 'أعد المحاولة',
-    timezone: 'المواعيد بتوقيت جهازك. يُحجز الموعد بعد تأكيد بريدك.',
+    slotFilled: 'ممتلئ',
+    timezone: 'المواعيد بتوقيت جهازك.',
 
     send: 'أرسل الطلب',
     sending: 'جارٍ الإرسال…',
-    sendNote: 'سنرسل لك رابطًا بالبريد. يُحجز موعدك بعد الضغط عليه.',
+    sendNote: 'يتم تأكيد موعد مقابلتك فور إرسال الطلب، وسنرسل لك رابط Google Meet ودعوة التقويم عبر البريد.',
 
-    doneTitle: 'تفقّد بريدك.',
-    doneBody: 'اضغط الرابط الذي أرسلناه، وبعدها يُحجز موعدك.',
+    doneTitle: 'استلمنا طلبك... أنت في قائمة الانتظار',
+    doneBody: 'لم تكن هناك مواعيد متاحة للمقابلة حاليًا. سنراسلك بالبريد فور فتح موعد جديد.',
 
     confirmedTitle: 'تم حجز موعد مقابلتك.',
-    confirmedBody: 'أرسلناه إلى تقويمك. في انتظارك.',
+    confirmedBody: 'أرسلنا رابط Google Meet وتفاصيل الموعد إلى بريدك وتقويمك. في انتظارك.',
     confirming: 'لحظة…',
 
     stripLeft: 'يقرأ الطلبات المدرب الأول.',

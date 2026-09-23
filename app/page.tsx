@@ -8,6 +8,8 @@ import Explore from "./sections/Explore";
 import { getActiveProducts } from "@/product/actions";
 import { storeJsonLd } from "@/lib/storeSchema";
 import { alternatesFor } from "@/lib/locale";
+import CounterDown from "./sections/CounterDown";
+import { getFreeShippingStatus } from "@/lib/freeShippingCheck";
 
 export const metadata = {
   // `absolute` — the brand is already in this title; the root template must not
@@ -53,6 +55,8 @@ export default async function Home() {
   let initialProducts: any[] = [];
   let initialHasMore = false;
 
+  let freeShippingStatus = { active: false, expiresAt: null as string | null };
+
   try {
     const allProducts = await getActiveProducts();
     // Serialize for client: strip Mongoose internals, convert ObjectIds to strings
@@ -63,6 +67,11 @@ export default async function Home() {
     console.error('Failed to fetch initial products:', error);
   }
 
+  try {
+    freeShippingStatus = await getFreeShippingStatus();
+  } catch (error) {
+    console.error('Failed to fetch free shipping status:', error);
+  }
 
   return (
     <>
@@ -77,7 +86,10 @@ export default async function Home() {
 
       <Nav />
       <Hero />
-      {/* <CounterDown /> */}
+      <CounterDown
+        initialActive={freeShippingStatus.active}
+        initialExpiresAt={freeShippingStatus.expiresAt}
+      />
       <Products initialProducts={initialProducts} initialHasMore={initialHasMore} />
       <Explore />
       {/* <Intro /> */}

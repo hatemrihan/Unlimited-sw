@@ -1,68 +1,120 @@
 "use client";
+
+import React, { useEffect, useState, useRef } from "react";
 import { motion, useInView } from "motion/react";
-import React from "react";
-import { useEffect,useState } from "react";
 
-// 🎯 FIXED END DATE - CHANGE THIS TO YOUR DESIRED END DATE
-// Offer ends: November 21, 2025 at 5:00 PM Egypt time (GMT+2)
-// Started: November 19, 2025 at 5:00 PM Egypt time
-const OFFER_END_TIME = new Date('2025-11-21T17:00:00+02:00').getTime();
+interface CounterDownProps {
+  initialActive?: boolean;
+  initialExpiresAt?: string | null;
+}
 
-const CounterDown =() =>{
-    const wordsRef = React.useRef(null);
-    const isInView = useInView(wordsRef, { once: true, margin: "-50px" });
-    
-    const [timeLeft, setTimeLeft] = useState(OFFER_END_TIME - Date.now());
+const CounterDown = ({ initialActive, initialExpiresAt }: CounterDownProps) => {
+  const [mounted, setMounted] = useState(false);
+  const [active, setActive] = useState<boolean>(Boolean(initialActive));
+  const [expiresAt, setExpiresAt] = useState<string | null>(initialExpiresAt ?? null);
+  const [timeLeft, setTimeLeft] = useState<number>(() => {
+    if (!initialActive || !initialExpiresAt) return 0;
+    const diff = new Date(initialExpiresAt).getTime() - Date.now();
+    return diff > 0 ? diff : 0;
+  });
 
-useEffect(() => {
+  const wordsRef = useRef<HTMLDivElement>(null);
+  const isInView = useInView(wordsRef, { once: true, margin: "-50px" });
+
+  useEffect(() => {
+    setMounted(true);
+
+    // If initialActive was not passed, fetch dynamically
+    if (initialActive === undefined) {
+      fetch("/api/free-shipping")
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data && data.active && data.expiresAt) {
+            const diff = new Date(data.expiresAt).getTime() - Date.now();
+            if (diff > 0) {
+              setActive(true);
+              setExpiresAt(data.expiresAt);
+              setTimeLeft(diff);
+            } else {
+              setActive(false);
+            }
+          } else {
+            setActive(false);
+          }
+        })
+        .catch(() => {
+          setActive(false);
+        });
+    }
+  }, [initialActive]);
+
+  useEffect(() => {
+    if (!active || !expiresAt) return;
+
+    const targetTime = new Date(expiresAt).getTime();
     const interval = setInterval(() => {
-      setTimeLeft(OFFER_END_TIME - Date.now());
+      const remaining = targetTime - Date.now();
+      if (remaining <= 0) {
+        setTimeLeft(0);
+        setActive(false);
+        clearInterval(interval);
+      } else {
+        setTimeLeft(remaining);
+      }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [active, expiresAt]);
 
-  if (timeLeft <= 0) {
-    return <div>Offer Finished ⏳</div>;
+  // If SSR or offer is inactive or expired, render nothing (no dead space)
+  if (!mounted || !active || timeLeft <= 0) {
+    return null;
   }
 
   const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
   const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+  const minutes = Math.floor((timeLeft % (1000 * 60)) / (1000 * 60));
   const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
 
+  const countdownText = `${days > 0 ? `${days}d ` : ""}${hours
+    .toString()
+    .padStart(2, "0")}h : ${minutes.toString().padStart(2, "0")}m : ${seconds
+    .toString()
+    .padStart(2, "0")}s`;
+
   return (
-    <>
-  
     <motion.div
-    className="w-full  overflow-hidden bg-gray-400 text-black py-6 relative"
-    ref={wordsRef}
-    initial={{opacity: 0}}
-    animate={isInView ? {opacity: 1} : {opacity: 0}}
-    transition={{duration: 0.3, delay: 0.1}}
-  >
-    {/* Single seamless marquee */}
-    <div className="flex whitespace-nowrap animate-marquee-infinite">
-      {/* Create enough instances for seamless infinite loop */}
-      {[...Array(20)].map((_, index) => (
-        <div
-          key={index}
-          className="text-xl sm:text-base md:text-lg min-w-max text-black font-light flex-shrink-0 mx-8 sm:mx-12 flex flex-col items-center justify-center"
-        >
-            <h2 className="text-base text-center whitespace-nowrap font-normal">
-              White Friday Offer Ends In: <span className="ml-2">{days}d : {hours}h : {minutes}m : {seconds}s</span>
-            </h2>
-            <h1 className="text-xl text-center whitespace-nowrap mt-2 font-normal">
-              Use code: <span className="text-white">WFRI</span>  to get Shipping Free on your order!
-            </h1>
-        </div>
-        
-      ))}
-
-    </div>
-  </motion.div>
-
-  </>
+      className="w-full overflow-hidden bg-gradient-to-r from-neutral-900 via-neutral-950 to-neutral-900 border-y border-neutral-800 text-white py-3 relative z-20 shadow-sm"
+      ref={wordsRef}
+      initial={{ opacity: 0 }}
+      animate={isInView ? { opacity: 1 } : { opacity: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      {/* Infinite Marquee */}
+      <div className="flex whitespace-nowrap animate-marquee-infinite">
+        {[...Array(12)].map((_, index) => (
+          <div
+            key={index}
+            className="text-xs sm:text-sm tracking-wider uppercase font-medium min-w-max flex-shrink-0 mx-6 sm:mx-10 flex items-center gap-3 text-white"
+          >
+            <span className="inline-flex items-center justify-center px-2 py-0.5 text-[11px] font-bold bg-green-500/20 text-green-400 border border-green-500/30 rounded-full">
+              FREE SHIPPING
+            </span>
+            <span className="text-gray-300">
+              Limited-Time All Governorates Offer Ends In:
+            </span>
+            <span className="font-mono text-amber-400 font-bold tracking-normal">
+              {countdownText}
+            </span>
+            <span className="text-gray-400 text-xs normal-case">
+              (Applied automatically at checkout)
+            </span>
+            <span className="text-neutral-700 select-none mx-2">•</span>
+          </div>
+        ))}
+      </div>
+    </motion.div>
   );
-}; 
+};
+
 export default CounterDown;

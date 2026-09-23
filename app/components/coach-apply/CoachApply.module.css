@@ -215,6 +215,27 @@
 .slot:hover { border-color: #a8a29e; }
 .slotOn { background: #fafaf9; border-color: #fafaf9; color: #1c1917; }
 .slotOn time { color: #57534e; }
+.slotFilled {
+  border-color: #292524;
+  background: rgba(41, 37, 36, 0.4);
+  color: #78716c;
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+.slotFilled:hover {
+  border-color: #292524;
+}
+.slotFilled time {
+  color: #57534e;
+}
+.slotBadge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  background: #292524;
+  color: #a8a29e;
+  letter-spacing: 0.05em;
+}
 .tz { margin-top: 10px; font-size: 11px; color: #78716c; }
 
 /* "Try again", shown only when the interview times could not be read. */
