@@ -6,6 +6,7 @@ import Hero from '@/app/sections/Hero';
 import FeedbackFormLazy from '@/app/sections/FeedbackFormLazy';
 import Footer from '@/app/sections/Footer';
 import WhatsAppButton from '@/components/WhatsAppButton';
+import { getStoreContact } from '@/payments/contact';
 import Explore from '@/app/sections/Explore';
 import CounterDown from '@/app/sections/CounterDown';
 import { getActiveProducts } from '@/product';
@@ -65,7 +66,7 @@ export default async function ArabicHome() {
       <Explore locale="ar" />
       <FeedbackFormLazy />
       <Footer />
-      <WhatsAppButton />
+      <WhatsAppButton phone={(await getStoreContact()).whatsapp} />
     </>
   );
 }

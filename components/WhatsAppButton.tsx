@@ -1,8 +1,15 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { FALLBACK_CONTACT } from '@/payments/contact-values';
 
-const WhatsAppButton = () => {
+/**
+ * `phone` comes from the coaching platform's /settings (payments/contact.ts),
+ * passed down by the page that renders this — since 7 Oct 2026 the number is
+ * changed on the dashboard, logged there, and no longer typed in here.
+ * International form: +201044878774.
+ */
+const WhatsAppButton = ({ phone = FALLBACK_CONTACT.whatsapp }: { phone?: string }) => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
@@ -15,9 +22,8 @@ const WhatsAppButton = () => {
   }, []);
 
   const handleWhatsAppClick = () => {
-    const phoneNumber = '+20104 4878774';
     const message = ' كنت حابب استفسر عن! السلام عليكم';
-    const whatsappUrl = `https://wa.me/${phoneNumber.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`;
+    const whatsappUrl = `https://wa.me/${phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`;
     
     window.open(whatsappUrl, '_blank');
   };

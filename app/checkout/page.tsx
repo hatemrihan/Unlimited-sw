@@ -12,6 +12,7 @@ import { City } from './types';
 import { newClientOrderId } from '../../lib/clientOrderId';
 import { track, getSessionId, isEnabled } from '../../analytics/client/track';
 import { META_PURCHASE_STORAGE_KEY } from '../../analytics/client/metaPixel';
+import { FALLBACK_CONTACT } from '../../payments/contact-values';
 
 /**
  * One way of writing an amount, across the whole checkout.
@@ -28,6 +29,13 @@ const egp = (amount: number) => Math.round(amount).toLocaleString();
 export default function CheckoutPage() {
   const router = useRouter();
   const [paymentSettings, setPaymentSettings] = useState({ codEnabled: true, instaPayEnabled: true });
+  // Where InstaPay money goes — from the platform's /settings via
+  // /api/payment-methods. Starts on the fallback, so the instructions are
+  // never blank while the request is in flight or if it fails.
+  const [instapay, setInstapay] = useState({
+    address: FALLBACK_CONTACT.instapayAddress,
+    link: FALLBACK_CONTACT.instapayLink,
+  });
   const [orderError, setOrderError] = useState<string | null>(null);
   const [stockWarning, setStockWarning] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -99,6 +107,9 @@ export default function CheckoutPage() {
         if (cancelled || !data?.methods) return;
 
         setPaymentSettings(data.methods);
+        if (typeof data.instapay?.address === 'string' && typeof data.instapay?.link === 'string') {
+          setInstapay({ address: data.instapay.address, link: data.instapay.link });
+        }
 
         // If the currently selected method has just been switched off, move the
         // customer to one that still works rather than leaving a dead selection.
@@ -524,15 +535,15 @@ export default function CheckoutPage() {
                     <div className="mb-4">
                       <h3 className="font-medium mb-2 text-white">InstaPay Payment Instructions</h3>
                       <p className="text-sm mb-2 text-gray-300">Click the link to send money to:</p>
-                      <p className="font-medium mb-2 text-white">muhamed.alkady@instapay</p>
+                      <p className="font-medium mb-2 text-white">{instapay.address}</p>
                       <p className="text-sm mb-2 text-gray-300">Powered by InstaPay:</p>
                       <a
-                        href="https://ipn.eg/S/muhamed.alkady/instapay/8kB0I3"
+                        href={instapay.link}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-white underline text-sm hover:text-gray-300"
                       >
-                        https://ipn.eg/S/muhamed.alkady/instapay/8kB0I3
+                        {instapay.link}
                       </a>
                     </div>
 

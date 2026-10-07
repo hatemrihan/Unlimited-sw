@@ -1,10 +1,14 @@
-'use client'
+import { getStoreContact } from '@/payments/contact'
+import { displayPhone } from '@/payments/contact-values'
 
 import React from 'react'
 import Link from 'next/link'
 import Nav from '../sections/Nav'
 
-const ThankYouPage = () => {
+// The phone number is read from the coaching platform's /settings (7 Oct
+// 2026), so the policy can never name an old number after it changes there.
+const ThankYouPage = async () => {
+  const contact = await getStoreContact()
 
   
   return (
@@ -39,7 +43,7 @@ Exceptions
  <br /> Processing time
  Refunds or credits are processed within *3–7 business days* of receiving the returned item.
 
-Phone/WhatsApp: 0104 4878774 <br />
+Phone/WhatsApp: {displayPhone(contact.whatsapp)} <br />
 Email: [be.unlimited.sw@gmail.com]
 <br /> Cookies
 We do not use any non‑essential cookies.

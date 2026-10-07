@@ -4,6 +4,7 @@ import Hero from "./sections/Hero";
 import FeedbackFormLazy from "./sections/FeedbackFormLazy";
 import Footer from "./sections/Footer";
 import WhatsAppButton from "../components/WhatsAppButton";
+import { getStoreContact } from "@/payments/contact";
 import Explore from "./sections/Explore";
 import { getActiveProducts } from "@/product/actions";
 import { storeJsonLd } from "@/lib/storeSchema";
@@ -96,7 +97,7 @@ export default async function Home() {
       {/* <Intro /> */}
       <FeedbackFormLazy />
       <Footer />
-      <WhatsAppButton />
+      <WhatsAppButton phone={(await getStoreContact()).whatsapp} />
     </>
   );
 }
