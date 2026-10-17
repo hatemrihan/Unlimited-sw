@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { orderQueries } from '@/order/queries';
 import { requireAdmin } from '@/lib/requireAdmin';
 import { logger } from '@/utils/logger';
+import { sellsFromSupabase } from '@/shopdb/client';
+import { movedToDashboard } from '@/shopdb/moved';
 
 export const runtime = 'nodejs';
 
@@ -32,6 +34,8 @@ const MONTH_NAMES = [
 export async function GET() {
   const authError = await requireAdmin();
   if (authError) return authError;
+  // After the move this lives in the dashboard (decision 16 Oct 2026).
+  if (sellsFromSupabase()) return movedToDashboard('Shop order totals');
 
   if (process.env.MONGO_BYPASS === 'true') {
     return NextResponse.json({

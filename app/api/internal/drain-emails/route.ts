@@ -1,11 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { drainPendingEmails } from '../../../../services/pendingEmailService';
-import { sendQueuedOrderEmail } from '../../../../services/emailQueueService';
+import { sendOrderEmails, sendQueuedOrderEmail } from '../../../../services/emailQueueService';
 import { logger } from '../../../../utils/logger';
 import { timingSafeCompare } from '../../../../lib/timingSafeCompare';
+import { sellsFromSupabase } from '@/shopdb/client';
+import { drainShopOutbox } from '@/shopdb/orders';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+/** Supabase's outbox, then whatever Mongo still owes from before the move. */
+async function drainBoth(): Promise<{ sent: number; failed: number }> {
+  const shop = await drainShopOutbox(sendOrderEmails);
+  const legacy = await drainPendingEmails(sendQueuedOrderEmail).catch((error) => {
+    logger.error('Mongo email queue could not be drained', error);
+    return { sent: 0, failed: 0 };
+  });
+  return { sent: shop.sent + legacy.sent, failed: shop.failed + legacy.failed };
+}
 
 /**
  * Sends the order emails that did not go out with their order.
@@ -42,7 +54,12 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await drainPendingEmails(sendQueuedOrderEmail);
+    // After the move, the emails owed live in Supabase's shop_email_outbox.
+    // Orders placed before it are drained from Mongo by the same run, until
+    // that queue is empty.
+    const result = sellsFromSupabase()
+      ? await drainBoth()
+      : await drainPendingEmails(sendQueuedOrderEmail);
     return NextResponse.json({ success: true, ...result });
   } catch (error) {
     logger.error('❌ Email drain failed', error);

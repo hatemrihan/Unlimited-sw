@@ -169,6 +169,17 @@ describe('where the route calls it', () => {
     expect(recordsPurchase).toBeGreaterThan(afterCommit);
   });
 
+  it('after the move (SHOP_DB=supabase), also records only once the door said yes', () => {
+    // placeThroughSupabase: the database's door took the order, or answered
+    // with a refusal that is returned before anything is measured.
+    const helper = source.slice(source.indexOf('async function placeThroughSupabase'));
+    const refusedReturns = helper.indexOf('if (!result.ok) return');
+    const records = helper.indexOf('recordPurchase(');
+
+    expect(refusedReturns).toBeGreaterThan(-1);
+    expect(records).toBeGreaterThan(refusedReturns);
+  });
+
   it('cannot fail the order it is measuring', () => {
     // The customer has paid and the stock is reserved. An analytics failure
     // here must be a line in a log, never a 500 handed to someone who has

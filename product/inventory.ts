@@ -1,6 +1,8 @@
 import mongoose from 'mongoose';
 import dbConnect from '@/lib/mongodb';
 import Product from '@/product/model';
+import { sellsFromSupabase } from '@/shopdb/client';
+import { adjustStock as shopAdjustStock, SupabaseProductQueries } from '@/shopdb/products';
 
 /**
  * The inventory module — the ONLY place in the codebase that issues a $inc on
@@ -177,6 +179,23 @@ export interface ProductAvailability {
 export async function getAvailability(
   productIds: string[]
 ): Promise<Record<string, ProductAvailability>> {
+  // After the move (SHOP_DB=supabase) stock lives in Supabase. Keyed by the
+  // id the storefront asked with, old Mongo id or new uuid.
+  if (sellsFromSupabase()) {
+    const products = await new SupabaseProductQueries().findByIds(productIds);
+    const result: Record<string, ProductAvailability> = {};
+    for (const product of products) {
+      const id = String(product._id);
+      result[id] = {
+        productId: id,
+        stock: Number(product.stock) || 0,
+        variants: (product.variants || []).map(v => ({ name: v.name, stock: Number(v.stock) || 0 })),
+        isActive: product.isActive !== false,
+      };
+    }
+    return result;
+  }
+
   await dbConnect();
 
   const ids = productIds.filter(isValidProductId);
@@ -215,11 +234,39 @@ export async function getAvailability(
  *    value changed since the admin's page loaded, so the UI can say
  *    "stock changed, reload" instead of silently erasing an order.
  */
+/**
+ * After the move (SHOP_DB=supabase): the database's stock door. The same two
+ * modes, the same optimistic lock, the same StockConflictError for the
+ * route's 409 — and an activity-log row for every edit.
+ */
+async function adjustStockInSupabase(
+  productId: string,
+  variantName: string | undefined,
+  change: { delta: number } | { expected: number; next: number }
+): Promise<ProductAvailability> {
+  const where = variantName ? ` (variant "${variantName}")` : '';
+  try {
+    await shopAdjustStock(productId, { variantName: variantName ?? null, ...change });
+  } catch (e) {
+    const code = e instanceof Error ? e.message : String(e);
+    if (code.startsWith('STOCK_CONFLICT')) {
+      throw new StockConflictError(`Stock changed since this page was loaded${where}. Reload and try again.`);
+    }
+    if (code.startsWith('OUT_OF_STOCK')) throw new StockConflictError(`Not enough stock to apply that change${where}.`);
+    throw e;
+  }
+  const row = (await getAvailability([productId]))[productId];
+  if (!row) throw new StockConflictError(`Invalid product id: ${productId}`);
+  return row;
+}
+
 export async function adjustStock(
   productId: string,
   variantName: string | undefined,
   change: { delta: number } | { expected: number; next: number }
 ): Promise<ProductAvailability> {
+  if (sellsFromSupabase()) return adjustStockInSupabase(productId, variantName, change);
+
   await dbConnect();
 
   if (!isValidProductId(productId)) {

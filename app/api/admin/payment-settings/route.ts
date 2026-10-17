@@ -5,6 +5,8 @@ import { authOptions } from '@/lib/auth';
 import { getPaymentMethodsUncached, updatePaymentMethods } from '@/payments/settings';
 import { updatePaymentMethodsSchema } from '@/payments/schema';
 import { logger } from '@/utils/logger';
+import { sellsFromSupabase } from '@/shopdb/client';
+import { movedToDashboard } from '@/shopdb/moved';
 
 /**
  * Admin read and write for payment methods.
@@ -19,6 +21,8 @@ import { logger } from '@/utils/logger';
 export async function GET() {
   const authError = await requireAdmin();
   if (authError) return authError;
+  // After the move this lives in the dashboard (decision 16 Oct 2026).
+  if (sellsFromSupabase()) return movedToDashboard('Payment settings');
 
   try {
     // Read fresh, not cached: this is the screen someone is about to change.
@@ -41,6 +45,8 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
   const authError = await requireAdmin();
   if (authError) return authError;
+  // After the move this lives in the dashboard (decision 16 Oct 2026).
+  if (sellsFromSupabase()) return movedToDashboard('Payment settings');
 
   let body: unknown;
   try {

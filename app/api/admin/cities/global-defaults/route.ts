@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { requireAdmin } from '../../../../../lib/requireAdmin';
 import { withDb } from '../../../../../lib/withDb';
 import { invalidateCitiesCache } from '../../../../../lib/cache';
+import { sellsFromSupabase } from '@/shopdb/client';
+import { setGovernorateDefaults } from '@/shopdb/cities';
 
 const globalDefaultsSchema = z.object({
   governorate:  z.string().min(1),
@@ -27,6 +29,16 @@ export const PUT = withDb(async (request: NextRequest) => {
   }
 
   const { governorate, shippingCost, codFee, isActive } = parsed.data;
+
+  // After the move (SHOP_DB=supabase): the same answer, from Supabase.
+  if (sellsFromSupabase()) {
+    const modifiedCount = await setGovernorateDefaults(governorate, { shippingCost, codFee, isActive });
+    return NextResponse.json({
+      success: true,
+      modifiedCount,
+      message: `Updated global default rates for ${governorate}. Affects new products only.`,
+    });
+  }
 
   const updateResult = await CityPricing.updateMany(
     { governorate: governorate.trim() },

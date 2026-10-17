@@ -7,6 +7,8 @@ import {
   reapplyStockForOrder,
   deleteOrderWithStockRestoration,
 } from '../../../../services/stockRestorationService';
+import { sellsFromSupabase } from '@/shopdb/client';
+import { movedToDashboard } from '@/shopdb/moved';
 
 /**
  * A malformed id used to reach `Order.findById`, throw a Mongoose CastError, and
@@ -29,6 +31,8 @@ export async function PATCH(
   try {
     const authError = await requireAdmin();
     if (authError) return authError;
+    // After the move this lives in the dashboard (decision 16 Oct 2026).
+    if (sellsFromSupabase()) return movedToDashboard('Shop orders');
     const params = await context.params;
     const { id } = params;
 
@@ -112,6 +116,8 @@ export async function DELETE(
   try {
     const authError = await requireAdmin();
     if (authError) return authError;
+    // After the move this lives in the dashboard (decision 16 Oct 2026).
+    if (sellsFromSupabase()) return movedToDashboard('Shop orders');
     const params = await context.params;
     const { id } = params;
 

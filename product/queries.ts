@@ -3,13 +3,15 @@ import ProductModel from '@/product/model';
 import { Product } from '@/product/model';
 import { CreateProductInput, UpdateProductInput } from '@/product/schema';
 import dbConnect from '@/lib/mongodb';
+import { sellsFromSupabase } from '@/shopdb/client';
+import { SupabaseProductQueries } from '@/shopdb/products';
 
 // ─── Interface ────────────────────────────────────────────────────────────────
 // Defines the contract. Swap MongoProductQueries for any other implementation
 // (PostgreSQL, in-memory mock, etc.) without touching service or route code.
 
 export interface ProductQueries {
-  findAllActive(fields: string): Promise<Product[]>;
+  findAllActive(fields?: string): Promise<Product[]>;
 
   findById(id: string, fields?: string): Promise<Product | null>;
   /**
@@ -190,5 +192,11 @@ export class MongoProductQueries implements ProductQueries {
 
 }
 
-// Singleton — reuse across requests (no re-instantiation per request)
-export const productQueries = new MongoProductQueries();
+// Singleton — reuse across requests (no re-instantiation per request).
+//
+// THE SWITCH (SHOP-ORDERS-PLAN.md, Phase 2): SHOP_DB=supabase on Netlify, and
+// every caller of this file reads the catalogue from Supabase instead. Read
+// once per deploy, which is what a cutover is: change the variable, redeploy.
+export const productQueries: ProductQueries = sellsFromSupabase()
+  ? new SupabaseProductQueries()
+  : new MongoProductQueries();

@@ -66,8 +66,11 @@ export async function getCoachByUsername(
   // Two round trips rather than an embedded join: `public_coaches` is a
   // view, and PostgREST cannot always infer a relationship from a view to
   // a table. A second small query by coach_id is boring and always works.
+  // `plans` since 16 Oct 2026 (Supabase migration 20261017120000): a plan
+  // on sale IS the programme. The old `programs` name is a temporary view
+  // that the database drops once this code is live.
   const { data: programmes } = await supabase
-    .from('programs')
+    .from('plans')
     .select('id, slug, title_en, title_ar, level, duration_days, price_egp')
     .eq('coach_id', coach.coach_id)
     .order('position', { ascending: true });
@@ -87,10 +90,10 @@ export async function getCoachByUsername(
     reviewCount: Number(coach.review_count ?? 0),
     followerCount: Number(coach.follower_count ?? 0),
     isAcceptingAthletes: coach.is_accepting_athletes,
-    // No `is_published` filter here on purpose: the anonymous reader's
-    // policy already returns published programmes of verified coaches and
-    // nothing else. Re-filtering would imply this file is what enforces
-    // it, and it is not.
+    // No `is_on_sale` filter here on purpose: the anonymous reader's
+    // policy already returns plans on sale of verified coaches and nothing
+    // else. Re-filtering would imply this file is what enforces it, and it
+    // is not.
     programmes: (programmes ?? []).map(
       (programme): CoachProgramme => ({
         id: programme.id,

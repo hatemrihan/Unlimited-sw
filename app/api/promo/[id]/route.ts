@@ -3,6 +3,8 @@ import dbConnect from '../../../../lib/mongodb';
 import Promo from '../../../../models/promo';
 import { requireAdmin } from '@/lib/requireAdmin';
 import { updatePromoSchema } from '@/lib/schemas/promo.schema';
+import { sellsFromSupabase } from '@/shopdb/client';
+import { deletePromo, getPromo, updatePromo } from '@/shopdb/promos';
 
 /** `2026-08-15` → that day at 00:00:00. */
 function startOfSelectedDay(value?: string): Date | undefined {
@@ -31,6 +33,13 @@ export async function GET(
   try {
     const { id } = await params;
     console.log('📋 Fetching promo code:', id);
+
+    // After the move (SHOP_DB=supabase): the same answer, from Supabase.
+    if (sellsFromSupabase()) {
+      const found = await getPromo(id);
+      if (!found) return NextResponse.json({ success: false, error: 'Promo code not found' }, { status: 404 });
+      return NextResponse.json({ success: true, promoCode: found });
+    }
 
     await dbConnect();
 
@@ -101,6 +110,13 @@ export async function PUT(
     }
 
     const data = parsed.data;
+
+    // After the move (SHOP_DB=supabase): the same answer, from Supabase.
+    if (sellsFromSupabase()) {
+      const updated = await updatePromo(id, data);
+      if (!updated) return NextResponse.json({ success: false, error: 'Promo code not found' }, { status: 404 });
+      return NextResponse.json({ success: true, message: 'Promo code updated successfully', promoCode: updated });
+    }
 
     await dbConnect();
 
@@ -176,6 +192,12 @@ export async function DELETE(
     const { id } = await params;
     console.log('🗑️ Deleting promo code:', id);
 
+    // After the move (SHOP_DB=supabase): the same answer, from Supabase.
+    if (sellsFromSupabase()) {
+      if (!(await deletePromo(id))) return NextResponse.json({ success: false, error: 'Promo code not found' }, { status: 404 });
+      return NextResponse.json({ success: true, message: 'Promo code deleted successfully' });
+    }
+
     await dbConnect();
 
     const promoCode = await Promo.findByIdAndDelete(id);
@@ -220,6 +242,13 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
     console.log('🔄 Toggling promo code status:', id);
+
+    // After the move (SHOP_DB=supabase): the same answer, from Supabase.
+    if (sellsFromSupabase()) {
+      const toggled = await updatePromo(id, { isActive: Boolean(body.isActive) });
+      if (!toggled) return NextResponse.json({ success: false, error: 'Promo code not found' }, { status: 404 });
+      return NextResponse.json({ success: true, message: 'Promo code status updated', promoCode: toggled });
+    }
 
     await dbConnect();
 

@@ -5,6 +5,8 @@ import { productQueries } from '@/product/queries';
 import { logger } from '../utils/logger';
 import { resolveVariantName } from './orderCreationService';
 import { markEmailSent } from './pendingEmailService';
+import { sellsFromSupabase } from '@/shopdb/client';
+import { markShopEmailSent } from '@/shopdb/orders';
 
 /** Remaining units at or below this trigger a 'stock' notification for the admin. */
 const LOW_STOCK_THRESHOLD = 3;
@@ -73,7 +75,11 @@ export function dispatchOrderPostProcessing(savedOrder: any, orderData: any) {
       // own transaction, so if this line is never reached — a timeout, a crash,
       // a provider outage — the scheduled drain picks it up instead. The
       // customer gets their email late rather than never.
-      await markEmailSent(savedOrder.orderId);
+      //
+      // After the move the owed email is a row in Supabase's shop_email_outbox
+      // (written by place_shop_order), keyed by the order's uuid.
+      if (sellsFromSupabase()) await markShopEmailSent(savedOrder._id);
+      else await markEmailSent(savedOrder.orderId);
     })
     .catch(err => {
       logger.error(`❌ Email dispatch failed for order ${savedOrder.orderId}:`, err);

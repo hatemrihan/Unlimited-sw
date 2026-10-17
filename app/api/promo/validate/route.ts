@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validatePromo } from '../../../../services/promoService';
+import { sellsFromSupabase } from '@/shopdb/client';
+import { validatePromoCode } from '@/shopdb/promos';
 import { logger } from '../../../../utils/logger';
 
 // POST - Pure Validation Endpoint isolating logic from Admin Creation loops
@@ -16,7 +18,10 @@ export async function POST(request: NextRequest) {
     
     logger.info('🎫 Validating nested promo code matrix natively...');
     const { code, orderTotal } = body;
-    const result = await validatePromo(code, orderTotal);
+    // After the move, by the database's own rules (Cairo calendar day).
+    const result = sellsFromSupabase()
+      ? await validatePromoCode(code, orderTotal)
+      : await validatePromo(code, orderTotal);
 
     if (!result.success) {
       return NextResponse.json(

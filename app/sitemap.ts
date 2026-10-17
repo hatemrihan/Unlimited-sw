@@ -1,5 +1,7 @@
 import { MetadataRoute } from 'next';
 import dbConnect from '../lib/mongodb';
+import { productQueries } from '@/product/queries';
+import { sellsFromSupabase } from '@/shopdb/client';
 import Product from '@/product/model';
 import { CATEGORIES, CATEGORY_KEYS } from '@/product/categories';
 import { listCoachUsernames } from '@/coaches/api';
@@ -72,10 +74,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   try {
-    await dbConnect();
-    const products = await Product.find({ isActive: true })
-      .select('_id slug slugAr updatedAt')
-      .lean();
+    // After the move (SHOP_DB=supabase) the catalogue is read through the
+    // seam, which then reads Supabase; ids stay the public ones.
+    const products = sellsFromSupabase()
+      ? await productQueries.findAllActive()
+      : await (async () => {
+          await dbConnect();
+          return Product.find({ isActive: true }).select('_id slug slugAr updatedAt').lean();
+        })();
 
     const productPages: MetadataRoute.Sitemap = products.flatMap((product: any) => {
       // Products that predate the backfill have no slug; the id URL still works

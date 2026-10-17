@@ -5,6 +5,8 @@ import { cacheKeys } from '../../../../lib/cache-keys';
 import { CACHE_TTL } from '../../../../lib/cache-ttl';
 import { requireAdmin } from '../../../../lib/requireAdmin';
 import CityPricing from '../../../../models/cityPricing';
+import { sellsFromSupabase } from '@/shopdb/client';
+import { createCity, listCitiesForAdmin } from '@/shopdb/cities';
 
 export const GET = withDb(async (request: NextRequest) => {
   // Shipping and COD configuration is internal pricing data, not public.
@@ -20,6 +22,11 @@ export const GET = withDb(async (request: NextRequest) => {
     if (cached) {
       return NextResponse.json({ success: true, cities: cached, cached: true });
     }
+  }
+
+  // After the move (SHOP_DB=supabase): the same answer, from Supabase.
+  if (sellsFromSupabase()) {
+    return NextResponse.json({ success: true, cities: await listCitiesForAdmin(productIds) });
   }
 
   const raw = await CityPricing.find({})
@@ -94,6 +101,13 @@ export const POST = withDb(async (request: NextRequest) => {
     );
   }
   
+  // After the move (SHOP_DB=supabase): the same answer, from Supabase.
+  if (sellsFromSupabase()) {
+    const created = await createCity({ cityName, governorate, shippingCost, codFee, isActive });
+    if (!created) return NextResponse.json({ success: false, error: 'City already exists' }, { status: 400 });
+    return NextResponse.json({ success: true, city: created, message: 'City created successfully' });
+  }
+
   const existingCity = await CityPricing.findOne({ 
     cityName: cityName.trim().toLowerCase() 
   });

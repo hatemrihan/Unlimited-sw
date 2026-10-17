@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { withDb } from '@/lib/withDb';
 import { getFreeShippingStatus } from '@/lib/freeShippingCheck';
+import { sellsFromSupabase } from '@/shopdb/client';
+import { shopSwitches } from '@/shopdb/settings';
 
 /**
  * Public lightweight endpoint to check if global free shipping is active.
@@ -9,7 +11,16 @@ import { getFreeShippingStatus } from '@/lib/freeShippingCheck';
  * Backed by a 5-second in-memory cache to guarantee sub-millisecond
  * response times without putting load on MongoDB.
  */
-export const GET = withDb(async () => {
+/** After the move: the free-shipping switch the dashboard sets (shop_settings). */
+async function fromSupabase() {
+  const { freeShipping } = await shopSwitches();
+  return NextResponse.json(
+    { success: true, ...freeShipping },
+    { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } }
+  );
+}
+
+export const GET = sellsFromSupabase() ? fromSupabase : withDb(async () => {
   try {
     const status = await getFreeShippingStatus();
     return NextResponse.json(

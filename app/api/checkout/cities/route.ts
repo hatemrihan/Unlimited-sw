@@ -3,6 +3,9 @@ import dbConnect from '../../../../lib/mongodb';
 import { productQueries } from '@/product/queries';
 import mongoose from 'mongoose';
 import { getFreeShippingStatus, isProductShippingWaived, type FreeShippingStatus } from '../../../../lib/freeShippingCheck';
+import { sellsFromSupabase } from '@/shopdb/client';
+import { checkoutCities } from '@/shopdb/cities';
+import { shopSwitches } from '@/shopdb/settings';
 
 /**
  * Checkout Cities API — Product-Level City Pricing ONLY
@@ -14,8 +17,37 @@ import { getFreeShippingStatus, isProductShippingWaived, type FreeShippingStatus
  * If a product has no city pricing for a governorate, that governorate
  * still appears (from other products) but with $0 shipping for that item.
  */
+/**
+ * After the move: the same table, from Supabase. Ids may be old Mongo ids
+ * (a saved cart) or new uuids, so they are not filtered as ObjectIds here.
+ */
+async function fromSupabase(ids: string[]) {
+  try {
+    const { freeShipping } = await shopSwitches();
+    const cities = await checkoutCities(ids.slice(0, 100), freeShipping);
+    return NextResponse.json({
+      success: true,
+      cities,
+      freeShippingActive: freeShipping.active,
+      freeShippingApplyToAll: freeShipping.applyToAll,
+      source: 'product_city_pricing',
+    });
+  } catch (error) {
+    console.error('[Checkout Cities] Supabase failed:', error);
+    return NextResponse.json(
+      { success: false, cities: [], error: 'Could not load shipping options. Please try again.' },
+      { status: 503 }
+    );
+  }
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
+  if (sellsFromSupabase()) {
+    const ids = searchParams.get('productIds')?.split(',').filter(Boolean) ?? [];
+    if (ids.length === 0) return NextResponse.json({ success: true, cities: [], source: 'no_products' });
+    return fromSupabase(ids);
+  }
   const rawIds = searchParams.get('productIds')?.split(',').filter(Boolean) ?? [];
 
   // Filter out invalid ObjectIds before querying

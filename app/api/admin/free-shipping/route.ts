@@ -4,6 +4,8 @@ import { withDb } from '../../../../lib/withDb';
 import { requireAdmin } from '../../../../lib/requireAdmin';
 import { invalidateFreeShippingCache } from '../../../../lib/cache';
 import FreeShippingOverride, { type IFreeShippingOverride } from '../../../../models/freeShippingOverride';
+import { sellsFromSupabase } from '@/shopdb/client';
+import { movedToDashboard } from '@/shopdb/moved';
 
 /**
  * Admin API for the global free-shipping override.
@@ -15,6 +17,8 @@ import FreeShippingOverride, { type IFreeShippingOverride } from '../../../../mo
 export const GET = withDb(async (_request: NextRequest) => {
   const authError = await requireAdmin();
   if (authError) return authError;
+  // After the move this lives in the dashboard (decision 16 Oct 2026).
+  if (sellsFromSupabase()) return movedToDashboard('Free shipping');
 
   const doc = await FreeShippingOverride.findOne({ key: 'global' }).lean() as IFreeShippingOverride | null;
 
@@ -63,6 +67,8 @@ const MAX_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
 export const PUT = withDb(async (request: NextRequest) => {
   const authError = await requireAdmin();
   if (authError) return authError;
+  // After the move this lives in the dashboard (decision 16 Oct 2026).
+  if (sellsFromSupabase()) return movedToDashboard('Free shipping');
 
   const body = await request.json();
   const { enabled, expiresAt, enabledBy } = body;

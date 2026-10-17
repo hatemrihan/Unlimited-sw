@@ -3,6 +3,8 @@ import CityPricing from '../../../../../models/cityPricing';
 import { requireAdmin } from '../../../../../lib/requireAdmin';
 import { withDb } from '../../../../../lib/withDb';
 import { invalidateCitiesCache } from '../../../../../lib/cache';
+import { sellsFromSupabase } from '@/shopdb/client';
+import { addCitiesIfMissing } from '@/shopdb/cities';
 
 // POST - Bulk add all 27 Egyptian Governorates
 export const POST = withDb(async (request: NextRequest) => {
@@ -48,6 +50,16 @@ export const POST = withDb(async (request: NextRequest) => {
   }));
 
   // Get all existing cityNames in one query
+  // After the move (SHOP_DB=supabase): the same answer, from Supabase.
+  if (sellsFromSupabase()) {
+    const { added, skipped } = await addCitiesIfMissing(allCities);
+    return NextResponse.json({
+      success: true,
+      message: 'Bulk add completed',
+      results: { totalProcessed: allCities.length, added, skipped },
+    });
+  }
+
   const existingNames = new Set(
     (await CityPricing.find({}, { cityName: 1 }).lean())
       .map((c: any) => c.cityName.toLowerCase().trim())

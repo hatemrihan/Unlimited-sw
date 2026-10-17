@@ -3,6 +3,8 @@ import CityPricing from '../../../../../models/cityPricing';
 import { requireAdmin } from '../../../../../lib/requireAdmin';
 import { withDb } from '../../../../../lib/withDb';
 import { invalidateCitiesCache } from '../../../../../lib/cache';
+import { sellsFromSupabase } from '@/shopdb/client';
+import { deleteCity, updateCity } from '@/shopdb/cities';
 
 // PUT - Update city
 export const PUT = withDb(async (request: NextRequest, ctx: { params: Promise<{ id: string }> }) => {
@@ -21,6 +23,13 @@ export const PUT = withDb(async (request: NextRequest, ctx: { params: Promise<{ 
     );
   }
   
+  // After the move (SHOP_DB=supabase): the same answer, from Supabase.
+  if (sellsFromSupabase()) {
+    const updated = await updateCity(cityId, { cityName, governorate, shippingCost, codFee, isActive });
+    if (!updated) return NextResponse.json({ success: false, error: 'City not found' }, { status: 404 });
+    return NextResponse.json({ success: true, city: updated, message: 'City updated successfully' });
+  }
+
   const updatedCity = await CityPricing.findByIdAndUpdate(
     cityId,
     {
@@ -56,6 +65,14 @@ export const DELETE = withDb(async (_req: NextRequest, ctx: { params: Promise<{ 
   
   const { id: cityId } = await ctx.params;
   
+  // After the move (SHOP_DB=supabase): the same answer, from Supabase.
+  if (sellsFromSupabase()) {
+    if (!(await deleteCity(cityId))) {
+      return NextResponse.json({ success: false, error: 'City not found' }, { status: 404 });
+    }
+    return NextResponse.json({ success: true, message: 'City deleted successfully' });
+  }
+
   const deletedCity = await CityPricing.findByIdAndDelete(cityId);
   
   if (!deletedCity) {

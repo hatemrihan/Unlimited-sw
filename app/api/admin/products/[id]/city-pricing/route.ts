@@ -6,6 +6,9 @@ import Product from '@/product/model';
 import CityPricing from '../../../../../../models/cityPricing';
 import { invalidateProductCache, invalidateCitiesCache } from '../../../../../../lib/cache';
 import { revalidateProducts } from '@/product/tags';
+import { sellsFromSupabase } from '@/shopdb/client';
+import { listCitiesForAdmin } from '@/shopdb/cities';
+import { saveCityPricing, SupabaseProductQueries } from '@/shopdb/products';
 
 // Schema for per-governorate shipping/COD overrides
 // NOTE: price is NOT here — the product price comes from Product.price
@@ -17,6 +20,29 @@ const bulkCityPricingSchema = z.array(z.object({
 }));
 
 // GET - Get governorate shipping/COD config for a specific product
+/** GET after the move: the product's own rates over the governorate list, as before. */
+async function cityPricingFromSupabase(productId: string) {
+  const product = await new SupabaseProductQueries().findById(productId);
+  if (!product) {
+    return NextResponse.json({ success: false, error: 'Product not found' }, { status: 404 });
+  }
+  const governorates = (await listCitiesForAdmin()).filter((g: any) => g.isActive);
+  return NextResponse.json({
+    success: true,
+    productName: product.name,
+    basePrice: product.price,
+    cityPricing: governorates.map((gov: any) => {
+      const existing = (product.cityPricing || []).find((cp: any) => cp.governorate === gov.governorate);
+      return {
+        governorate: gov.governorate,
+        shippingCost: existing?.shippingCost ?? gov.shippingCost,
+        codFee: existing?.codFee ?? gov.codFee,
+        isActive: existing?.isActive !== false,
+      };
+    }),
+  });
+}
+
 export const GET = withDb(async (request: NextRequest, ctx?: any) => {
   // middleware.ts matches '/admin/:path*', which does NOT cover '/api/admin/...'.
   // Without this line the endpoint is open to the internet.
@@ -24,7 +50,10 @@ export const GET = withDb(async (request: NextRequest, ctx?: any) => {
   if (authError) return authError;
 
   const { id: productId } = await ctx.params;
-  
+
+  // After the move (SHOP_DB=supabase): the same table, from Supabase.
+  if (sellsFromSupabase()) return cityPricingFromSupabase(productId);
+
   const product = await Product.findById(productId).select('name price cityPricing');
   if (!product) {
     return NextResponse.json(
@@ -75,14 +104,6 @@ export const PUT = withDb(async (request: NextRequest, ctx?: any) => {
     );
   }
   
-  const product = await Product.findById(productId);
-  if (!product) {
-    return NextResponse.json(
-      { success: false, error: 'Product not found' },
-      { status: 404 }
-    );
-  }
-  
   // Map to clean schema — no price, no cityName
   const productCityPricing = parsed.data.map(gp => ({
     governorate:  gp.governorate,
@@ -90,6 +111,32 @@ export const PUT = withDb(async (request: NextRequest, ctx?: any) => {
     codFee:       Number(gp.codFee) || 0,
     isActive:     gp.isActive !== false,
   }));
+
+  // After the move (SHOP_DB=supabase): written to the product row in
+  // Supabase — the tariff an order is priced from, logged by the database.
+  if (sellsFromSupabase()) {
+    try {
+      await saveCityPricing(productId, productCityPricing);
+    } catch {
+      return NextResponse.json({ success: false, error: 'Product not found' }, { status: 404 });
+    }
+    invalidateProductCache(productId.toString());
+    invalidateCitiesCache();
+    await revalidateProducts(productId.toString());
+    return NextResponse.json({
+      success: true,
+      message: 'Governorate shipping updated successfully',
+      cityPricing: productCityPricing,
+    });
+  }
+
+  const product = await Product.findById(productId);
+  if (!product) {
+    return NextResponse.json(
+      { success: false, error: 'Product not found' },
+      { status: 404 }
+    );
+  }
 
   const updatedProduct = await Product.findByIdAndUpdate(
     productId,

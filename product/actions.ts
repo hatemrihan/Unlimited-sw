@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { unstable_cache } from 'next/cache';
 import { productQueries } from '@/product/queries';
+import { sellsFromSupabase } from '@/shopdb/client';
 import { PRODUCTS_TAG, productTag } from '@/product/tags';
 import { apiCache, invalidateProductCache } from '@/lib/cache';
 import { CACHE_TTL } from '@/lib/cache-ttl';
@@ -218,6 +219,9 @@ export async function createProduct(data: CreateProductInput): Promise<any> {
       }
     : data;
 
+  // After the move the catalogue is Supabase's: no Mongo session to open.
+  if (sellsFromSupabase()) return createProductInSupabase(finalData);
+
   const sess = await mongoose.connection.startSession();
   sess.startTransaction();
 
@@ -231,6 +235,17 @@ export async function createProduct(data: CreateProductInput): Promise<any> {
     throw new DatabaseError(`Failed to create product: ${err instanceof Error ? err.message : String(err)}`);
   } finally {
     await sess.endSession();
+  }
+}
+
+/** createProduct after the move (SHOP_DB=supabase): the product and its variants as rows. */
+async function createProductInSupabase(data: CreateProductInput): Promise<any> {
+  try {
+    const product = await productQueries.create(data);
+    invalidateProductCache();
+    return product;
+  } catch (err) {
+    throw new DatabaseError(`Failed to create product: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 

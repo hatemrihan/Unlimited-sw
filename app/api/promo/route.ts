@@ -4,6 +4,8 @@ import Promo from '../../../models/promo';
 import { logger } from '../../../utils/logger';
 import { requireAdmin } from '@/lib/requireAdmin';
 import { createPromoSchema } from '@/lib/schemas/promo.schema';
+import { sellsFromSupabase } from '@/shopdb/client';
+import { createPromo, listPromos } from '@/shopdb/promos';
 
 /** `2026-08-15` → that day at 00:00:00, or undefined when nothing was picked. */
 function startOfSelectedDay(value?: string): Date | undefined {
@@ -58,6 +60,15 @@ export async function POST(request: NextRequest) {
         description,
         waiveShipping,
       } = parsed.data;
+
+      // After the move (SHOP_DB=supabase): the same answer, from Supabase.
+      if (sellsFromSupabase()) {
+        const created = await createPromo(parsed.data);
+        if (!created) {
+          return NextResponse.json({ success: false, error: 'Promo code already exists' }, { status: 400 });
+        }
+        return NextResponse.json({ success: true, message: 'Promo code created successfully', promoCode: created });
+      }
 
       await dbConnect();
 
@@ -127,6 +138,11 @@ export async function GET(request: NextRequest) {
 
   try {
     logger.info('📋 Streaming promo matrix records for admin mapping...');
+
+    // After the move (SHOP_DB=supabase): the same answer, from Supabase.
+    if (sellsFromSupabase()) {
+      return NextResponse.json({ success: true, promoCodes: await listPromos() });
+    }
 
     await dbConnect();
 

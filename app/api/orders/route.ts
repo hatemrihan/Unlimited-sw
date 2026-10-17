@@ -9,6 +9,9 @@ import { logger } from '../../../utils/logger';
 import { requireAdmin } from '../../../lib/requireAdmin';
 import { createOrderSchema, listOrdersQuerySchema } from '@/order/schema';
 import { consumeRateLimit, clientKey } from '../../../lib/throttle';
+import { sellsFromSupabase } from '@/shopdb/client';
+import { movedToDashboard } from '@/shopdb/moved';
+import { placeOrder } from '@/shopdb/orders';
 
 const MONGO_BYPASS = process.env.MONGO_BYPASS === 'true';
 
@@ -190,6 +193,12 @@ export async function POST(request: NextRequest) {
     // body. Quantities are positive integers from here on, so pricing, storage
     // and stock reservation can no longer disagree about them.
     const orderData: any = parsed.data;
+
+    // After the move (SHOP_DB=supabase): ONE call to the database's door,
+    // which replays a repeated attempt, prices, reserves, claims the promo
+    // and owes the email in one transaction. Everything below this branch
+    // is the MongoDB path, untouched.
+    if (sellsFromSupabase()) return placeThroughSupabase(orderData);
 
     // A customer whose response was lost pressing "Place order" again. Answer
     // with the order they already have, before pricing, before reserving
@@ -469,6 +478,8 @@ export async function GET(request: NextRequest) {
   try {
     const authError = await requireAdmin();
     if (authError) return authError;
+    // After the move, the order book is the dashboard's (decision 16 Oct 2026).
+    if (sellsFromSupabase()) return movedToDashboard('Shop orders');
     await dbConnect();
 
     // `.catch()` on every field means a nonsense query string degrades to the
@@ -528,4 +539,31 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+/**
+ * Checkout after the move. The answers are the same as the MongoDB path's —
+ * the same order shape, the same 409s for a changed price or promo — so the
+ * checkout page cannot tell which database took the order.
+ */
+async function placeThroughSupabase(orderData: any): Promise<NextResponse> {
+  const result = await placeOrder(orderData, resolveVariantName);
+  if (!result.ok) return NextResponse.json(result.body, { status: result.status });
+
+  const savedOrder = result.order;
+  // The funnel's Purchase event: analytics stays where it is (MongoDB).
+  try {
+    await recordPurchase(savedOrder, orderData.sessionId);
+  } catch (analyticsError) {
+    logger.error('📉 Could not record the Purchase event', analyticsError);
+  }
+  // The emails, inline as before; the outbox row the door wrote is the
+  // safety net the drain picks up if this does not finish.
+  await dispatchOrderPostProcessing(savedOrder, orderData);
+
+  return NextResponse.json({
+    success: true,
+    order: orderResponsePayload(savedOrder),
+    message: 'Order placed successfully!',
+  });
 }

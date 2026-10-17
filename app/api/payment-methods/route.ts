@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getPaymentMethods, DEFAULT_METHODS } from '@/payments/settings';
 import { getStoreContact, FALLBACK_CONTACT } from '@/payments/contact';
+import { sellsFromSupabase } from '@/shopdb/client';
+import { shopSwitches } from '@/shopdb/settings';
 
 /**
  * Which payment methods checkout may offer, and where InstaPay money goes.
@@ -18,6 +20,17 @@ import { getStoreContact, FALLBACK_CONTACT } from '@/payments/contact';
  * No longer `force-dynamic`. Both reads are cached across all instances.
  */
 export async function GET() {
+  // After the move: the shop's switches, and the ONE InstaPay address
+  // (app_settings, through shop_payment_options — 20261017150000).
+  if (sellsFromSupabase()) {
+    const s = await shopSwitches();
+    return NextResponse.json({
+      success: true,
+      methods: { codEnabled: s.codEnabled, instaPayEnabled: s.instaPayEnabled },
+      instapay: { address: s.instapayAddress, link: s.instapayLink },
+    });
+  }
+
   const [methods, contact] = await Promise.all([
     getPaymentMethods().catch(() => DEFAULT_METHODS),
     // getStoreContact never throws; the catch is the last resort so checkout
