@@ -24,6 +24,7 @@
  * and this file simply asks for coaches and receives the ones it may see.
  */
 
+import { certificationsFor } from './certifications';
 import { coachDatabase } from './supabase';
 import type { CoachProgramme, PublicCoach } from './schema';
 
@@ -69,11 +70,17 @@ export async function getCoachByUsername(
   // `plans` since 16 Oct 2026 (Supabase migration 20261017120000): a plan
   // on sale IS the programme. The old `programs` name is a temporary view
   // that the database drops once this code is live.
-  const { data: programmes } = await supabase
-    .from('plans')
-    .select('id, slug, title_en, title_ar, level, duration_days, price_egp')
-    .eq('coach_id', coach.coach_id)
-    .order('position', { ascending: true });
+  const [{ data: programmes }, certifications] = await Promise.all([
+    supabase
+      .from('plans')
+      .select('id, slug, title_en, title_ar, level, duration_days, price_egp')
+      .eq('coach_id', coach.coach_id)
+      .order('position', { ascending: true }),
+    // The Certified badges (courses, 19 Oct 2026): the same view the app's
+    // chip reads, keyed by the PROFILE id. Side by side with the plans so
+    // the page still costs one wait, not two.
+    certificationsFor(coach.profile_id),
+  ]);
 
   return {
     coachId: coach.coach_id,
@@ -105,6 +112,7 @@ export async function getCoachByUsername(
         priceEgp: Number(programme.price_egp),
       })
     ),
+    certifications,
   };
 }
 

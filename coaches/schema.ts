@@ -27,6 +27,10 @@
  * If you change this list, that file changes in the same commit.
  */
 
+import type { CoachCertification } from './certifications';
+
+export type { CoachCertification };
+
 /** Every fact a public coach profile shows, on both surfaces. */
 export const PROFILE_FIELDS = [
   'cover image',
@@ -37,6 +41,11 @@ export const PROFILE_FIELDS = [
   'average rating and review count',
   'follower count',
   'programme cards',
+  // Courses, 19 Oct 2026: one "Unlimited Certified · <course>" badge per
+  // valid certificate, from the view public_certifications. The mobile
+  // renderer is lib/features/courses/ui/certified_chip.dart, on the coach
+  // page and the coach's own profile.
+  'Certified badges (courses passed)',
 ] as const;
 
 export interface CoachProgramme {
@@ -68,6 +77,9 @@ export interface PublicCoach {
   followerCount: number;
   isAcceptingAthletes: boolean;
   programmes: CoachProgramme[];
+
+  /** Valid certificates only — the view drops revoked and expired ones. */
+  certifications: CoachCertification[];
 }
 
 /**

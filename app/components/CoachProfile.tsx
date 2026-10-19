@@ -5,6 +5,7 @@ import Footer from '@/app/sections/Footer';
 import { t } from '@/i18n';
 import { directionFor, type Locale } from '@/lib/locale';
 import { breadcrumbJsonLd } from '@/product/seo';
+import { certifiedBadge } from '@/coaches/certifications';
 import { coachJsonLd, coachPath } from '@/coaches/seo';
 import {
   headlineFor,
@@ -104,6 +105,23 @@ export default function CoachProfile({
             <p className="mt-4 text-sm md:text-base text-white/70 max-w-[60ch]">
               {headline}
             </p>
+          )}
+
+          {/* The badge — one chip per course this coach passed. The badge
+              is the product (courses, decision D7). Read from the public
+              view, so a revoked certificate vanishes without a deploy. */}
+          {coach.certifications.length > 0 && (
+            <ul className="mt-4 flex flex-wrap gap-2" data-testid="certified">
+              {coach.certifications.map((certification) => (
+                <li
+                  key={certification.courseId}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white px-3 py-1 text-xs font-medium text-stone-900"
+                >
+                  <span aria-hidden>◆</span>
+                  {certifiedBadge(certification, locale)}
+                </li>
+              ))}
+            </ul>
           )}
 
           <Meta coach={coach} locale={locale} />

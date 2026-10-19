@@ -28,9 +28,23 @@ The coaching platform still owns the facts. This folder only asks for them.
 | `schema.ts` | The shape of a public coach — and `PROFILE_FIELDS`, the parity contract. |
 | `api.ts` | Two reads: one coach by handle, and every handle for the sitemap. |
 | `seo.ts` | Addresses, `<head>`, and the Person/ProfilePage structured data. |
+| `certifications.ts` | Courses (19 Oct 2026): the Certified badges from the view `public_certifications`, and the verdict for `/verify/<code>` from the door `verify_certificate_v1`. Reads only. |
 
 The page itself is `app/components/CoachProfile.tsx`, with a thin route
 file per language.
+
+### The certificate pages (courses, 19 Oct 2026)
+
+`/verify/<code>` (and `/ar/verify/<code>`) is what the QR on an Unlimited
+certificate opens: one verdict — valid, expired, revoked, unknown — in one
+colour, then the facts printed on the paper so a stranger can compare them
+line by line. It is **never cached** (`force-dynamic`: a certificate
+revoked a minute ago reads "revoked" now) and **never indexed** (a verify
+page is for the person holding the QR). Any failure is "unknown", never a
+system error — the reader is not our operator. `/verify?code=…` is the
+typed form and redirects to the same URL shape. `/download` is where the
+desktop installers will be listed (`DESKTOP_BUILDS` in
+`app/components/DesktopDownload.tsx`); until then it says so.
 
 ---
 
