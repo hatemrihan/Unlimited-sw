@@ -26,7 +26,32 @@ const nextConfig: NextConfig = {
      * file and serves WebP/AVIF at the requested size.
      */
     unoptimized: false,
-    formats: ['image/avif', 'image/webp'],
+    /**
+     * Every distinct (image, width, quality, format) is one transformation, and
+     * Vercel's Hobby plan includes 5,000 a month. The settings below are what
+     * keep the store inside that — 75% of it was gone in two days (22 Oct 2026).
+     *
+     * One format: AVIF + WebP made every image twice. WebP alone is supported
+     * by every browser the store's customers use.
+     */
+    formats: ['image/webp'],
+    /**
+     * How long a transformed image stays cached, in seconds (31 days).
+     *
+     * The S3 product photos are served with no Cache-Control header, so the
+     * default of 60 seconds applied: a minute after an image was optimised it
+     * went stale, and the next visitor paid for a fresh transformation.
+     * Uploads get a new file name, so a long cache never shows an old photo.
+     */
+    minimumCacheTTL: 2678400,
+    /**
+     * The widths an image can be cut to. The defaults are 16 widths, up to
+     * 3840px; a `fill` image without a narrow `sizes` asked for nearly all of
+     * them. These cover phones (640, 828), tablets (1080) and desktops (1920),
+     * plus the small thumbnails.
+     */
+    deviceSizes: [640, 828, 1080, 1920],
+    imageSizes: [64, 128, 256],
     // `domains` is deprecated in favour of remotePatterns.
     remotePatterns: [
       {
@@ -34,7 +59,9 @@ const nextConfig: NextConfig = {
         hostname: `${process.env.ALKADY_AWS_S3_BUCKET_NAME}.s3.${process.env.ALKADY_AWS_REGION}.amazonaws.com`,
       },
     ],
-    qualities: [50, 75, 85, 100],
+    // 75 is the default for every image; 90 is the before/after slider in
+    // Explore, which used to ask for 100 (several MB per image, no visible gain).
+    qualities: [75, 90],
   },
   async headers() {
     return [

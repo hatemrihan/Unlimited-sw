@@ -4,7 +4,8 @@ import React, { useState, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Locale } from '@/lib/locale';
-// FULL QUALITY IMAGES - No compression or quality loss!
+// Quality 90 with `sizes` matching the layout: indistinguishable from 100, a
+// fraction of the bytes, and two widths per visitor instead of every width up to 3840px.
 import oneImage from '@/public/images/all-grayy/1763900966157-avnq5qjndt.png';
 import twoImage from '@/public/images/all-grayy/1763901202402-bdlfhcw2tbu.png';
 
@@ -97,7 +98,8 @@ const Explore = ({ locale = 'en' }: { locale?: Locale }) => {
                                     alt="After"
                                     fill
                                     className="object-contain"
-                                    quality={100}
+                                    quality={90}
+                                    sizes="(max-width: 1024px) 100vw, 50vw"
                                     priority
                                 />
                             </div>
@@ -114,7 +116,8 @@ const Explore = ({ locale = 'en' }: { locale?: Locale }) => {
                                     alt="Before"
                                     fill
                                     className="object-contain"
-                                    quality={100}
+                                    quality={90}
+                                    sizes="(max-width: 1024px) 100vw, 50vw"
                                     priority
                                 />
                             </div>
