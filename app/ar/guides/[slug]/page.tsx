@@ -14,6 +14,17 @@ interface Props {
 
 const getArticle = cache(async (slug: string) => articleRepository.getBySlug(slug, 'ar'));
 
+/**
+ * Built on its first visit, then served from the CDN and refreshed at most
+ * once a minute — the same rule as the guides list. The empty list below is
+ * what makes Next cache these pages instead of rendering each visit.
+ */
+export const revalidate = 60;
+
+export function generateStaticParams() {
+  return [];
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const article = await getArticle(decodeURIComponent(slug));

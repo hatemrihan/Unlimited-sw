@@ -23,7 +23,7 @@
  * client only displays it.
  */
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { useCheckoutPricing } from '../app/checkout/hooks/useCheckoutPricing';
+import { useCheckoutPricing } from '../app/(en)/checkout/hooks/useCheckoutPricing';
 import type { CartItem } from '../contexts/CartContext';
 
 const cartItems: CartItem[] = [

@@ -8,16 +8,18 @@ import { shopSwitches } from '@/shopdb/settings';
  * Public lightweight endpoint to check if global free shipping is active.
  * Used by client components (e.g. CounterDown banner, cart drawer).
  *
- * Backed by a 5-second in-memory cache to guarantee sub-millisecond
- * response times without putting load on MongoDB.
+ * Cached by Vercel's CDN for 15 seconds. It used to be `no-store`, so every
+ * home-page visitor ran a function and a MongoDB read just to draw the banner.
+ * Now one request per 15 seconds reaches the function; a switch flipped in
+ * the admin shows within that. Checkout never trusts this answer — the order
+ * route prices shipping itself — so a few seconds of lag cannot misprice.
  */
+const CDN_CACHE = { 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=60' };
+
 /** After the move: the free-shipping switch the dashboard sets (shop_settings). */
 async function fromSupabase() {
   const { freeShipping } = await shopSwitches();
-  return NextResponse.json(
-    { success: true, ...freeShipping },
-    { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } }
-  );
+  return NextResponse.json({ success: true, ...freeShipping }, { headers: CDN_CACHE });
 }
 
 export const GET = sellsFromSupabase() ? fromSupabase : withDb(async () => {
@@ -31,11 +33,7 @@ export const GET = sellsFromSupabase() ? fromSupabase : withDb(async () => {
         applyToAll: status.applyToAll,
         productIds: status.productIds,
       },
-      {
-        headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate',
-        },
-      }
+      { headers: CDN_CACHE }
     );
   } catch (error) {
     console.error('[Public FreeShipping API] Error:', error);

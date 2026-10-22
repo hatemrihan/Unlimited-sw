@@ -25,6 +25,11 @@ const getCoach = cache(async (username: string) =>
 
 export const revalidate = 3600;
 
+/** Empty on purpose: each coach page is built on its first visit, then cached for the hour above. */
+export function generateStaticParams() {
+  return [];
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { username } = await params;
   const coach = await getCoach(username);

@@ -4,6 +4,16 @@ import GuidesIndex from '@/app/components/GuidesIndex';
 import { articleRepository } from '@/repositories/articleRepository';
 import { alternatesFor, absoluteUrl } from '@/lib/locale';
 
+/**
+ * Built once and served from the CDN, refreshed at most once a minute.
+ *
+ * Articles are read straight from MongoDB and the admin guide routes do not
+ * clear any cache, so without a refresh time a newly published guide would
+ * never appear until the next deploy. A minute is invisible for something
+ * published a few times a month.
+ */
+export const revalidate = 60;
+
 export const metadata: Metadata = {
   title: 'أدلة تدريب الكاليسثينكس',
   description:

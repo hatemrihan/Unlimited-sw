@@ -16,6 +16,11 @@ const supabaseOrigin = (() => {
 })();
 
 const nextConfig: NextConfig = {
+  experimental: {
+    // Lets app/global-not-found.tsx answer unknown URLs. Needed because each
+    // language has its own root layout, so no layout wraps an unmatched path.
+    globalNotFound: true,
+  },
   images: {
     /**
      * Re-enabled after removing the SPA fallback in `public/_redirects`.

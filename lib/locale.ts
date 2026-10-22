@@ -1,20 +1,14 @@
 /**
  * Locale rules — pure, and safe to import from a client component.
  *
- * The server-only half (reading the request headers) lives in
- * `lib/locale.server.ts`. They are separate files because `next/headers` cannot
- * be imported into a client bundle at all: one such import anywhere in this
- * module's graph fails the whole build, and half the components that need
- * `Locale` are client components.
+ * Nothing here reads the request. Each language has its own root layout that
+ * knows its locale at build time (app/components/StoreShell.tsx explains why).
  */
 
 export type Locale = 'en' | 'ar';
 
 export const LOCALES: Locale[] = ['en', 'ar'];
 export const DEFAULT_LOCALE: Locale = 'en';
-
-/** The header middleware.ts uses to hand the current path to server components. */
-export const PATHNAME_HEADER = 'x-pathname';
 
 export const SITE_URL = 'https://unlimited-sw.com';
 

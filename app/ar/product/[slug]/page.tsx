@@ -1,9 +1,10 @@
 import { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { cache } from 'react';
 
-import ProductClient from '@/app/product/[slug]/ProductClient';
-import { getProductPageDataBySlug } from '@/product';
+import ProductClient from '@/app/(en)/product/[slug]/ProductClient';
+import { getProductPageData, getProductPageDataBySlug } from '@/product';
+import { getActiveProducts } from '@/product/actions';
 import { CATEGORIES, categorySlug, type CategoryKey } from '@/product/categories';
 import {
   breadcrumbJsonLd,
@@ -29,7 +30,41 @@ interface Props {
  * serve a page whose address and canonical disagree — the duplicate-content
  * problem hreflang exists to prevent.
  */
-const getPageData = cache(async (slug: string) => getProductPageDataBySlug(slug, 'ar'));
+const IS_OBJECT_ID = /^[0-9a-fA-F]{24}$/;
+
+/**
+ * Also accepts the product id, like the English page.
+ *
+ * Until 22 Oct 2026 it matched `slugAr` only — but no live product had one, so
+ * productPath() built every Arabic link (shop, home, sitemap) from the id, and
+ * every Arabic product page answered 404. A product that gains an Arabic slug
+ * is redirected to it, once, permanently.
+ */
+const getPageData = cache(async (slug: string) => {
+  if (IS_OBJECT_ID.test(slug)) {
+    const data = await getProductPageData(slug);
+    return data ? { ...data, matchedById: true } : null;
+  }
+
+  const data = await getProductPageDataBySlug(slug, 'ar');
+  return data ? { ...data, matchedById: false } : null;
+});
+
+/** Built at deploy and cached — app/(en)/product/[slug]/page.tsx explains the rules. */
+export const revalidate = 30;
+
+export async function generateStaticParams() {
+  try {
+    const products = await getActiveProducts();
+    // The same address productPath() links to: the Arabic slug, else the id.
+    return products
+      .filter((product) => product.slugAr || !product.slug)
+      .map((product) => ({ slug: productSlug(product, 'ar') }));
+  } catch (error) {
+    console.error('ar product: could not list products to pre-build', error);
+    return [];
+  }
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -69,7 +104,12 @@ export default async function ArabicProductPage({ params }: Props) {
 
   if (!data) notFound();
 
-  const { product, related } = data;
+  const { product, related, matchedById } = data;
+
+  if (matchedById && product.slugAr) {
+    permanentRedirect(`/ar/product/${product.slugAr}`);
+  }
+
   const category = product.category as CategoryKey | undefined;
   const faqs = localizedFaqs(product, 'ar');
 

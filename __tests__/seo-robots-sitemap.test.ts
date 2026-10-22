@@ -68,7 +68,7 @@ describe('sitemap', () => {
 });
 
 describe('root layout metadata', () => {
-  const source = read('app/layout.tsx');
+  const source = read('app/components/StoreShell.tsx');
 
   it('uses the agreed brand spelling', () => {
     expect(source).toContain('Unlimited SW');

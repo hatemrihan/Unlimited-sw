@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 
-import ShopClient from '@/app/shop/ShopClient';
+import ShopClient from '@/app/(en)/shop/ShopClient';
 import { getActiveProducts } from '@/product';
 import { alternatesFor, absoluteUrl } from '@/lib/locale';
 

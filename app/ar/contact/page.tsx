@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 
-import ConactClient from '@/app/contact/ConactClient';
+import ConactClient from '@/app/(en)/contact/ConactClient';
 import { alternatesFor, absoluteUrl } from '@/lib/locale';
 
 export const metadata: Metadata = {

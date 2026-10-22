@@ -20,7 +20,7 @@ import React from 'react';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CartProvider, CartItem } from '../contexts/CartContext';
-import CartPage from '../app/cart/page';
+import CartPage from '../app/(en)/cart/page';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),

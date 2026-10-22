@@ -21,20 +21,23 @@ function source(...segments: string[]): string {
   return readFileSync(join(process.cwd(), ...segments), 'utf8');
 }
 
-describe('the root layout', () => {
-  it('does not wrap the application in a SessionProvider', () => {
-    const layout = source('app', 'layout.tsx');
-
-    expect(layout).not.toMatch(/<SessionWrapper|<SessionProvider/);
+describe('the root layouts', () => {
+  // One per language, plus the shell both render (see StoreShell).
+  it.each([
+    ['app', '(en)', 'layout.tsx'],
+    ['app', 'ar', 'layout.tsx'],
+    ['app', 'components', 'StoreShell.tsx'],
+  ])('%s/%s/%s does not wrap the application in a SessionProvider', (...segments) => {
+    expect(source(...segments)).not.toMatch(/<SessionWrapper|<SessionProvider/);
   });
 });
 
 describe('the admin layout', () => {
   it('exists, and is where the session lives', () => {
-    const path = join(process.cwd(), 'app', 'admin', 'layout.tsx');
+    const path = join(process.cwd(), 'app', '(en)', 'admin', 'layout.tsx');
     expect(existsSync(path)).toBe(true);
 
-    expect(source('app', 'admin', 'layout.tsx')).toMatch(/<SessionWrapper/);
+    expect(source('app', '(en)', 'admin', 'layout.tsx')).toMatch(/<SessionWrapper/);
   });
 });
 

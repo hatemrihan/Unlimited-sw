@@ -29,7 +29,7 @@ const Products = ({ initialProducts = [], initialHasMore = false, locale = 'en' 
   const router = useRouter();
   const { addItem } = useCart();
 
-  // Product state — initialized from server, refreshed on mount
+  // Product state — initialized from the server-rendered page
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(initialHasMore);
@@ -38,31 +38,13 @@ const Products = ({ initialProducts = [], initialHasMore = false, locale = 'en' 
 
   const isMounted = useRef(true);
 
-  // Background refresh on mount — picks up stock/price changes since server render
+  // No refresh on mount. This used to re-fetch /api/products for every visitor
+  // "to pick up stock/price changes" — a function run per home-page view. The
+  // page is now built once and cleared by every order and admin edit (see
+  // product/tags.ts), at most 45 seconds old, so the products it hands down
+  // are already as fresh as that fetch was. Removed 22 Oct 2026.
   useEffect(() => {
     isMounted.current = true;
-
-    const refreshProducts = async () => {
-      try {
-        // No `cache: 'no-store'`. The endpoint is now cached server-side and
-        // tagged, so committing an order purges it everywhere within seconds —
-        // whereas `no-store` forced two MongoDB queries for every visitor to
-        // the home page, which is the page most of them land on. Stock is not
-        // read from here; the product page asks the uncached stock endpoint.
-        const res = await fetch(`/api/products?page=1&limit=6`);
-        if (!res.ok) return; // Don't override good server data with an error
-        
-        const data = await res.json();
-        if (isMounted.current && data.success && data.products?.length > 0) {
-          setProducts(data.products);
-          setHasMore(data.hasMore);
-        }
-      } catch {
-        // Silent — keep using server-rendered data
-      }
-    };
-
-    refreshProducts();
     return () => { isMounted.current = false; };
   }, []);
 
