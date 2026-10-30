@@ -46,6 +46,11 @@ export const PROFILE_FIELDS = [
   // renderer is lib/features/courses/ui/certified_chip.dart, on the coach
   // page and the coach's own profile.
   'Certified badges (courses passed)',
+  // 30 Oct 2026: the tick (`has_tick`, the head coach's switch) and the
+  // plan's description. The app drew both first (coach_profile_screen.dart,
+  // coach_program_row.dart); the web page caught up.
+  'tick',
+  'programme description',
 ] as const;
 
 export interface CoachProgramme {
@@ -53,6 +58,8 @@ export interface CoachProgramme {
   slug: string;
   titleEn: string;
   titleAr: string;
+  descriptionEn: string;
+  descriptionAr: string;
   level: string;
   durationDays: number;
   priceEgp: number;
@@ -76,6 +83,11 @@ export interface PublicCoach {
 
   followerCount: number;
   isAcceptingAthletes: boolean;
+
+  /** The blue tick beside the name. Given by the head coach, not earned
+   *  by being verified — every coach on this page is verified. */
+  hasTick: boolean;
+
   programmes: CoachProgramme[];
 
   /** Valid certificates only — the view drops revoked and expired ones. */
@@ -102,4 +114,30 @@ export function programmeTitle(
 ): string {
   const preferred = locale === 'ar' ? programme.titleAr : programme.titleEn;
   return preferred?.trim() || programme.titleEn;
+}
+
+/** The plan's description in the reader's language, else the other, else ''. */
+export function programmeDescription(
+  programme: CoachProgramme,
+  locale: 'en' | 'ar'
+): string {
+  const preferred =
+    locale === 'ar' ? programme.descriptionAr : programme.descriptionEn;
+  const other =
+    locale === 'ar' ? programme.descriptionEn : programme.descriptionAr;
+  return (preferred?.trim() || other?.trim()) ?? '';
+}
+
+/** The four values of the platform's `program_level` enum. */
+export const PROGRAMME_LEVELS = [
+  'beginner',
+  'intermediate',
+  'advanced',
+  'all',
+] as const;
+
+export type ProgrammeLevel = (typeof PROGRAMME_LEVELS)[number];
+
+export function isProgrammeLevel(level: string): level is ProgrammeLevel {
+  return (PROGRAMME_LEVELS as readonly string[]).includes(level);
 }

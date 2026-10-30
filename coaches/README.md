@@ -30,8 +30,24 @@ The coaching platform still owns the facts. This folder only asks for them.
 | `seo.ts` | Addresses, `<head>`, and the Person/ProfilePage structured data. |
 | `certifications.ts` | Courses (19 Oct 2026): the Certified badges from the view `public_certifications`, and the verdict for `/verify/<code>` from the door `verify_certificate_v1`. Reads only. |
 
-The page itself is `app/components/CoachProfile.tsx`, with a thin route
-file per language.
+The page itself lives in `app/components/coach-profile/` (redesigned
+30 Oct 2026 from two pictures Hatem picked), with a thin route file per
+language:
+
+| File | What it does |
+| --- | --- |
+| `CoachProfile.tsx` | The page: the three parts below, the JSON-LD, nav and footer. |
+| `ProfileHeader.tsx` | The top — small photo, name, tick, @handle, one big line, chips (taking athletes · talk to us · share), Certified badges. |
+| `ProfilePills.tsx` | The row of pills. Plain `#` links to cards; no JavaScript. |
+| `ProfileCards.tsx` | The wall of coloured cards, and `fillRows`, which sizes them so no row ends with a hole. |
+| `ShareChip.tsx` | The only JavaScript on the page: share sheet on a phone, copy link elsewhere. |
+| `CoachPageError.tsx` | What shows when the platform cannot be read (used by each route's `error.tsx`). |
+| `CoachProfile.module.css` | Card colours, the calm type scale (nothing above 19 px), the folder shape, motion. |
+
+**When the platform cannot be read**, `api.ts` throws instead of answering
+"no such coach". A cached page keeps serving its last good copy; a first
+visit shows "The coach page could not be loaded" with Try again. Before
+30 Oct a failed read became a 404 that the CDN kept for an hour.
 
 ### The certificate pages (courses, 19 Oct 2026)
 
@@ -53,7 +69,7 @@ desktop installers will be listed (`DESKTOP_BUILDS` in
 > **"What he sees in web, he sees also in mobile."** — Hatem, 30 Aug 2026
 
 A coach profile is one thing with two renderers. The web one is
-`app/components/CoachProfile.tsx`; the mobile one is
+`app/components/coach-profile/`; the mobile one is
 `Unlimited_app/unlimited/lib/features/coaches/ui/coach_profile_screen.dart`.
 
 The facts both must show are listed in `schema.ts` as `PROFILE_FIELDS`. A
@@ -63,8 +79,8 @@ a "for now".
 
 The two pages *look* different, and that is not a parity failure. The app
 has tabs because a signed-in athlete has business there — their coach's
-roster, their own chat. This page has one column because a stranger
-arriving from Google has none. Same facts, different furniture.
+roster, their own chat. This page is for a stranger arriving from Google,
+who has none. Same facts, different furniture.
 
 ---
 
@@ -88,7 +104,7 @@ feature the doors do not allow gets another door, not a stronger key.
 
 **It cannot sign anyone in.** No follow button, no message button, no
 review composer: every one of them needs a signed-in athlete, and the store
-holds no Supabase session. That is why the page ends with "talk to us"
+holds no Supabase session. That is why the call to action is "talk to us"
 rather than a button that opens a login the store cannot perform.
 
 **It cannot sell a programme.** Programmes are bought in the app. The cards

@@ -1,0 +1,12 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["B335MSN2N6.com.unlimitedsw.unlimited"],
+        "components": [
+          { "/": "/p/*", "comment": "A shared community post opens in the app (19 Oct 2026)." }
+        ]
+      }
+    ]
+  }
+}

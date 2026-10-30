@@ -92,6 +92,21 @@ export const ar: Record<StringKey, string> = {
   'coach.ctaTitle': 'تدرب مع هذا المدرب',
   'coach.ctaBody': 'التدريب يتم داخل تطبيق Unlimited — خطتك، متابعتك، وتواصل مباشر مع مدربك.',
   'coach.ctaButton': 'تواصل معنا',
+  'coach.headlineFallback': 'مدرب كاليسثنكس على Unlimited.',
+  'coach.tick': 'مدرب',
+  'coach.sections': 'في هذه الصفحة',
+  'coach.certificates': 'الشهادات',
+  'coach.rightNow': 'الآن',
+  'coach.rating': 'التقييم',
+  'coach.community': 'المجتمع',
+  'coach.share': 'مشاركة',
+  'coach.linkCopied': 'تم نسخ الرابط',
+  'coach.copyFailed': 'تعذّر نسخ الرابط',
+  'coach.certifiedNumber': 'رقم',
+  'coach.level.beginner': 'مبتدئ',
+  'coach.level.intermediate': 'متوسط',
+  'coach.level.advanced': 'متقدم',
+  'coach.level.all': 'كل المستويات',
 
   // ─── الشهادات (الدورات، 19 أكتوبر 2026) ──────────────────────────────────
   'verify.title': 'التحقق من الشهادة',
@@ -128,4 +143,15 @@ export const ar: Record<StringKey, string> = {
   'common.whatsapp': 'تواصل عبر واتساب',
   'common.loading': 'جارٍ التحميل…',
   'common.error': 'حدث خطأ ما. برجاء المحاولة مرة أخرى.',
+
+  // ─── منشور مُشارَك (19 أكتوبر 2026) ──────────────────────────────────────
+  'post.eyebrow': 'مجتمع Unlimited',
+  'post.title': '{name} على Unlimited',
+  'post.body': 'منشور في مجتمع Unlimited. المنشورات للأعضاء فقط — افتحه في التطبيق.',
+  'post.open': 'افتح في التطبيق',
+  'post.getAndroid': 'احصل عليه من Google Play',
+  'post.getIos': 'حمّله من App Store',
+  'post.alreadyHave': 'لديك التطبيق؟ افتح الرابط من واتساب أو الرسائل وسيفتح فيه.',
+  'post.unavailableTitle': 'هذا المنشور غير متاح',
+  'post.unavailableBody': 'ربما حُذف. افتح Unlimited لترى الجديد.',
 };

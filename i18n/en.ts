@@ -92,6 +92,21 @@ export const en = {
   'coach.ctaTitle': 'Train with this coach',
   'coach.ctaBody': 'Coaching runs inside the Unlimited app — your plan, your check-ins, and a direct line to your coach.',
   'coach.ctaButton': 'Talk to us',
+  'coach.headlineFallback': 'Calisthenics coach on Unlimited.',
+  'coach.tick': 'Coach',
+  'coach.sections': 'On this page',
+  'coach.certificates': 'Certificates',
+  'coach.rightNow': 'Right now',
+  'coach.rating': 'Rating',
+  'coach.community': 'Community',
+  'coach.share': 'Share',
+  'coach.linkCopied': 'Link copied',
+  'coach.copyFailed': 'Could not copy the link',
+  'coach.certifiedNumber': 'No.',
+  'coach.level.beginner': 'Beginner',
+  'coach.level.intermediate': 'Intermediate',
+  'coach.level.advanced': 'Advanced',
+  'coach.level.all': 'All levels',
 
   // ─── Certificates (courses, 19 Oct 2026) ──────────────────────────────────
   'verify.title': 'Certificate check',
@@ -128,6 +143,17 @@ export const en = {
   'common.whatsapp': 'Chat on WhatsApp',
   'common.loading': 'Loading…',
   'common.error': 'Something went wrong. Please try again.',
+
+  // ─── A shared post (19 Oct 2026) ─────────────────────────────────────────
+  'post.eyebrow': 'Unlimited community',
+  'post.title': '{name} on Unlimited',
+  'post.body': 'A post in the Unlimited community. Posts are for members — open it in the app.',
+  'post.open': 'Open in the app',
+  'post.getAndroid': 'Get it on Google Play',
+  'post.getIos': 'Download on the App Store',
+  'post.alreadyHave': 'Have the app? Tap the link from WhatsApp or Messages and it opens there.',
+  'post.unavailableTitle': 'This post is not available',
+  'post.unavailableBody': 'It may have been removed. Open Unlimited to see what is new.',
 } as const;
 
 export type StringKey = keyof typeof en;

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
 
-import CoachProfile from '@/app/components/CoachProfile';
+import CoachProfile from '@/app/components/coach-profile/CoachProfile';
 import { getCoachByUsername } from '@/coaches/api';
 import { coachMetadata } from '@/coaches/seo';
 

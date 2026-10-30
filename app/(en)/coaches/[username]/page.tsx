@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
 
-import CoachProfile from '@/app/components/CoachProfile';
+import CoachProfile from '@/app/components/coach-profile/CoachProfile';
 import { getCoachByUsername } from '@/coaches/api';
 import { coachMetadata } from '@/coaches/seo';
 
@@ -52,7 +52,8 @@ export default async function CoachPage({ params }: Props) {
 
   // Unverified, suspended, not a coach, or no such handle — all 404. See
   // the note in coaches/api.ts: a "pending approval" page would tell the
-  // world that somebody applied.
+  // world that somebody applied. A FAILED read throws instead and lands in
+  // error.tsx beside this file, so a database hiccup is never a cached 404.
   if (!coach) notFound();
 
   return <CoachProfile coach={coach} locale="en" />;
