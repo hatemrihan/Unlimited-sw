@@ -109,6 +109,21 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      // App links (30 Oct 2026): Apple reads this extension-less file as JSON
+      // and wants it served as JSON. public/_headers said so, but that file is
+      // Netlify's — Vercel never reads it, and served octet-stream. Both files
+      // short-cached, so a fix reaches the phones within the hour.
+      {
+        source: '/.well-known/apple-app-site-association',
+        headers: [
+          { key: 'Content-Type', value: 'application/json' },
+          { key: 'Cache-Control', value: 'public, max-age=3600' },
+        ],
+      },
+      {
+        source: '/.well-known/assetlinks.json',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=3600' }],
+      },
     ];
   },
 };
