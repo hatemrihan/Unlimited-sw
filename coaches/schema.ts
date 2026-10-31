@@ -51,6 +51,9 @@ export const PROFILE_FIELDS = [
   // coach_program_row.dart); the web page caught up.
   'tick',
   'programme description',
+  // 30 Oct 2026 (the page in tabs): the plan's cover photo, which the app's
+  // plan rows already drew (coach_program_row.dart).
+  'programme cover',
 ] as const;
 
 export interface CoachProgramme {
@@ -63,6 +66,7 @@ export interface CoachProgramme {
   level: string;
   durationDays: number;
   priceEgp: number;
+  coverUrl: string | null;
 }
 
 export interface PublicCoach {
@@ -106,6 +110,17 @@ export function headlineFor(coach: PublicCoach, locale: 'en' | 'ar'): string {
   const preferred = locale === 'ar' ? coach.headlineAr : coach.headlineEn;
   const other = locale === 'ar' ? coach.headlineEn : coach.headlineAr;
   return (preferred?.trim() || other?.trim()) ?? '';
+}
+
+/**
+ * The handle the database made up at sign-up (`user_` + the start of the
+ * account id), as opposed to one the coach chose. It is never printed on
+ * the page — Hatem, 30 Oct 2026: "for people it's a bad user experience".
+ * (Twins: unlimited-admin/lib/person-name.ts, the app's core/person_name.dart.)
+ * The page ADDRESS still uses it until coaches can choose their own.
+ */
+export function isMadeUpHandle(username: string | null | undefined): boolean {
+  return /^(user|deleted)_[0-9a-f]{8,32}$/.test(username?.trim() ?? '');
 }
 
 export function programmeTitle(

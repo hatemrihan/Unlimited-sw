@@ -16,6 +16,14 @@ type Result = { data: unknown; error: unknown };
 let coachResult: Result;
 let plansResult: Result;
 let certsResult: Result;
+let addressResult: Result;
+
+// coach_address_v1: an old page address → the current one (30 Oct 2026).
+const rpc = jest.fn((name: string, args: unknown) => {
+  expect(name).toBe('coach_address_v1');
+  expect(args).toHaveProperty('p_username');
+  return { abortSignal: () => Promise.resolve(addressResult) };
+});
 
 const from = jest.fn((table: string) => {
   if (table === 'public_coaches') {
@@ -47,7 +55,7 @@ const from = jest.fn((table: string) => {
 
 jest.mock('../coaches/supabase', () => ({
   __esModule: true,
-  coachDatabase: () => ({ from }),
+  coachDatabase: () => ({ from, rpc }),
 }));
 jest.mock('../app/sections/Nav', () => ({ __esModule: true, default: () => null }));
 jest.mock('../app/sections/Footer', () => ({ __esModule: true, default: () => null }));
@@ -60,10 +68,9 @@ jest.mock(
     )
 );
 
-import { CoachReadError, getCoachByUsername } from '../coaches/api';
+import { CoachReadError, currentAddressFor, getCoachByUsername } from '../coaches/api';
 import type { PublicCoach } from '../coaches/schema';
 import CoachProfile from '../app/components/coach-profile/CoachProfile';
-import { fillRows } from '../app/components/coach-profile/ProfileCards';
 
 /** The row production returns for user_41493a43 today. */
 const BARE_ROW = {
@@ -93,6 +100,7 @@ const PLAN_ROW = {
   level: 'beginner',
   duration_days: 56,
   price_egp: '1200',
+  cover_image_url: 'https://example.com/plan.jpg',
 };
 
 beforeEach(() => {
@@ -100,6 +108,28 @@ beforeEach(() => {
   coachResult = { data: BARE_ROW, error: null };
   plansResult = { data: [], error: null };
   certsResult = { data: [], error: null };
+  addressResult = { data: null, error: null };
+});
+
+describe('an old page address (30 Oct 2026)', () => {
+  it('leads to the address the coach has now', async () => {
+    addressResult = { data: 'omar_gamal', error: null };
+    await expect(currentAddressFor('user_41493a43')).resolves.toBe('omar_gamal');
+  });
+
+  it('is null when the address never belonged to a coach', async () => {
+    await expect(currentAddressFor('nobody')).resolves.toBeNull();
+  });
+
+  it('never redirects an address to itself', async () => {
+    addressResult = { data: 'omar_gamal', error: null };
+    await expect(currentAddressFor('omar_gamal')).resolves.toBeNull();
+  });
+
+  it('throws when the read fails — never a cached 404', async () => {
+    addressResult = { data: null, error: { message: 'timeout' } };
+    await expect(currentAddressFor('user_41493a43')).rejects.toBeInstanceOf(CoachReadError);
+  });
 });
 
 describe('reading a coach', () => {
@@ -128,7 +158,8 @@ describe('reading a coach', () => {
     plansResult = { data: [PLAN_ROW], error: null };
     const coach = await getCoachByUsername('user_41493a43');
     expect(coach?.hasTick).toBe(true);
-    expect(coach?.displayName).toBe('user_41493a43');
+    // No name: never the made-up handle (30 Oct 2026).
+    expect(coach?.displayName).toBe('Unlimited coach');
     expect(coach?.programmes[0]).toMatchObject({
       descriptionEn: 'Pull-ups to the front lever.',
       descriptionAr: '',
@@ -137,47 +168,9 @@ describe('reading a coach', () => {
   });
 });
 
-describe('the wall has no holes', () => {
-  const rowsEndFull = (spans: number[], columns: number, firstRow = columns) => {
-    let free = firstRow;
-    for (const span of spans) {
-      if (span > free) return false;
-      free -= span;
-      if (free === 0) free = columns;
-    }
-    return free === columns;
-  };
-
-  it('the bare coach: rating, followers, one plan fill row two exactly', () => {
-    expect(fillRows([1, 1, 1], 4, 3)).toEqual([1, 1, 1]);
-    expect(fillRows([1, 1, 1, 1], 2)).toEqual([1, 1, 1, 1]);
-  });
-
-  it('a cover that does not fit stretches the card before it', () => {
-    // Wide: plan 2 and the cover share row three; the cover takes the rest.
-    expect(fillRows([1, 1, 1, 1, 2], 4, 3)).toEqual([1, 1, 1, 1, 3]);
-    // Phone: plan 2 would sit alone beside a hole, so it goes full width.
-    expect(fillRows([1, 1, 1, 1, 1, 2], 2)).toEqual([1, 1, 1, 1, 2, 2]);
-  });
-
-  it('ends every row full, whatever the coach filled in', () => {
-    for (let plans = 1; plans <= 7; plans++) {
-      for (let certs = 0; certs <= 3; certs++) {
-        for (const cover of [false, true]) {
-          const widths = [1, 1, ...Array(plans + certs).fill(1), ...(cover ? [2] : [])];
-          expect(rowsEndFull(fillRows(widths, 4, 3), 4, 3)).toBe(true);
-          expect(rowsEndFull(fillRows([1, ...widths], 2), 2)).toBe(true);
-        }
-      }
-    }
-  });
-});
-
-/** Every "#x" a pill points at has a card with id="x". */
-function pillsLand(html: string) {
-  const targets = [...html.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]);
-  const ids = new Set([...html.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]));
-  return { targets, missing: targets.filter((target) => !ids.has(target)) };
+/** The sections on the page, in order (plain text, no tabs — 30 Oct 2026). */
+function sections(html: string) {
+  return [...html.matchAll(/<section id="([^"]+)"/g)].map((m) => m[1]);
 }
 
 function linkCount(html: string) {
@@ -191,14 +184,17 @@ describe('the page', () => {
 
     expect(html).toContain('Calisthenics coach on Unlimited.');
     expect(html).toContain('Taking new athletes');
-    expect(html).toContain('No programmes published yet.');
-    expect(html).toContain('No reviews yet');
+    expect(html).toContain('No plans on sale yet.');
+    expect(html).toContain('No ratings yet. Athletes rate a coach in the app');
     expect(html).not.toContain('data-testid="certified"');
     expect(html).not.toContain('data-testid="coach-tick"');
+    // The made-up handle is never printed on the page (30 Oct 2026).
+    expect(html).not.toContain('user_41493a43</span>');
+    expect(html).not.toContain('>@user_41493a43');
 
-    const { targets, missing } = pillsLand(html);
-    expect(targets).toEqual(['about', 'plans', 'train']);
-    expect(missing).toEqual([]);
+    expect(sections(html)).toEqual(['plans', 'ratings']);
+    // No tabs, no hidden panels: everything is plain text on the page.
+    expect(html).not.toContain('role="tab');
   });
 
   it('shows a full coach in Arabic, and the plans are not links', async () => {
@@ -248,13 +244,17 @@ describe('the page', () => {
     expect(html).toContain('Pull-ups to the front lever.');
     expect(html).toContain('Unlimited Certified · الأساسيات');
     expect(html).toContain('https://example.com/cover.jpg');
+    // The plan's own cover, and both plans written out.
+    expect(html).toContain('https://example.com/plan.jpg');
+    // Every plan opens its own page, in the reader's language.
+    expect(html).toContain('href="/ar/coaches/user_41493a43/plans/plan-1"');
+    expect(html).toContain('href="/ar/coaches/user_41493a43/plans/plan-2"');
 
-    const { targets, missing } = pillsLand(html);
-    expect(targets).toEqual(['about', 'plans', 'certificates', 'train']);
-    expect(missing).toEqual([]);
+    expect(sections(html)).toEqual(['plans', 'ratings', 'certificates']);
 
-    // The only links: four pills, "talk to us" in the chips, and the
-    // Train card's button. Two plans on the page, zero plan links.
-    expect(linkCount(html)).toBe(targets.length + 2);
+    // Links: Home, "talk to us", the two plans. Pictures are not links: they grow on the page.
+    expect(linkCount(html)).toBe(4);
+    expect(html).not.toContain(`target="_blank"`);
+    expect(html).not.toContain('Download app');
   });
 });

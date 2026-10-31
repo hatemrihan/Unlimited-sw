@@ -63,6 +63,17 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: `${process.env.ALKADY_AWS_S3_BUCKET_NAME}.s3.${process.env.ALKADY_AWS_REGION}.amazonaws.com`,
       },
+      // Product photos the head coach adds from the phone (31 Oct 2026):
+      // the public `shop-images` bucket, and nothing else of Supabase's.
+      ...(supabaseOrigin
+        ? [
+            {
+              protocol: 'https' as const,
+              hostname: new URL(supabaseOrigin).hostname,
+              pathname: '/storage/v1/object/public/shop-images/**',
+            },
+          ]
+        : []),
     ],
     // 75 is the default for every image; 90 is the before/after slider in
     // Explore, which used to ask for 100 (several MB per image, no visible gain).

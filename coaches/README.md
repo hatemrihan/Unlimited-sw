@@ -36,13 +36,15 @@ language:
 
 | File | What it does |
 | --- | --- |
-| `CoachProfile.tsx` | The page: the three parts below, the JSON-LD, nav and footer. |
-| `ProfileHeader.tsx` | The top — small photo, name, tick, @handle, one big line, chips (taking athletes · talk to us · share), Certified badges. |
-| `ProfilePills.tsx` | The row of pills. Plain `#` links to cards; no JavaScript. |
-| `ProfileCards.tsx` | The wall of coloured cards, and `fillRows`, which sizes them so no row ends with a hole. |
-| `ShareChip.tsx` | The only JavaScript on the page: share sheet on a phone, copy link elsewhere. |
+| `CoachProfile.tsx` | The page: the two parts below, the JSON-LD, nav and footer. Plain text, no tabs, no cards, no boxes (Hatem, 30 Oct). |
+| `ProfileHeader.tsx` | Short cover, photo, taking-athletes line, name, tick, headline, two text links (talk to us · share). |
+| `ProfilePanels.tsx` | Every section as text, one under the other: About (bio, rating, followers), Plans (name, length · level · price, description, cover), Certificates, Download app. |
+| `ShareChip.tsx` | Share sheet on a phone, copy link elsewhere. |
 | `CoachPageError.tsx` | What shows when the platform cannot be read (used by each route's `error.tsx`). |
-| `CoachProfile.module.css` | Card colours, the calm type scale (nothing above 19 px), the folder shape, motion. |
+| `CoachProfile.module.css` | No colours — stone and grey; the calm type scale (nothing above 19 px), the tab bar's shape, motion. |
+
+**"Download app"** goes nowhere and reads "Soon" until
+`NEXT_PUBLIC_APP_DOWNLOAD_URL` is set on Vercel (`coaches/posts.ts`).
 
 **When the platform cannot be read**, `api.ts` throws instead of answering
 "no such coach". A cached page keeps serving its last good copy; a first

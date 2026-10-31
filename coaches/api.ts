@@ -36,7 +36,7 @@
 
 import { certificationsFor } from './certifications';
 import { coachDatabase } from './supabase';
-import type { CoachProgramme, PublicCoach } from './schema';
+import { isMadeUpHandle, type CoachProgramme, type PublicCoach } from './schema';
 
 /**
  * Everything a coach page shows, in one row.
@@ -104,7 +104,7 @@ export async function getCoachByUsername(
       supabase
         .from('plans')
         .select(
-          'id, slug, title_en, title_ar, description_en, description_ar, level, duration_days, price_egp'
+          'id, slug, title_en, title_ar, description_en, description_ar, level, duration_days, price_egp, cover_image_url'
         )
         .eq('coach_id', coach.coach_id)
         // The one rule the policy does NOT hold (30 Oct 2026): it never looks
@@ -129,7 +129,8 @@ export async function getCoachByUsername(
     coachId: coach.coach_id,
     profileId: coach.profile_id,
     username: coach.username,
-    displayName: coach.display_name?.trim() || coach.username,
+    // A made-up `user_…` handle is never a coach's name on the page.
+    displayName: coach.display_name?.trim() || (isMadeUpHandle(coach.username) ? 'Unlimited coach' : coach.username),
     avatarUrl: coach.avatar_url,
     coverUrl: coach.cover_image_url,
     headlineEn: coach.headline_en,
@@ -156,6 +157,7 @@ export async function getCoachByUsername(
         level: programme.level,
         durationDays: programme.duration_days,
         priceEgp: Number(programme.price_egp),
+        coverUrl: programme.cover_image_url ?? null,
       })
     ),
     certifications,
@@ -176,4 +178,22 @@ export async function listCoachUsernames(): Promise<string[]> {
   return (data ?? [])
     .map((row) => row.username)
     .filter((username): username is string => Boolean(username));
+}
+
+/**
+ * An OLD page address → the coach's current one (30 Oct 2026, Supabase
+ * migration 20261030150200 `coach_address_v1`). A coach who changes his
+ * address keeps every link he ever shared — the made-up /coaches/user_…
+ * one included. Null when the address never belonged to a coach this
+ * store shows. A failed read throws, like the page read: never a cached 404.
+ */
+export async function currentAddressFor(username: string): Promise<string | null> {
+  const supabase = coachDatabase();
+
+  const { data, error } = await supabase
+    .rpc('coach_address_v1', { p_username: username })
+    .abortSignal(AbortSignal.timeout(READ_TIMEOUT_MS));
+
+  if (error) throw new CoachReadError('the coach’s address', error);
+  return typeof data === 'string' && data && data !== username ? data : null;
 }
