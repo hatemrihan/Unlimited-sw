@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { cache } from 'react';
 
 import CoachProfile from '@/app/components/coach-profile/CoachProfile';
-import { getCoachByUsername } from '@/coaches/api';
-import { coachMetadata } from '@/coaches/seo';
+import { currentAddressFor, getCoachByUsername } from '@/coaches/api';
+import { coachMetadata, coachPath } from '@/coaches/seo';
 
 interface Props {
   params: Promise<{ username: string }>;
@@ -54,7 +54,13 @@ export default async function CoachPage({ params }: Props) {
   // the note in coaches/api.ts: a "pending approval" page would tell the
   // world that somebody applied. A FAILED read throws instead and lands in
   // error.tsx beside this file, so a database hiccup is never a cached 404.
-  if (!coach) notFound();
+  if (!coach) {
+    // An address the coach used to have: send the visitor to his page as
+    // it is called now (308, so search engines move the link too).
+    const moved = await currentAddressFor(decodeURIComponent(username));
+    if (moved) permanentRedirect(coachPath(moved, 'en'));
+    notFound();
+  }
 
   return <CoachProfile coach={coach} locale="en" />;
 }

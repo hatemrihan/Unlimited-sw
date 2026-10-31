@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { cache } from 'react';
 
 import CoachProfile from '@/app/components/coach-profile/CoachProfile';
-import { getCoachByUsername } from '@/coaches/api';
-import { coachMetadata } from '@/coaches/seo';
+import { currentAddressFor, getCoachByUsername } from '@/coaches/api';
+import { coachMetadata, coachPath } from '@/coaches/seo';
 
 interface Props {
   params: Promise<{ username: string }>;
@@ -43,7 +43,12 @@ export default async function ArabicCoachPage({ params }: Props) {
   const { username } = await params;
   const coach = await getCoach(username);
 
-  if (!coach) notFound();
+  if (!coach) {
+    // An old address of his: redirect to the one he has now (see the English twin).
+    const moved = await currentAddressFor(decodeURIComponent(username));
+    if (moved) permanentRedirect(coachPath(moved, 'ar'));
+    notFound();
+  }
 
   return <CoachProfile coach={coach} locale="ar" />;
 }

@@ -32,6 +32,11 @@ export function coachPath(username: string, locale: Locale): string {
   return locale === 'ar' ? `/ar/coaches/${handle}` : `/coaches/${handle}`;
 }
 
+/** One plan of a coach's, by its id (a slug is only unique per coach). */
+export function planPath(username: string, planId: string, locale: Locale): string {
+  return `${coachPath(username, locale)}/plans/${encodeURIComponent(planId)}`;
+}
+
 /**
  * The description Google shows under the link.
  *

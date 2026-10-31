@@ -1,27 +1,33 @@
 import Link from 'next/link';
-import { Award, BadgeCheck, MessageCircle } from 'lucide-react';
+import { BadgeCheck, Star } from 'lucide-react';
 
 import { t } from '@/i18n';
 import { absoluteUrl, type Locale } from '@/lib/locale';
-import { certifiedBadge } from '@/coaches/certifications';
 import { coachPath } from '@/coaches/seo';
-import { headlineFor, type PublicCoach } from '@/coaches/schema';
+import { headlineFor, isMadeUpHandle, type PublicCoach } from '@/coaches/schema';
 
 import ShareChip from './ShareChip';
+import ZoomImage from './ZoomImage';
 import styles from './CoachProfile.module.css';
 
-/** The outlined chip: a link or a button in the first row. */
-const CHIP =
-  'inline-flex items-center gap-1.5 rounded-full border border-white/15 px-3 py-1.5 text-stone-200 transition-colors hover:border-white/30 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white';
+/** A plain text link: no border, no fill. */
+const LINK = 'transition-colors hover:text-white';
 
 /**
- * The top of the page — the first picture: a small photo, the name and
- * @handle on one line, ONE big line under it, then the chips.
+ * The top — Hatem's course-page picture (30 Oct 2026, fourth round):
  *
- * Row one is what a visitor can do or needs to know first: is this coach
- * taking athletes, talk to us, share. Row two is quiet, filled chips — the
- * Certified badges, one per course passed (decision D7). They are read from
- * a view, so a revoked certificate disappears without a deploy.
+ *   Home / Coaches / Name                         Talk to us · Share
+ *   [ wide cover ······························ 12 reviews ★ 4.8 ]
+ *   [photo]  ← big, over the cover's corner
+ *   Coach on Unlimited                       (the picture's "A course by")
+ *   Name ✓                                   (the picture's title)
+ *   his headline                             (one quiet line)
+ *   ● Taking new athletes · 1,500 followers
+ *   his bio, as normal paragraphs            (the picture's description)
+ *
+ * Every picture opens whole, in a new tab, when tapped. Plain <img>s, not
+ * next/image: the platform's storage is not a configured image host, and
+ * every Vercel transformation counts against the free 5,000 a month.
  */
 export default function ProfileHeader({
   coach,
@@ -30,128 +36,139 @@ export default function ProfileHeader({
   coach: PublicCoach;
   locale: Locale;
 }) {
+  const numbers = locale === 'ar' ? 'ar-EG' : 'en-GB';
   const contactPath = locale === 'ar' ? '/ar/contact' : '/contact';
-  // A coach who wrote no headline still gets a line, never a hole.
-  const headline =
-    headlineFor(coach, locale) || t(locale, 'coach.headlineFallback');
+  const homePath = locale === 'ar' ? '/ar' : '/';
+  const headline = headlineFor(coach, locale) || t(locale, 'coach.headlineFallback');
+  const bio = coach.bio?.trim();
+  const rated = coach.averageRating !== null && coach.reviewCount > 0;
 
   return (
-    <header className="max-w-[560px]">
-      <Avatar coach={coach} />
+    <header>
+      <nav className={`${styles.fine} mb-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 text-stone-500`}>
+        <span className="flex min-w-0 items-center gap-2">
+          <Link href={homePath} className={LINK}>
+            {t(locale, 'breadcrumb.home')}
+          </Link>
+          <span aria-hidden className="text-stone-700">/</span>
+          <span>{t(locale, 'coach.breadcrumb')}</span>
+          <span aria-hidden className="text-stone-700">/</span>
+          <span className="truncate text-stone-300">{coach.displayName}</span>
+        </span>
+        <span className="flex items-center gap-2">
+          <Link href={contactPath} className={LINK}>
+            {t(locale, 'coach.ask')}
+          </Link>
+          <span aria-hidden className="text-stone-700">·</span>
+          <ShareChip
+            url={absoluteUrl(coachPath(coach.username, locale))}
+            title={coach.displayName}
+            className={LINK}
+            words={{
+              share: t(locale, 'coach.share'),
+              copied: t(locale, 'coach.linkCopied'),
+              failed: t(locale, 'coach.copyFailed'),
+            }}
+          />
+        </span>
+      </nav>
 
-      <div className={`${styles.item} mt-4 flex flex-wrap items-center gap-x-1.5 gap-y-0.5`}>
-        <h1 className="font-semibold text-white">{coach.displayName}</h1>
-        {coach.hasTick && (
-          <BadgeCheck
-            role="img"
-            aria-label={t(locale, 'coach.tick')}
-            data-testid="coach-tick"
-            className="h-4 w-4 shrink-0 text-sky-400"
+      {/* The cover. No cover: a calm stone field, so the photo still has a corner to sit on. */}
+      <div className="relative aspect-[16/9] overflow-hidden rounded-2xl bg-gradient-to-br from-stone-800 to-stone-800/40 sm:aspect-[2/1]">
+        {coach.coverUrl && (
+          <ZoomImage
+            src={coach.coverUrl}
+            alt=""
+            priority
+            closeLabel={t(locale, 'coach.close')}
+            wrapperClassName="absolute inset-0 h-full w-full"
+            className="h-full w-full object-cover"
           />
         )}
-        <span dir="ltr" className="text-stone-500">
-          @{coach.username}
-        </span>
+        {rated && (
+          <p
+            className={`${styles.fine} pointer-events-none absolute bottom-3 end-3 flex items-center gap-2 rounded-full bg-stone-950/60 px-3 py-1.5 text-white backdrop-blur`}
+          >
+            <span className="opacity-80">
+              {coach.reviewCount.toLocaleString(numbers)}{' '}
+              {t(locale, coach.reviewCount === 1 ? 'coach.ratingOne' : 'coach.ratingMany')}
+            </span>
+            <span className="flex items-center gap-1 font-medium tabular-nums">
+              <Star aria-hidden className="h-3.5 w-3.5 fill-amber-300 text-amber-300" />
+              {coach.averageRating!.toFixed(1)}
+            </span>
+          </p>
+        )}
       </div>
 
-      <p className={`${styles.title} mt-2 max-w-[30ch] text-stone-100`}>
-        {headline}
-      </p>
+      <div className="px-2 sm:px-6">
+        <Photo coach={coach} closeLabel={t(locale, 'coach.close')} />
 
-      <div className={`${styles.fine} mt-5 flex flex-wrap gap-2`}>
-        <StatusChip open={coach.isAcceptingAthletes} locale={locale} />
+        <p className={`${styles.fine} mt-5 text-stone-500`}>
+          {t(locale, 'coach.onUnlimited')}
+        </p>
 
-        <Link href={contactPath} className={CHIP}>
-          <MessageCircle aria-hidden className="h-3.5 w-3.5" />
-          {t(locale, 'coach.ctaButton')}
-        </Link>
+        <div className="mt-1 flex flex-wrap items-center gap-x-2">
+          <h1 className={`${styles.title} font-medium text-white`}>{coach.displayName}</h1>
+          {coach.hasTick && (
+            <BadgeCheck
+              role="img"
+              aria-label={t(locale, 'coach.tick')}
+              data-testid="coach-tick"
+              className="h-[18px] w-[18px] shrink-0 text-sky-400"
+            />
+          )}
+          {/* Only a handle the coach chose; never the made-up `user_…` one. */}
+          {!isMadeUpHandle(coach.username) && (
+            <span dir="ltr" className={`${styles.item} text-stone-500`}>
+              @{coach.username}
+            </span>
+          )}
+        </div>
 
-        <ShareChip
-          url={absoluteUrl(coachPath(coach.username, locale))}
-          title={coach.displayName}
-          className={CHIP}
-          words={{
-            share: t(locale, 'coach.share'),
-            copied: t(locale, 'coach.linkCopied'),
-            failed: t(locale, 'coach.copyFailed'),
-          }}
-        />
+        <p className={`${styles.lead} mt-1 text-stone-300`}>{headline}</p>
+
+        <p className={`${styles.fine} mt-3 flex flex-wrap items-center gap-x-2 text-stone-500`}>
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              aria-hidden
+              className={`h-1.5 w-1.5 rounded-full ${coach.isAcceptingAthletes ? 'bg-emerald-400' : 'bg-stone-600'}`}
+            />
+            {t(locale, coach.isAcceptingAthletes ? 'coach.accepting' : 'coach.notAccepting')}
+          </span>
+          <span aria-hidden>·</span>
+          <span>
+            {coach.followerCount.toLocaleString(numbers)} {t(locale, 'coach.followers')}
+          </span>
+        </p>
+
+        {bio && (
+          <p className={`${styles.body} mt-6 max-w-[62ch] whitespace-pre-line text-stone-400`}>
+            {bio}
+          </p>
+        )}
       </div>
-
-      {coach.certifications.length > 0 && (
-        <ul
-          className={`${styles.fine} mt-2 flex flex-wrap gap-2`}
-          data-testid="certified"
-        >
-          {coach.certifications.map((certification) => (
-            <li
-              key={certification.courseId}
-              className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.07] px-3 py-1.5 text-stone-400"
-            >
-              <Award aria-hidden className="h-3.5 w-3.5" />
-              {certifiedBadge(certification, locale)}
-            </li>
-          ))}
-        </ul>
-      )}
     </header>
   );
 }
 
-/**
- * The photo, 56 px. Above the fold, so it loads first (`fetchPriority`).
- *
- * A plain <img>, not next/image: these files live on the coaching
- * platform's storage, whose hostname this repo does not configure, and
- * every Vercel image transformation counts against the free 5,000 a month.
- */
-function Avatar({ coach }: { coach: PublicCoach }) {
+/** The photo: big, over the cover's corner, ringed in the page's stone. */
+function Photo({ coach, closeLabel }: { coach: PublicCoach; closeLabel: string }) {
+  const shape =
+    'relative -mt-12 h-24 w-24 rounded-2xl ring-4 ring-stone-900 sm:-mt-14 sm:h-28 sm:w-28';
+
   if (!coach.avatarUrl) {
-    return (
-      <div
-        aria-hidden
-        className={`${styles.avatarBlank} h-14 w-14 rounded-full`}
-      />
-    );
+    return <div aria-hidden className={`${shape} bg-stone-700`} />;
   }
 
   return (
-    <img
+    <ZoomImage
       src={coach.avatarUrl}
       alt={coach.displayName}
-      width={56}
-      height={56}
-      fetchPriority="high"
-      decoding="async"
-      className="h-14 w-14 rounded-full bg-stone-800 object-cover"
+      priority
+      closeLabel={closeLabel}
+      wrapperClassName={shape}
+      className="h-full w-full rounded-2xl bg-stone-800 object-cover"
     />
-  );
-}
-
-/**
- * "Taking new athletes" — the fact an athlete came for, so it is the first
- * chip, with the one coloured edge on the page. Not a link: it is a fact,
- * and the way to act on it is the chip beside it.
- */
-function StatusChip({ open, locale }: { open: boolean; locale: Locale }) {
-  if (!open) {
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-stone-400">
-        <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-stone-500" />
-        {t(locale, 'coach.notAccepting')}
-      </span>
-    );
-  }
-
-  return (
-    <span
-      className={`${styles.openChip} inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-white`}
-    >
-      <span aria-hidden className="relative flex h-1.5 w-1.5">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60 motion-reduce:animate-none" />
-        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
-      </span>
-      {t(locale, 'coach.accepting')}
-    </span>
   );
 }
