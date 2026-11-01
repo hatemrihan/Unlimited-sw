@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
         minAmount,
         maxDiscount,
         maxUses,
+        perCustomerLimit,
         isActive,
         validFrom,
         validUntil,
@@ -88,6 +89,7 @@ export async function POST(request: NextRequest) {
         minimumOrder: minAmount || 0,
         maximumDiscount: maxDiscount ?? undefined,
         usageLimit: maxUses || null,
+        perCustomerLimit: perCustomerLimit ?? undefined,
         usedCount: 0,
         isActive: isActive !== false,
         // The admin form has always had a "valid from" picker; until now the API
@@ -161,6 +163,7 @@ export async function GET(request: NextRequest) {
         type: promo.discountType,
         minAmount: promo.minimumOrder,
         maxUses: promo.usageLimit,
+        perCustomerLimit: promo.perCustomerLimit ?? null,
         maxDiscount: promo.maximumDiscount ?? null,
         currentUses: promo.usedCount,
         isActive: promo.isActive,

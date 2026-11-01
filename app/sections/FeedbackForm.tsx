@@ -2,6 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
+import { cleanFeedbackMessage } from './feedbackText';
+
+/** The server refuses longer messages (models/feedback.ts); the form says so first. */
+const MAX_MESSAGE_LENGTH = 500;
 
 interface FeedbackItem {
   _id: string;
@@ -21,6 +25,7 @@ const FeedbackForm = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
   const [hoveredRating, setHoveredRating] = useState(0);
   const [reviews, setReviews] = useState<FeedbackItem[]>([]);
   const [loadingReviews, setLoadingReviews] = useState(true);
@@ -56,8 +61,17 @@ const FeedbackForm = () => {
     e.preventDefault();
     if (!formData.message.trim() || !formData.name.trim() || !formData.email.trim()) return;
 
+    // The server needs a star rating. Without this the customer typed a whole
+    // review and got only "Error. Please try again."
+    if (formData.rating < 1) {
+      setSubmitStatus('error');
+      setErrorMessage('Please choose a star rating.');
+      return;
+    }
+
     setIsSubmitting(true);
     setSubmitStatus('idle');
+    setErrorMessage('');
 
     try {
       const response = await fetch('/api/feedback', {
@@ -77,11 +91,15 @@ const FeedbackForm = () => {
         setFormData({ name: '', email: '', phone: '', message: '', rating: 0 });
         setTimeout(() => window.location.reload(), 2000);
       } else {
+        // The server's own reason ("too long", "too many tries"), not a shrug.
+        const data = await response.json().catch(() => null);
         setSubmitStatus('error');
+        setErrorMessage(data?.error || '');
       }
     } catch (error) {
       console.error('Error submitting feedback:', error);
       setSubmitStatus('error');
+      setErrorMessage('');
     } finally {
       setIsSubmitting(false);
     }
@@ -130,16 +148,7 @@ const FeedbackForm = () => {
     ));
   };
 
-  // Clean message to remove email/phone/from info from old data
-  const cleanMessage = (message: string): string => {
-    // Split by common patterns and take only the actual review
-    const clean = message
-      .split(/From:/i)[0]
-      .split(/Email:/i)[0]
-      .split(/Phone:/i)[0]
-      .trim();
-    return clean || message;
-  };
+  const cleanMessage = cleanFeedbackMessage;
 
   // Extract name from old message format if not in separate field
   const extractName = (review: FeedbackItem): string => {
@@ -263,12 +272,16 @@ const FeedbackForm = () => {
                 rows={3}
                 value={formData.message}
                 onChange={handleChange}
+                maxLength={MAX_MESSAGE_LENGTH}
                 className="w-[50%] lg:w-full mx-auto lg:mx-0 px-0 py-2 bg-transparent border-0 border-b border-white/30
                   text-white text-sm placeholder-white/30 text-center lg:text-left
                   focus:border-white focus:outline-none transition-colors resize-none"
                 placeholder="Share your experience..."
                 suppressHydrationWarning
               />
+              <p className="text-[10px] text-white/30 mt-1 text-center lg:text-left" aria-live="polite">
+                {formData.message.length}/{MAX_MESSAGE_LENGTH}
+              </p>
             </div>
 
             {/* Submit */}
@@ -289,7 +302,7 @@ const FeedbackForm = () => {
               <p className="text-green-400 text-xs mt-2">✓ Submitted successfully!</p>
             )}
             {submitStatus === 'error' && (
-              <p className="text-red-400 text-xs mt-2">✗ Error. Please try again.</p>
+              <p className="text-red-400 text-xs mt-2">✗ {errorMessage || 'Error. Please try again.'}</p>
             )}
           </motion.form>
         </div>
@@ -324,7 +337,7 @@ const FeedbackForm = () => {
                     </h4>
 
                     {/* Clean Review Message */}
-                    <p className="text-white/50 text-xs leading-relaxed">
+                    <p className="text-white/50 text-xs leading-relaxed whitespace-pre-line break-words" dir="auto">
                       {message}
                     </p>
                   </motion.div>

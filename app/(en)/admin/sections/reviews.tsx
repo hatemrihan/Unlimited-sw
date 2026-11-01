@@ -54,6 +54,37 @@ const getCleanMessage = (message: string) =>
     .filter(l => !l.startsWith('From:') && !l.startsWith('Email:') && !l.startsWith('Phone:'))
     .join('\n').trim();
 
+/**
+ * The whole review, wrapped. It used to be one `truncate`d line, so anything
+ * past ~40 characters was simply hidden (fixed 30 Oct 2026). Long ones start
+ * at three lines with a toggle, so one essay doesn't stretch the table.
+ */
+const LONG_REVIEW = 160;
+
+function ReviewText({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const isLong = text.length > LONG_REVIEW;
+  return (
+    <div className="max-w-sm">
+      <p
+        className={`text-[12px] text-white/80 leading-relaxed whitespace-pre-line break-words ${isLong && !open ? 'line-clamp-3' : ''}`}
+        dir="auto"
+      >
+        {text}
+      </p>
+      {isLong && (
+        <button
+          type="button"
+          onClick={() => setOpen(v => !v)}
+          className="mt-1 text-[11px] text-white/40 underline underline-offset-2 hover:text-white/70"
+        >
+          {open ? 'عرض أقل' : 'عرض الكل'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 const renderStars = (rating: number) => (
   <div className="flex items-center gap-0.5" dir="ltr">
     {[1, 2, 3, 4, 5].map(s => (
@@ -195,11 +226,7 @@ const Reviews = () => {
       cell: ({ row }) => {
         const review = row.original as IFeedback & { name?: string };
         const msg = review.name ? review.message : getCleanMessage(review.message);
-        return (
-          <div className="text-[12px] text-white/80 max-w-xs truncate" title={msg}>
-            {msg}
-          </div>
-        );
+        return <ReviewText text={msg} />;
       },
     },
     {

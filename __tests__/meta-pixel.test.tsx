@@ -86,19 +86,13 @@ describe('the bootstrap', () => {
 
 describe('the content security policy', () => {
   const nextConfig = readFileSync(join(process.cwd(), 'next.config.ts'), 'utf8');
-  const netlifyHeaders = readFileSync(join(process.cwd(), 'public', '_headers'), 'utf8');
 
   it('allows the Meta Pixel script to load, in the Next config', () => {
     expect(nextConfig).toContain('https://connect.facebook.net');
   });
 
-  it('allows the Meta Pixel script to load, in the Netlify headers too', () => {
-    expect(netlifyHeaders).toContain('https://connect.facebook.net');
-  });
-
   it('still names its script sources rather than opening them up', () => {
     expect(nextConfig).not.toMatch(/script-src[^;"]*\*/);
-    expect(netlifyHeaders).not.toMatch(/script-src[^;]*\*/);
   });
 });
 

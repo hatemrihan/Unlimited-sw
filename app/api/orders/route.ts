@@ -139,6 +139,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Preview deployments share the PRODUCTION database (one MONGODB_URI for
+    // both on Vercel). A test order on a preview link would be a real order,
+    // with real stock taken and a real email sent — so previews never take one.
+    if (process.env.VERCEL_ENV === 'preview') {
+      return NextResponse.json(
+        { success: false, error: 'Orders are disabled on preview deployments.', code: 'ORDERS_DISABLED' },
+        { status: 503 }
+      );
+    }
+
     // Connect to database
     if (!MONGO_BYPASS) await dbConnect();
 

@@ -29,10 +29,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { useOrders, Order, OrderStatus } from '@/hooks/useOrders';
+import { useOrders, Order } from '@/hooks/useOrders';
 import { orderService } from '@/services/orderService';
 import { exportOrdersAsCSV, exportOrdersAsExcel, exportOrdersAsJSON, exportOrdersAsPDF } from '@/utils/exportOrders';
-import { getOrderColumns, ORDER_STATUSES, statusLabel } from '@/components/orders/OrderColumns';
+import { getOrderColumns } from '@/components/orders/OrderColumns';
 import { useDebounce } from '@/hooks/useDebounce';
 import { logger } from '@/utils/logger';
 import { toast } from 'sonner';
@@ -40,7 +40,6 @@ import { toast } from 'sonner';
 const COLUMN_LABELS: Record<string, string> = {
   customer_name: 'العميل',
   orderId: 'رقم الطلب',
-  status: 'الحالة',
   customer_email: 'البريد الإلكتروني',
   customer_phone: 'رقم الهاتف',
   customer_address: 'العنوان',
@@ -57,7 +56,6 @@ const COLUMN_LABELS: Record<string, string> = {
 const SORTABLE_COLUMNS: Record<string, string> = {
   orderDate: 'orderDate',
   totalAmount: 'totalAmount',
-  status: 'status',
   customer_name: 'createdAt', // no index on name; fall back to the default order
 };
 
@@ -65,26 +63,13 @@ const SORTABLE_COLUMNS: Record<string, string> = {
 const MAX_EXPORT_ROWS = 5000;
 const EXPORT_PAGE_SIZE = 100;
 
-/** What changing status does to inventory, said plainly before it happens. */
-function statusChangeWarning(order: Order, next: OrderStatus): string | null {
-  if (next === 'cancelled' && order.status !== 'cancelled') {
-    return 'هيتم إرجاع كل المنتجات دي للمخزون، ولو الطلب استخدم كود خصم هيرجع رصيد الكود كمان.';
-  }
-  if (next !== 'cancelled' && order.status === 'cancelled') {
-    return 'هيتم حجز المنتجات دي من المخزون تاني. لو الكمية مش متاحة دلوقتي، التغيير هيترفض.';
-  }
-  return null;
-}
-
 const Orders = () => {
   const {
     orders,
     loadingOrders,
     totalPages,
     totalCount,
-    updatingOrderId,
     fetchOrders,
-    updateOrderStatus,
     deleteOrder,
   } = useOrders();
 
@@ -93,7 +78,6 @@ const Orders = () => {
   const [rowSelection, setRowSelection] = useState({});
   const [globalFilter, setGlobalFilter] = useState("");
   const debouncedGlobalFilter = useDebounce(globalFilter, 300);
-  const [statusFilter, setStatusFilter] = useState<OrderStatus | ''>('');
   const [{ pageIndex, pageSize }, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 50,
@@ -103,33 +87,15 @@ const Orders = () => {
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [pendingStatusChange, setPendingStatusChange] = useState<
-    { order: Order; next: OrderStatus } | null
-  >(null);
 
   const openDeleteDialog = useCallback((order: Order) => {
     setOrderToDelete(order);
     setDeleteDialogOpen(true);
   }, []);
 
-  /**
-   * Cancelling and un-cancelling move real inventory, so they are confirmed
-   * first. Every other transition is routine and applies immediately.
-   */
-  const requestStatusChange = useCallback((order: Order, next: OrderStatus) => {
-    if (next === order.status) return;
-
-    if (statusChangeWarning(order, next)) {
-      setPendingStatusChange({ order, next });
-      return;
-    }
-
-    void updateOrderStatus(order._id, next);
-  }, [updateOrderStatus]);
-
   const columns = useMemo(
-    () => getOrderColumns({ openDeleteDialog, requestStatusChange, updatingOrderId }),
-    [openDeleteDialog, requestStatusChange, updatingOrderId]
+    () => getOrderColumns({ openDeleteDialog }),
+    [openDeleteDialog]
   );
 
   useEffect(() => {
@@ -160,15 +126,14 @@ const Orders = () => {
   useEffect(() => {
     setPagination(prev => (prev.pageIndex === 0 ? prev : { ...prev, pageIndex: 0 }));
     setRowSelection({});
-  }, [debouncedGlobalFilter, statusFilter]);
+  }, [debouncedGlobalFilter]);
 
   /** The query the server is being asked for — one place, reused by export. */
   const query = useMemo(() => ({
     search: debouncedGlobalFilter || undefined,
-    status: statusFilter || undefined,
     sortBy: sorting[0] ? SORTABLE_COLUMNS[sorting[0].id] : undefined,
     sortDir: sorting[0] ? (sorting[0].desc ? 'desc' as const : 'asc' as const) : undefined,
-  }), [debouncedGlobalFilter, statusFilter, sorting]);
+  }), [debouncedGlobalFilter, sorting]);
 
   const table = useReactTable({
     data: orders,
@@ -271,20 +236,6 @@ const Orders = () => {
     }
   };
 
-  const confirmStatusChange = async () => {
-    if (!pendingStatusChange) return;
-    const { order, next } = pendingStatusChange;
-
-    const result = await updateOrderStatus(order._id, next);
-    setPendingStatusChange(null);
-
-    // A conflict means inventory or a promo code moved while this page was open.
-    // Reload so the admin is looking at what is actually true.
-    if (!result.ok && result.isConflict) {
-      await reload();
-    }
-  };
-
   const exportScopeLabel = selectedCount > 0
     ? `يتم تصدير ${selectedCount} صف محدد`
     : `يتم تصدير كل الطلبات المطابقة (${totalCount})`;
@@ -318,34 +269,6 @@ const Orders = () => {
             onChange={(event) => setGlobalFilter(event.target.value)}
             className="w-full sm:w-[280px] bg-white/[0.02] border-white/[0.06] text-white placeholder:text-white/20 text-[12px] h-8 rounded"
           />
-
-          {/* Status filter */}
-          <DropdownMenu dir="rtl">
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center justify-center h-8 px-3 bg-white/[0.06] border border-white/[0.08] rounded text-[12px] text-white hover:bg-white/[0.1] transition-colors whitespace-nowrap">
-                {statusFilter ? statusLabel(statusFilter) : 'كل الحالات'}
-                <ChevronDown className="mr-1.5 h-3.5 w-3.5" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-[#1c1917] border-white/[0.08] shadow-xl rounded-lg min-w-[150px]">
-              <DropdownMenuItem
-                onClick={() => setStatusFilter('')}
-                className="text-[12px] text-white hover:bg-white/[0.06] focus:bg-white/[0.06] cursor-pointer"
-              >
-                كل الحالات
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-white/[0.08]" />
-              {ORDER_STATUSES.map(status => (
-                <DropdownMenuItem
-                  key={status.value}
-                  onClick={() => setStatusFilter(status.value)}
-                  className="text-[12px] text-white hover:bg-white/[0.06] focus:bg-white/[0.06] cursor-pointer"
-                >
-                  {status.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
 
           {/* Export Dropdown */}
           <DropdownMenu>
@@ -451,7 +374,7 @@ const Orders = () => {
                     colSpan={columns.length}
                     className="h-32 text-center text-[12px] text-white/40"
                   >
-                    {debouncedGlobalFilter || statusFilter
+                    {debouncedGlobalFilter
                       ? 'لا توجد طلبات مطابقة للبحث في كل الطلبات.'
                       : 'لا توجد طلبات بعد.'}
                   </TableCell>
@@ -485,38 +408,6 @@ const Orders = () => {
         </div>
       </div>
 
-      {/* Status Change Confirmation */}
-      {pendingStatusChange && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" dir="rtl">
-          <div className="bg-[#1c1917] border border-white/[0.08] rounded-xl shadow-2xl w-full max-w-md p-6">
-            <h3 className="text-[16px] font-semibold text-white mb-2">
-              تغيير حالة الطلب إلى &quot;{statusLabel(pendingStatusChange.next)}&quot;
-            </h3>
-            <p className="text-[13px] text-white/60 mb-2 leading-relaxed">
-              طلب العميل <span className="font-bold text-white">{pendingStatusChange.order.customer.name}</span> ({pendingStatusChange.order.orderId}).
-            </p>
-            <p className="text-[13px] text-amber-300/90 mb-6 leading-relaxed">
-              {statusChangeWarning(pendingStatusChange.order, pendingStatusChange.next)}
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setPendingStatusChange(null)}
-                className="px-4 py-2 bg-white/[0.06] border border-white/[0.08] text-[12px] font-medium text-white rounded hover:bg-white/[0.1] transition-colors"
-              >
-                إلغاء
-              </button>
-              <button
-                disabled={updatingOrderId === pendingStatusChange.order._id}
-                onClick={confirmStatusChange}
-                className="px-4 py-2 bg-white/[0.1] border border-white/[0.12] text-[12px] font-medium text-white rounded hover:bg-white/[0.16] transition-colors disabled:opacity-50"
-              >
-                {updatingOrderId === pendingStatusChange.order._id ? 'جاري التغيير...' : 'تأكيد'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Delete Confirmation Modal */}
       {deleteDialogOpen && orderToDelete && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" dir="rtl">
@@ -532,7 +423,7 @@ const Orders = () => {
                 : 'هيتم إرجاع كل المنتجات للمخزون، ولو الطلب استخدم كود خصم هيرجع رصيد الكود كمان.'}
             </p>
             <p className="text-[12px] text-white/40 mb-6 leading-relaxed">
-              لو العميل بس لغى الطلب، الأفضل تغيّر حالته إلى &quot;ملغي&quot; بدل الحذف — كده المخزون يرجع والسجل يفضل موجود.
+              لو العميل لغى الطلب على واتساب، احذفه من هنا عشان المنتجات ترجع للمخزون.
             </p>
             <div className="flex justify-end gap-3">
               <button

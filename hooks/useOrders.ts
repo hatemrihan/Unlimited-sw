@@ -49,8 +49,6 @@ export const useOrders = () => {
   const [loadingOrders, setLoadingOrders] = useState<boolean>(false);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [totalCount, setTotalCount] = useState<number>(0);
-  /** The order currently being updated, so the row can show its own spinner. */
-  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
 
   const fetchOrders = useCallback(async (signal?: AbortSignal, params: FetchOrdersParams = {}) => {
     try {
@@ -68,40 +66,8 @@ export const useOrders = () => {
     }
   }, []);
 
-  /**
-   * Moves an order to a new status.
-   *
-   * Returns whether it worked, and — when it did not — whether the reason was a
-   * conflict. A conflict means the server refused because the world moved on
-   * (stock was sold, a promo code filled up), so the caller reloads to show the
-   * admin what is actually true rather than leaving a stale row on screen.
-   */
-  const updateOrderStatus = useCallback(async (orderId: string, newStatus: OrderStatus) => {
-    setUpdatingOrderId(orderId);
-    try {
-      const res = await orderService.updateStatus(orderId, newStatus);
-
-      if (res.success) {
-        setOrders(prev => prev.map(order =>
-          order._id === orderId ? { ...order, status: newStatus } : order
-        ));
-        toast.success(res.message);
-        return { ok: true as const, isConflict: false };
-      }
-
-      // The server's own wording reaches the admin here — "stock changed since
-      // this page was loaded", "that promo code is fully used" — instead of the
-      // `HTTP 409` this layer used to report.
-      toast.error(res.message, { duration: res.isConflict ? 8000 : 5000 });
-      return { ok: false as const, isConflict: Boolean(res.isConflict) };
-    } catch (error) {
-      handleApiError(error, 'Error updating order status');
-      return { ok: false as const, isConflict: false };
-    } finally {
-      setUpdatingOrderId(null);
-    }
-  }, []);
-
+  // No status changes here: order status is tracked on WhatsApp (30 Oct 2026).
+  // Deleting an order is what returns its stock.
   const deleteOrder = useCallback(async (orderId: string) => {
     try {
       const res = await orderService.removeOrder(orderId);
@@ -126,9 +92,7 @@ export const useOrders = () => {
     loadingOrders,
     totalPages,
     totalCount,
-    updatingOrderId,
     fetchOrders,
-    updateOrderStatus,
     deleteOrder,
   };
 };

@@ -22,10 +22,10 @@ async function drainBoth(): Promise<{ sent: number; failed: number }> {
 /**
  * Sends the order emails that did not go out with their order.
  *
- * Called on a schedule, not by a person — see netlify/functions/drain-emails.mts.
+ * Called on a schedule, not by a person — the Vercel cron in vercel.json.
  *
  * It exists because the send cannot be trusted to the request that created the
- * order: Netlify kills the function the moment it responds, the provider is
+ * order: the server stops the function the moment it responds, the provider is
  * sometimes slow, and a customer who has paid must not be kept waiting behind
  * either. The order writes a row saying an email is owed, inside its own
  * transaction; this endpoint is what eventually pays that debt.
@@ -36,6 +36,34 @@ async function drainBoth(): Promise<{ sent: number; failed: number }> {
  * length and prefix to anyone patient enough to measure, and this endpoint is
  * reachable from the internet.
  */
+/**
+ * Vercel Cron (vercel.json): calls GET with `Authorization: Bearer $CRON_SECRET`.
+ * The retry job used to be a Netlify function, so on Vercel nothing retried a
+ * failed confirmation email (found 30 Oct 2026). Refuses until CRON_SECRET is set.
+ */
+export async function GET(request: NextRequest) {
+  const expected = process.env.CRON_SECRET;
+  if (!expected) {
+    logger.error('🔒 CRON_SECRET is not set — the scheduled email retry is off.');
+    return NextResponse.json({ success: false, error: 'Not configured' }, { status: 503 });
+  }
+
+  const bearer = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? null;
+  if (!timingSafeCompare(bearer, expected)) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    const result = sellsFromSupabase()
+      ? await drainBoth()
+      : await drainPendingEmails(sendQueuedOrderEmail);
+    return NextResponse.json({ success: true, ...result });
+  } catch (error) {
+    logger.error('❌ Scheduled email drain failed', error);
+    return NextResponse.json({ success: false, error: 'Drain failed' }, { status: 500 });
+  }
+}
+
 export async function POST(request: NextRequest) {
   const expected = process.env.DRAIN_SECRET;
 

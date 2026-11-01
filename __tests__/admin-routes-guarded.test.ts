@@ -37,6 +37,10 @@ const ADMIN_ONLY_OUTSIDE_ADMIN_DIR: Array<{ file: string; handlers: string[] }> 
   // storefront serves from. An open write endpoint on a bucket somebody else
   // pays for is a free file host, and the bill is the owner's.
   { file: 'app/api/s3-upload/route.ts', handlers: ['POST'] },
+
+  // The contact-form inbox. GET listed every name and email to anyone, live,
+  // until the 30 Oct 2026 audit. POST stays public: it is the contact form.
+  { file: 'app/api/contacts/route.ts', handlers: ['GET'] },
 ];
 
 /**

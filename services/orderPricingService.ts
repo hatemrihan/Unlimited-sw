@@ -154,7 +154,9 @@ export async function computeOrderPricing(orderData: any): Promise<PricingResult
   if (rawPromoCode) {
     const promoResponse = await validatePromo(rawPromoCode, subtotal);
     if (promoResponse.success && promoResponse.promo) {
-      discountAmount = Math.round(promoResponse.promo.discount);
+      // Never more than the goods cost: a 500 EGP code on a 300 EGP cart takes
+      // off 300, and 300 is what the order records (reports used to see 500).
+      discountAmount = Math.min(subtotal, Math.round(promoResponse.promo.discount));
       waiveShipping = Boolean(promoResponse.promo.waiveShipping);
       appliedPromoCode = promoResponse.promo.code;
     } else {

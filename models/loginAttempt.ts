@@ -21,7 +21,8 @@ export interface ILoginAttempt extends Document {
 
 const LoginAttemptSchema = new Schema(
   {
-    key: { type: String, required: true, unique: true, index: true },
+    // `unique` already creates the index; `index: true` beside it declared it twice.
+    key: { type: String, required: true, unique: true },
     failedCount: { type: Number, default: 0, min: 0 },
     firstFailedAt: { type: Date, default: Date.now },
     lockedUntil: { type: Date },

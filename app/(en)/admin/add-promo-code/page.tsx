@@ -12,6 +12,8 @@ interface PromoCode {
   type: 'percentage' | 'fixed';
   minAmount?: number;
   maxUses?: number;
+  /** Empty = no per-customer limit. Counted by phone number at checkout. */
+  perCustomerLimit?: number | null;
   isActive: boolean;
   validFrom: string;
   validUntil: string;
@@ -243,6 +245,20 @@ const AddPromoCodePage = () => {
                     placeholder="100"
                     min="1"
                   />
+                </div>
+
+                {/* Uses per customer */}
+                <div>
+                  <label className="block text-sm font-medium text-black mb-2">Uses per customer</label>
+                  <input
+                    type="number"
+                    value={newPromoCode.perCustomerLimit || ''}
+                    onChange={(e) => setNewPromoCode({...newPromoCode, perCustomerLimit: parseInt(e.target.value) || null})}
+                    className="w-full p-3 bg-white border border-gray-300 text-black focus:border-black focus:outline-none"
+                    placeholder="No limit"
+                    min="1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Counted by phone number. Leave empty for no limit.</p>
                 </div>
 
                 {/* Validity Period */}
