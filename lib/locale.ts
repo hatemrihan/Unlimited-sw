@@ -51,21 +51,33 @@ export function absoluteUrl(path: string): string {
 }
 
 /**
+ * Who a page is for (1 Nov 2026). The SHOP ships inside Egypt only, so its
+ * pages say Egypt (`ar-EG`, `en-EG`) — see lib/countries.ts for why the Gulf
+ * stays gated. COACHING is online and sold across MENA, so coach pages say
+ * only the language (`ar`, `en`): Google then offers them to an Arabic or
+ * English searcher in any country, Riyadh as much as Cairo.
+ */
+export type Reach = 'egypt' | 'everywhere';
+
+export function hreflangPair(enUrl: string, arUrl: string, reach: Reach = 'egypt') {
+  return reach === 'everywhere' ? { en: enUrl, ar: arUrl } : { 'en-EG': enUrl, 'ar-EG': arUrl };
+}
+
+/**
  * The `alternates` block for a page, given its English and Arabic paths.
  *
  * Google needs the pair to be symmetric — each URL must point at the other and
  * at itself — so both pages call this with the same two paths and differ only
  * in which one they pass as `current`.
  */
-export function alternatesFor(enPath: string, arPath: string, current: Locale) {
+export function alternatesFor(enPath: string, arPath: string, current: Locale, reach: Reach = 'egypt') {
   const enUrl = absoluteUrl(enPath);
   const arUrl = absoluteUrl(arPath);
 
   return {
     canonical: current === 'ar' ? arUrl : enUrl,
     languages: {
-      'en-EG': enUrl,
-      'ar-EG': arUrl,
+      ...hreflangPair(enUrl, arUrl, reach),
       // Which version someone gets when no language matches. English, because
       // it is the version that has been indexed since the store launched.
       'x-default': enUrl,

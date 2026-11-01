@@ -2,6 +2,9 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
 
+import { alternatesFor } from '@/lib/locale';
+import { coachPath } from '@/coaches/seo';
+
 import PlanPage from '@/app/components/coach-profile/PlanPage';
 import { getCoachByUsername } from '@/coaches/api';
 import { programmeDescription, programmeTitle } from '@/coaches/schema';
@@ -31,6 +34,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: `${programmeTitle(found.programme, 'en')} · ${found.coach.displayName}`,
     description: programmeDescription(found.programme, 'en').slice(0, 160) || undefined,
+    // The same plan in both languages, offered across MENA (1 Nov 2026).
+    alternates: alternatesFor(
+      `${coachPath(found.coach.username, 'en')}/plans/${encodeURIComponent(planId)}`,
+      `${coachPath(found.coach.username, 'ar')}/plans/${encodeURIComponent(planId)}`,
+      'en',
+      'everywhere'
+    ),
   };
 }
 

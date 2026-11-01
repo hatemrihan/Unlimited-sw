@@ -5,6 +5,7 @@ import { sellsFromSupabase } from '@/shopdb/client';
 import Product from '@/product/model';
 import { CATEGORIES, CATEGORY_KEYS } from '@/product/categories';
 import { listCoachUsernames } from '@/coaches/api';
+import { hreflangPair, type Reach } from '@/lib/locale';
 
 const baseUrl = 'https://unlimited-sw.com';
 
@@ -20,11 +21,12 @@ function bilingual(
   arPath: string,
   changeFrequency: MetadataRoute.Sitemap[number]['changeFrequency'],
   priority: number,
-  lastModified: Date = new Date()
+  lastModified: Date = new Date(),
+  reach: Reach = 'egypt'
 ): MetadataRoute.Sitemap {
   const enUrl = `${baseUrl}${enPath === '/' ? '' : enPath}`;
   const arUrl = `${baseUrl}${arPath}`;
-  const languages = { 'en-EG': enUrl, 'ar-EG': arUrl };
+  const languages = hreflangPair(enUrl, arUrl, reach);
 
   return [
     { url: enUrl, lastModified, changeFrequency, priority, alternates: { languages } },
@@ -44,7 +46,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // searching "coaching jobs Cairo" is the entire point of it living on
     // the shop. /coaches/welcome is deliberately absent — it is noindex,
     // addressed to one person who has just been approved.
-    ...bilingual('/coaches/apply', '/ar/coaches/apply', 'monthly', 0.6),
+    ...bilingual('/coaches/apply', '/ar/coaches/apply', 'monthly', 0.6, new Date(), 'everywhere'),
 
     // English-only: legal pages have no Arabic version yet, and listing a URL
     // that 404s is worse than not listing it.
@@ -67,7 +69,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const usernames = await listCoachUsernames();
     coachPages = usernames.flatMap(username =>
-      bilingual(`/coaches/${username}`, `/ar/coaches/${username}`, 'weekly', 0.7)
+      bilingual(`/coaches/${username}`, `/ar/coaches/${username}`, 'weekly', 0.7, new Date(), 'everywhere')
     );
   } catch (error) {
     console.error('sitemap: coach lookup failed', error);

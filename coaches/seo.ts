@@ -68,7 +68,7 @@ export function coachMetadata(coach: PublicCoach, locale: Locale): Metadata {
   return {
     title,
     description,
-    alternates: alternatesFor(enPath, arPath, locale),
+    alternates: alternatesFor(enPath, arPath, locale, 'everywhere'),
     openGraph: {
       title,
       description,

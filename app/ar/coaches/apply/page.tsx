@@ -10,7 +10,7 @@ const AR_PATH = '/ar/coaches/apply';
 export const metadata: Metadata = {
   title: APPLY_COPY.ar.metaTitle,
   description: APPLY_COPY.ar.metaDescription,
-  alternates: alternatesFor(EN_PATH, AR_PATH, 'ar'),
+  alternates: alternatesFor(EN_PATH, AR_PATH, 'ar', 'everywhere'),
   openGraph: {
     title: APPLY_COPY.ar.metaTitle,
     description: APPLY_COPY.ar.metaDescription,
