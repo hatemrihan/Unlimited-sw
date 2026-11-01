@@ -141,8 +141,8 @@ const Hero: FC<{ locale?: Locale }> = ({ locale = 'en' }) => {
         <h1 className="text-[2rem] sm:text-[2.5rem] md:text-[2.5rem] lg:text-[3.5rem] leading-[1.2] font-medium tracking-tight text-white mb-8 md:mb-12 uppercase drop-shadow-2xl whitespace-pre-line">
           <HeaderTypewriter
             text={tr('hero.headline')}
-            delay={300}
-            speed={70}
+            delay={0}
+            speed={22}
           />
           {/* Cursor pulse */}
           <span className="animate-pulse ml-2 font-light opacity-60">|</span>

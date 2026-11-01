@@ -14,7 +14,7 @@ import Script from 'next/script';
  * on the other. If GA is blocked — and a meaningful share of visitors do block
  * it — our funnel is unaffected.
  *
- * `afterInteractive` rather than `beforeInteractive`: nothing on the page waits
+ * `lazyOnload` (1 Nov 2026; was afterInteractive): nothing on the page waits
  * for this, and loading it early would put a third party's script in front of
  * the product images on a phone. Measurement must not cost the thing it
  * measures.
@@ -34,9 +34,9 @@ export default function GoogleAnalytics() {
     <>
       <Script
         src={`https://www.googletagmanager.com/gtag/js?id=${measurementId}`}
-        strategy="afterInteractive"
+        strategy="lazyOnload"
       />
-      <Script id="ga-init" strategy="afterInteractive">
+      <Script id="ga-init" strategy="lazyOnload">
         {`
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
