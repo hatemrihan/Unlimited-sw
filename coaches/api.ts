@@ -177,7 +177,9 @@ export async function listCoachUsernames(): Promise<string[]> {
 
   return (data ?? [])
     .map((row) => row.username)
-    .filter((username): username is string => Boolean(username));
+    // A made-up user_… address is developer-only (30 Oct 2026): the page still
+    // opens for an old link, but search engines are given only chosen names.
+    .filter((username): username is string => Boolean(username) && !isMadeUpHandle(username));
 }
 
 /**
