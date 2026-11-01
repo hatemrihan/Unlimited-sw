@@ -34,7 +34,16 @@ const HeaderTypewriter = ({ text, delay = 0, speed = 40, className = '' }: { tex
     };
   }, [text, delay, speed]);
 
-  return <span className={className}>{displayedText}</span>;
+  // The whole headline sits underneath, invisible: it holds the final size
+  // from the first paint (so nothing below jumps while letters arrive) and
+  // puts the real words in the HTML for search engines and screen readers.
+  // The typing is drawn on top of it and hidden from screen readers.
+  return (
+    <span className={`relative inline-block ${className}`}>
+      <span className="invisible">{text}</span>
+      <span aria-hidden="true" className="absolute inset-0">{displayedText}</span>
+    </span>
+  );
 };
 
 const Hero: FC<{ locale?: Locale }> = ({ locale = 'en' }) => {
