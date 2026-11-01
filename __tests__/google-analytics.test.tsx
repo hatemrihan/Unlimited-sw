@@ -51,17 +51,11 @@ describe('the tag', () => {
 
 describe('the content security policy', () => {
   const nextConfig = readFileSync(join(process.cwd(), 'next.config.ts'), 'utf8');
-  const netlifyHeaders = readFileSync(join(process.cwd(), 'public', '_headers'), 'utf8');
 
   it('allows gtag.js to load, in the Next config', () => {
+    // next.config.ts is the only copy of the policy since the move to
+    // Vercel (public/_headers was Netlify's and is gone).
     expect(nextConfig).toContain('https://www.googletagmanager.com');
-  });
-
-  it('allows gtag.js to load, in the Netlify headers too', () => {
-    // Two copies of the policy exist and both are served depending on the
-    // route. A change to one and not the other is a policy that works in
-    // development and blocks the script in production.
-    expect(netlifyHeaders).toContain('https://www.googletagmanager.com');
   });
 
   it('still names its script sources rather than opening them up', () => {
@@ -69,7 +63,6 @@ describe('the content security policy', () => {
     // An open script-src turns any injection anywhere into a full compromise,
     // and this file exists partly to make that regression visible.
     expect(nextConfig).not.toMatch(/script-src[^;"]*\*/);
-    expect(netlifyHeaders).not.toMatch(/script-src[^;]*\*/);
   });
 });
 

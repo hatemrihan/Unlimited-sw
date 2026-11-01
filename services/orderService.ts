@@ -42,22 +42,6 @@ export const orderService = {
     };
   },
 
-  updateStatus: async (orderId: string, status: Order['status']): Promise<OrderMutationResult> => {
-    try {
-      const data: any = await orderRepository.updateOrderStatus(orderId, status);
-      return { success: true, message: data?.message || 'Order status updated' };
-    } catch (e: any) {
-      logger.error(`[OrderService] Status Update Failed for Order [${orderId}]:`, e);
-      // e.message is now the server's own wording — "this code has reached its
-      // usage limit", "stock changed since this page was loaded" — not `HTTP 409`.
-      return {
-        success: false,
-        message: e?.message || 'Failed to update order status',
-        isConflict: e instanceof OrderApiError && e.isConflict,
-      };
-    }
-  },
-
   removeOrder: async (orderId: string): Promise<OrderMutationResult> => {
     try {
       const data: any = await orderRepository.deleteOrder(orderId);

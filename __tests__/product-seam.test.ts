@@ -39,8 +39,6 @@ const KNOWN_VIOLATIONS: Record<string, string> = {
     'Admin-only aggregate over city pricing, imported dynamically. Not on any customer request.',
   'services/orderCreationService.ts':
     'Dynamic import inside resolveLegacyProductIds, which is the last surviving legacy-id guard. Moves when that guard is finally deleted.',
-  'lib/cache-warmer.ts':
-    'Warms the product cache on boot. Reads the model to fill the very cache the seam serves from.',
 };
 
 function walk(dir: string, found: string[] = []): string[] {

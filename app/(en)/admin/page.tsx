@@ -38,22 +38,6 @@ function formatDate(dateStr: string | undefined): string {
   } catch { return 'غير معروف'; }
 }
 
-function statusColor(s: string) {
-  const m: Record<string, string> = {
-    delivered: 'text-green-400 bg-green-400/10', shipped: 'text-blue-400 bg-blue-400/10',
-    confirmed: 'text-amber-400 bg-amber-400/10', cancelled: 'text-red-400 bg-red-400/10',
-    pending: 'text-orange-400 bg-orange-400/10',
-  };
-  return m[s.toLowerCase()] || 'text-white/40 bg-white/[0.04]';
-}
-
-function statusAr(s: string) {
-  const m: Record<string, string> = {
-    pending: 'قيد الانتظار', confirmed: 'مؤكد', shipped: 'تم الشحن',
-    delivered: 'تم التوصيل', cancelled: 'ملغي',
-  };
-  return m[s.toLowerCase()] || s;
-}
 
 // ── Mini Bar Chart ────────────────────────────────────────────
 const MiniBarChart = memo(({ data, height = 120 }: { data: { label: string; value: number }[]; height?: number }) => {
@@ -221,7 +205,6 @@ const DashboardContent = memo(({ onNavigate }: { onNavigate: (s: string) => void
                     <span className="text-[10px] text-white/20 block">{o.createdAt}</span>
                   </div>
                   <span className="text-[12px] text-white/60 font-mono shrink-0" dir="ltr">{formatEGP(o.total)}</span>
-                  <span className={`text-[9px] px-2 py-0.5 rounded-full font-medium shrink-0 ${statusColor(o.status)}`}>{statusAr(o.status)}</span>
                 </div>
               ))}
             </div>

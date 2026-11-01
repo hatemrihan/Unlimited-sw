@@ -7,6 +7,7 @@ export interface IPromo extends Document {
   minimumOrder?: number;
   maximumDiscount?: number;
   usageLimit?: number;
+  perCustomerLimit?: number;
   usedCount: number;
   isActive: boolean;
   /** Campaign start. Absent means the code is live as soon as it is created. */
@@ -45,6 +46,14 @@ const PromoSchema = new Schema({
     min: 0
   },
   usageLimit: {
+    type: Number,
+    min: 1
+  },
+  /**
+   * Orders one phone number may place with this code (30 Oct 2026). Absent on
+   * every code made before it, which keeps them unlimited per customer.
+   */
+  perCustomerLimit: {
     type: Number,
     min: 1
   },

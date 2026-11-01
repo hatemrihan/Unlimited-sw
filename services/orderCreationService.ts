@@ -5,7 +5,7 @@ import { orderQueries } from '@/order/queries';
 import { invalidateProductCache } from '../lib/cache';
 import { revalidateProducts } from '@/product/tags';
 import { reserveStock, isValidProductId } from '@/product/inventory';
-import { incrementPromoUsage, PromoLimitError } from './promoService';
+import { incrementPromoUsage, assertPerCustomerLimit, PromoLimitError, PromoCustomerLimitError } from './promoService';
 import { enqueueOrderEmail } from './pendingEmailService';
 
 /**
@@ -172,11 +172,18 @@ export async function createOrderTransaction(
       // discount, and those were never being counted at all.
       if (appliedPromoCode) {
         try {
+          // A "first order only" style code: one phone number, N uses.
+          await assertPerCustomerLimit(appliedPromoCode, newOrder.customer?.phone ?? '', session, savedOrder?._id);
           await incrementPromoUsage(appliedPromoCode, session);
         } catch (error) {
           if (error instanceof PromoLimitError) {
             throw new Error(
               `Promo code "${appliedPromoCode}" has reached its usage limit. Please try a different code.`
+            );
+          }
+          if (error instanceof PromoCustomerLimitError) {
+            throw new Error(
+              `You have already used promo code "${appliedPromoCode}" the maximum number of times. Please remove it to continue.`
             );
           }
           throw error;

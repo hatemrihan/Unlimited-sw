@@ -106,6 +106,64 @@ export class PromoLimitError extends Error {
   }
 }
 
+/** Raised when this customer has already used the code as often as allowed. */
+export class PromoCustomerLimitError extends Error {
+  constructor(public readonly code: string) {
+    super(`You have already used promo code "${code}" the maximum number of times.`);
+    this.name = 'PromoCustomerLimitError';
+  }
+}
+
+/**
+ * Egyptian numbers arrive as 01…, +201… or 201…. The last ten digits are the
+ * same in all three, so that is what identifies a customer.
+ */
+function phoneTail(phone: string): string {
+  return String(phone || '').replace(/\D/g, '').slice(-10);
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Refuses the order if this phone number has used the code `perCustomerLimit`
+ * times already (30 Oct 2026). Codes without the field are not limited per
+ * customer. Runs in the order's transaction, before the use is claimed.
+ *
+ * Deleted orders do not count: deleting gives the use back, like the stock.
+ * `excludeOrderId` is the order being placed: the transaction has already
+ * written it, and it must not count against its own customer.
+ */
+export async function assertPerCustomerLimit(
+  code: string,
+  phone: string,
+  session?: ClientSession,
+  excludeOrderId?: unknown
+) {
+  await dbConnect();
+
+  const normalised = code.toUpperCase().trim();
+  const promo = await Promo.findOne({ code: normalised }, { perCustomerLimit: 1 }).session(session ?? null).lean<{ perCustomerLimit?: number | null }>();
+  const limit = promo?.perCustomerLimit;
+  if (!limit) return;
+
+  const tail = phoneTail(phone);
+  if (tail.length < 10) return; // the order schema already requires a phone; never guess
+
+  const Order = (await import('@/order/model')).default;
+  const used = await Order.countDocuments(
+    {
+      promoCode: normalised,
+      'customer.phone': { $regex: `${escapeRegex(tail)}$` },
+      ...(excludeOrderId ? { _id: { $ne: excludeOrderId } } : {}),
+    },
+    { session: session ?? undefined }
+  );
+
+  if (used >= limit) throw new PromoCustomerLimitError(normalised);
+}
+
 /**
  * Claims one use of a promo code.
  *

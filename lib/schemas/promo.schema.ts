@@ -35,6 +35,9 @@ const basePromoFields = {
 
   maxUses: z.number().int().positive('Usage limit must be at least 1').optional().nullable(),
 
+  /** How many orders one phone number may place with this code. Absent = no limit. */
+  perCustomerLimit: z.number().int().positive('Uses per customer must be at least 1').optional().nullable(),
+
   isActive: z.boolean().optional().default(true),
 
   validFrom: dateString,

@@ -91,18 +91,6 @@ export const orderRepository = {
     return OrdersResponseSchema.parse(data);
   },
 
-  updateOrderStatus: async (orderId: string, status: string) => {
-    const response = await fetchWithRetry(`/api/orders/${orderId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    });
-    if (!response.ok) {
-      throw await toApiError(response, 'Could not update this order.');
-    }
-    const data = await response.json();
-    return OrderActionSchema.parse(data);
-  },
 
   deleteOrder: async (orderId: string) => {
     const response = await fetchWithRetry(`/api/orders/${orderId}`, { method: 'DELETE' });
