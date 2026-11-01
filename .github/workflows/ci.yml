@@ -1,0 +1,46 @@
+# ============================================================
+# Unlimited store · CI — every push and pull request to main.
+#
+# The same commands as on the laptop: types, lint (errors fail), every jest
+# test, and a production build. Nothing here deploys (Vercel deploys main
+# on its own) and no secret is needed: the tests use an in-memory Mongo.
+# Free: public or private, GitHub gives 2,000 runner minutes a month.
+# ============================================================
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  store:
+    name: Store (Next.js)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run lint
+      - run: npx jest --ci
+      - run: npm run build
+        env:
+          # The build reads these at compile time; placeholders are enough to
+          # compile. The real values live in Vercel only.
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+          SHOP_DB: supabase
