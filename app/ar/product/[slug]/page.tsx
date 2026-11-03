@@ -1,9 +1,10 @@
 import { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { cache } from 'react';
+import { getPaymentMethods } from '@/payments/settings';
 
 import ProductClient from '@/app/(en)/product/[slug]/ProductClient';
-import { getProductPageData, getProductPageDataBySlug } from '@/product';
+import { getCurrentSlug, getProductPageData, getProductPageDataBySlug } from '@/product';
 import { getActiveProducts } from '@/product/actions';
 import { CATEGORIES, categorySlug, type CategoryKey } from '@/product/categories';
 import {
@@ -30,7 +31,10 @@ interface Props {
  * serve a page whose address and canonical disagree — the duplicate-content
  * problem hreflang exists to prevent.
  */
-const IS_OBJECT_ID = /^[0-9a-fA-F]{24}$/;
+// An id, not an address: a Mongo id (every product before 31 Oct 2026) or a
+// Supabase uuid (a product created since). The uuid used to be read as an
+// address, found nothing, and the new product's page said "not found".
+const IS_OBJECT_ID = /^(?:[0-9a-fA-F]{24}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/;
 
 /**
  * Also accepts the product id, like the English page.
@@ -100,9 +104,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ArabicProductPage({ params }: Props) {
   const { slug } = await params;
-  const data = await getPageData(decodeURIComponent(slug));
+  const address = decodeURIComponent(slug);
+  const data = await getPageData(address);
 
-  if (!data) notFound();
+  if (!data) {
+    // An address the product used to have: one permanent redirect to the
+    // address it has now (public.shop_product_slugs, 4 Nov 2026).
+    const now = await getCurrentSlug(address, 'ar');
+    if (now && now !== address) permanentRedirect(`/ar/product/${now}`);
+    notFound();
+  }
 
   const { product, related, matchedById } = data;
 
@@ -122,6 +133,10 @@ export default async function ArabicProductPage({ params }: Props) {
     { name: localized(product, 'name', 'ar'), path: `/ar/product/${productSlug(product, 'ar')}` },
   ]);
 
+  // The shop's real payment switches, for the line under the buttons.
+  const methods = await getPaymentMethods().catch(() => null);
+  const payments = methods ? { cod: methods.codEnabled, instapay: methods.instaPayEnabled } : undefined;
+
   const serializedProduct = JSON.parse(JSON.stringify(product));
   const serializedRelated = JSON.parse(JSON.stringify(related));
 
@@ -139,7 +154,7 @@ export default async function ArabicProductPage({ params }: Props) {
         </script>
       )}
 
-      <ProductClient product={serializedProduct} relatedProducts={serializedRelated} locale="ar" />
+      <ProductClient product={serializedProduct} relatedProducts={serializedRelated} payments={payments} locale="ar" />
     </>
   );
 }

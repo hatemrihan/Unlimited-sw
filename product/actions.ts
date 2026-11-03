@@ -371,6 +371,25 @@ export async function getProductPageData(
  * the English slug would render a page whose address and canonical disagree,
  * which is precisely the duplicate-content problem hreflang exists to avoid.
  */
+/**
+ * Where an old product address points now (null: nowhere). Cached and
+ * tagged with the catalogue, like every other storefront read.
+ */
+export async function getCurrentSlug(oldSlug: string, locale: 'en' | 'ar'): Promise<string | null> {
+  if (!oldSlug) return null;
+  try {
+    const read = unstable_cache(
+      async () => productQueries.currentSlugFor(oldSlug, locale),
+      ['product:moved', locale, oldSlug],
+      { tags: [PRODUCTS_TAG], revalidate: CACHE_TTL.PRODUCT_DETAIL / 1000 }
+    );
+    return await read();
+  } catch (err) {
+    console.error('[product.actions] old address read failed:', err instanceof Error ? err.message : String(err));
+    return null;
+  }
+}
+
 export async function getProductPageDataBySlug(
   slug: string,
   locale: 'en' | 'ar'

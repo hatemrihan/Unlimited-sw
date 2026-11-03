@@ -101,7 +101,7 @@ const Products = ({ initialProducts = [], initialHasMore = false, locale = 'en' 
     // instead of the variant the customer actually gets. Send them to the
     // product page to pick one.
     if (Array.isArray(product.variants) && product.variants.length > 0) {
-      router.push(`/product/${product._id}`);
+      router.push(productPath(product as any, locale));
       return;
     }
 

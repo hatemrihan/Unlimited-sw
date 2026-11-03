@@ -82,12 +82,6 @@ export default function WelcomePage({ locale }: { locale: Locale }) {
             <p>{copy.welcomeTroubleBody}</p>
           </div>
         </section>
-
-        <div className={styles.strip}>
-          <div>{copy.stripLeft}</div>
-          <div><b>{copy.stripMiddle}</b></div>
-          <div className={styles.latin}>unlimited-sw.com</div>
-        </div>
       </div>
     </div>
   );

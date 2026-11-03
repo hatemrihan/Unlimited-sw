@@ -1,255 +1,173 @@
 "use client";
 
-import { FC, useEffect, MouseEvent } from "react";
-import { useRouter } from "next/navigation";
-import Button from "@/components/Button";
-import useTextRevealAnimation from "@/hooks/UsetextRevealAnimation";
-import { motion, useInView } from "motion/react";
-import React from "react";
+/**
+ * The store's footer (redesigned 4 Nov 2026, from Hatem's Target Team
+ * footer that he liked), in OUR colours (Hatem: "pick another colour instead of blue … we have our branding"): the menu's olive (#8A855E) with warm white (#fafaf9), the name
+ * on the left, Pages / Follow on the right, the copyright line with "Made
+ * by CrazyDeveloper." (that is Hatem), and the giant faint wordmark at the
+ * bottom. Our links, our email, our socials.
+ *
+ * `id="contact"` stays: the nav's "Get in touch" scrolls here on any page.
+ *
+ * Lighter than the old one: no motion library, no reveal hook, no router
+ * clicks — plain links (next/link prefetches the pages), so the footer
+ * costs nothing until somebody scrolls to it.
+ */
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
+const EMAIL = "be.unlimited.sw@gmail.com";
 
-const navItems = [
-  {
-    href: '/about',
-    label: 'About',
-    isExternal: false
-  },
-  {
-    href: '/shop',
-    label: 'Shop',
-    isExternal: false
-  },
-  {
-    href: 'https://tomm.one',
-    label: 'Site Credit',
-    isExternal: true
-  },
-  // {
-  //   href: '/#intro',
-  //   label: 'Our Athletes',
-  //   isExternal: false
-  // },
+const PAGES = [
+  { label: "Home", href: "/" },
+  { label: "Shop", href: "/shop" },
+  { label: "Become a coach", href: "/coaches/apply" },
+  { label: "About", href: "/about" },
+  { label: "Contact", href: "/contact" },
+] as const;
 
-  {
-    href: '/policy',
-    label: 'PRIVACY POLICY',
-    isExternal: false
-  },
-  {
-    href: '/terms',
-    label: 'TERMS OF SERVICE',
-    isExternal: false
-  },
-  {
-    href: '/contact',
-    label: 'Contact',
-    isExternal: false
-  },
-  // The footer is where people look for "work with us", and it is on every
-  // page rather than only the home page.
-  {
-    href: '/coaches/apply',
-    label: 'Become a coach',
-    isExternal: false
-  },
+const LEGAL = [
+  { label: "Privacy policy", href: "/policy" },
+  { label: "Terms of service", href: "/terms" },
+] as const;
 
+const FOLLOW = [
+  { label: "Instagram", href: "https://www.instagram.com/unlimited.sw/" },
   {
-    href: 'https://www.instagram.com/unlimited.sw/',
-    label: 'Instagram',
-    isExternal: true
+    label: "Facebook",
+    href: "https://www.facebook.com/share/1AfmUmnj4f/?mibextid=wwXIfr",
   },
   {
-    href: 'https://www.facebook.com/share/1AfmUmnj4f/?mibextid=wwXIfr',
-    label: 'Facebook',
-    isExternal: true
+    label: "TikTok",
+    href: "https://www.tiktok.com/@unlimited.sw?_t=ZS-8zZ5xMelNwX&_r=1",
   },
-  {
-    href: 'https://www.tiktok.com/@unlimited.sw?_t=ZS-8zZ5xMelNwX&_r=1',
-    label: 'TikTok',
-    isExternal: true
-  },
-]
-const Footer: FC = () => {
-  const router = useRouter();
-  const { scope, entranceAnimation } = useTextRevealAnimation();
-  const footerRef = React.useRef(null);
-  const isInView = useInView(footerRef, { once: true, margin: "-100px" });
+] as const;
 
-  useEffect(() => {
-    if (isInView) {
-      entranceAnimation();
-    }
-  }, [isInView, entranceAnimation]);
-  const handleClickNavItem = (e: MouseEvent<HTMLAnchorElement>, isExternal: boolean, href: string) => {
-    if (isExternal) return; // Let external links work normally
+/** Pages that also exist in Arabic, under /ar. */
+const HAS_ARABIC = new Set([
+  "/",
+  "/shop",
+  "/coaches/apply",
+  "/about",
+  "/contact",
+]);
 
-    e.preventDefault();
+const LINK =
+  "transition-all underline-offset-4 hover:text-stone-900 hover:underline";
+const HEAD =
+  "mb-4 text-[13px] font-medium uppercase tracking-wide text-[#fafaf9]/80";
 
-    if (href.startsWith('/#')) {
-      // Handle home page hash links - navigate to home then scroll
-      const hash = href.substring(1); // Remove the leading /
-      router.push('/');
-      setTimeout(() => {
-        const target = document.querySelector(hash);
-        if (target) {
-          const headerHeight = 80;
-          const targetPosition = target.getBoundingClientRect().top + window.pageYOffset - headerHeight;
-          window.scrollTo({
-            top: targetPosition,
-            behavior: 'smooth'
-          });
-        }
-      }, 100);
-    } else if (href.startsWith('#')) {
-      // Handle current page hash links
-      const target = document.querySelector(href);
-      if (target) {
-        const headerHeight = 80;
-        const targetPosition = target.getBoundingClientRect().top + window.pageYOffset - headerHeight;
-        window.scrollTo({
-          top: targetPosition,
-          behavior: 'smooth'
-        });
-      }
-    } else if (href.startsWith('/')) {
-      // Handle internal routes - use Next.js router
-      router.push(href);
-    }
-  }
+export default function Footer() {
+  const pathname = usePathname() ?? "/";
+  const arabic = pathname === "/ar" || pathname.startsWith("/ar/");
+  const local = (href: string) =>
+    arabic && HAS_ARABIC.has(href)
+      ? href === "/"
+        ? "/ar"
+        : `/ar${href}`
+      : href;
+  const year = new Date().getFullYear();
+
   return (
-    <footer className="bg-stone-100 text-black py-12 lg:py-16" id="contact" ref={footerRef}>
-      {/* Main Footer Content */}
-      <motion.div
-        className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12"
-        initial={{ opacity: 0 }}
-        animate={isInView ? { opacity: 1 } : { opacity: 0 }}
-        transition={{ duration: 0.8, delay: 0.2 }}
-      >
-        {/* Status Indicator */}
-        <motion.div
-          className="flex items-center gap-3 mb-4"
-          initial={{ opacity: 0, x: -30 }}
-          animate={isInView ? { opacity: 1, x: 0 } : { opacity: 0, x: -30 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
-        >
-          <div className="w-3 h-3 rounded-full bg-gray-600 animate-pulse flex-shrink-0 "></div>
-          <span className="uppercase text-sm font-medium tracking-wider">UNLIMITED</span>
-        </motion.div>
-
-        {/* Main Content - iPhone Style Layout */}
-        <motion.div
-          className="space-y-6"
-          initial={{ opacity: 0, y: 30 }}
-          animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
-          transition={{ duration: 0.3, delay: 0.2 }}
-        >
-          {/* Main Heading */}
-          <motion.h2
-            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-light leading-tight"
-            initial={{ opacity: 0, y: 30 }}
-            animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
-            transition={{ duration: 0.3, delay: 0.3 }}
-          >
-            BUY FROM US  TRAIN WITH US.
-          </motion.h2>
-
-          {/* Email Button */}
-          <motion.div
-            className="pt-2"
-            initial={{ opacity: 0, y: 20 }}
-            animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-            transition={{ duration: 0.3, delay: 0.4 }}
-          >
+    <footer
+      id="contact"
+      className="relative w-full overflow-hidden bg-[#8A855E] pt-20 font-sans text-[#fafaf9] md:pt-28 lg:pt-32"
+    >
+      <div className="mx-auto max-w-[1400px] px-8 md:px-14">
+        {/* Top: the name and the email, then the link columns. */}
+        <div className="grid grid-cols-1 items-start gap-12 md:grid-cols-12 md:gap-8">
+          <div className="md:col-span-6">
+            <h2 className="max-w-md text-2xl font-normal leading-[1.3] tracking-tight sm:text-3xl lg:text-[34px]">
+              Unlimited.
+            </h2>
+            <p className="mt-3 max-w-sm text-[15px] text-[#fafaf9]/80">
+              Buy from us. Train with us.
+            </p>
             <a
-              href="mailto:be.unlimited.sw@gmail.com?subject=contact"
-              className="inline-block"
+              href={`mailto:${EMAIL}?subject=contact`}
+              className={`mt-6 inline-flex items-center gap-2 text-[15px] ${LINK}`}
             >
-              <motion.div
-                initial={{ scale: 0.9 }}
-                animate={isInView ? { scale: 1 } : { scale: 0.9 }}
-                transition={{ duration: 0.3, delay: 0.5 }}
-              >
-                <Button
-                  variant="secondary"
-                  className="text-base lg:text-lg px-6 py-3 lg:px-8 lg:py-4 bg-black text-white  hover:bg-white hover:text-black transition-all duration-300"
-                  iconAfter={
-                    <div className="w-5 h-5 lg:w-6 lg:h-6 overflow-hidden">
-                      <div className="w-10 h-5 lg:w-12 lg:h-6 flex transition-transform duration-300 group-hover/button:-translate-x-1/2">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 lg:w-6 lg:h-6 flex-shrink-0">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 19.5 15-15m0 0H8.25m11.25 0v11.25" />
-                        </svg>
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 lg:w-6 lg:h-6 flex-shrink-0">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 19.5 15-15m0 0H8.25m11.25 0v11.25" />
-                        </svg>
-                      </div>
-                    </div>
-                  }
-                >
-                  be.unlimited.sw@gmail.com
-                </Button>
-              </motion.div>
+              {EMAIL} <span aria-hidden>↗</span>
             </a>
-          </motion.div>
+          </div>
 
-          {/* Navigation - iPhone Style */}
-          <motion.div
-            className="pt-8"
-            initial={{ opacity: 0, y: 20 }}
-            animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-            transition={{ duration: 0.3, delay: 0.6 }}
-          >
-            <nav className="flex flex-col gap-4">
-              {navItems.map(({ href, label, isExternal }, index) => (
-                <motion.div
-                  key={label}
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 15 }}
-                  transition={{ duration: 0.2, delay: 0.7 + index * 0.1 }}
-                >
-                  <a
-                    href={href}
-                    onClick={(e) => handleClickNavItem(e, isExternal, href)}
-                    target={isExternal ? "_blank" : undefined}
-                    rel={isExternal ? "noopener noreferrer" : undefined}
-                    className="group"
-                  >
-                    <Button
-                      variant="text"
-                      className="text-base lg:text-lg hover:text-stone-500 transition-colors duration-300 px-0 py-2 lg:px-0 lg:py-3 relative group cursor-pointer"
+          <div className="flex flex-wrap justify-start gap-x-16 gap-y-10 md:col-span-6 md:justify-end lg:gap-x-24">
+            <nav aria-label="Pages">
+              <p className={HEAD}>Pages</p>
+              <ul className="space-y-2.5 text-[15px]">
+                {PAGES.map(({ label, href }) => (
+                  <li key={href}>
+                    <Link href={local(href)} className={LINK}>
+                      {label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+
+            <nav aria-label="Follow">
+              <p className={HEAD}>Follow</p>
+              <ul className="space-y-2.5 text-[15px]">
+                {FOLLOW.map(({ label, href }) => (
+                  <li key={label}>
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={LINK}
                     >
                       {label}
-                      {/* Underline Animation */}
-                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-black transition-all duration-300 group-hover:w-full"></span>
-                    </Button>
-                  </a>
-                </motion.div>
-              ))}
+                    </a>
+                  </li>
+                ))}
+              </ul>
             </nav>
-          </motion.div>
-        </motion.div>
-      </motion.div>
 
-      {/* Copyright */}
-      <motion.div
-        className="border-t border-white/10 mt-12 lg:mt-16"
-        initial={{ opacity: 0 }}
-        animate={isInView ? { opacity: 1 } : { opacity: 0 }}
-        transition={{ duration: 0.3, delay: 0.8 }}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <motion.p
-            className="text-black/50 text-sm text-center"
-            initial={{ opacity: 0, y: 20 }}
-            animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-            transition={{ duration: 0.3, delay: 0.9 }}
-          >
-            Copyright  UNLIMITED ™&bull; All rights reserved
-          </motion.p>
+            <nav aria-label="Legal">
+              <p className={HEAD}>Legal</p>
+              <ul className="space-y-2.5 text-[15px]">
+                {LEGAL.map(({ label, href }) => (
+                  <li key={href}>
+                    <Link href={href} className={LINK}>
+                      {label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          </div>
         </div>
-      </motion.div>
+
+        {/* Middle: copyright and the maker. */}
+        <div className="mt-16 flex flex-col items-start justify-between gap-2 border-b border-[#fafaf9]/30 pb-6 text-[13px] text-[#fafaf9]/85 sm:flex-row sm:items-center md:mt-24">
+          <p>© Copyright {year} Unlimited. All rights reserved.</p>
+          <a
+            href="https://tomm.one"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline transition-colors hover:text-stone-900 sm:pr-12 md:pr-24 lg:pr-36"
+          >
+            Made by CrazyDeveloper.
+          </a>
+        </div>
+      </div>
+
+      {/* Bottom: the giant faint wordmark, every letter whole. "UNLIMITED"
+          is nine letters to TARGET's six, so it is sized to fit the width. */}
+      <div
+        aria-hidden
+        className="pointer-events-none w-full select-none overflow-hidden pb-8 pt-6 md:pb-14 md:pt-10"
+      >
+        <div className="flex w-full items-center justify-center px-4 sm:px-6">
+          <span className="block whitespace-nowrap text-center text-[15vw] font-black leading-none tracking-tighter text-white/[0.14]">
+            UNLIMITED
+            <span className="ml-1 align-top text-[6vw] font-bold md:ml-2">
+              ™
+            </span>
+          </span>
+        </div>
+      </div>
     </footer>
   );
-};
-
-export default Footer;
+}

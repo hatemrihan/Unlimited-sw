@@ -12,9 +12,8 @@
  *
  * THE ARABIC IS A DRAFT UNTIL HATEM READS IT ALOUD.
  * It is correct MSA and it is written to be persuasive, but the sentence
- * that lands in Cairo is a judgement only he can make. The line most worth
- * arguing about is `expect.title` — «ما نتوقعه منك» is direct, and a page
- * courting people may want softer.
+ * that lands in Cairo is a judgement only he can make. The line most
+ * worth a second look is `under`.
  */
 
 export type Locale = 'en' | 'ar';
@@ -23,39 +22,12 @@ export const APPLY_COPY = {
   en: {
     metaTitle: 'Coach at Unlimited',
     metaDescription:
-      'Apply to coach at Unlimited. A small number of coaches, each ' +
-      'interviewed in person by the head coach.',
+      'Apply to coach at Unlimited. Pick an interview time with the head ' +
+      'coach and we email you the details.',
 
     eyebrow: 'Coaching applications — open',
     headline: ['One place. ', 'Coach inside the calisthenics community.'] as const,
-    under:
-      'Your athletes, your plans and your income — in one place, ' +
-      'where people already train.',
-
-    getTitle: 'What you get',
-    get1a:
-      'Athletes ready to train. A plan builder with a full video library. ' +
-      'A public profile people can find. ',
-    get1b: 'You keep most of what they pay.',
-    get2:
-      'Check-ins, messages and progress live in the app. ' +
-      'Programmes are built on the dashboard.',
-
-    expectTitle: 'What we expect',
-    terms: [
-      {
-        title: 'Answer your athletes',
-        body: 'They paid for a coach. Be there.',
-      },
-      {
-        title: 'Coach under your name',
-        body: 'Your profile is public. Your rating is earned.',
-      },
-      {
-        title: 'Meet us first',
-        body: 'One real interview with the head coach. That is the filter.',
-      },
-    ],
+    under: 'Two minutes. Pick an interview time and we email you the details.',
 
     applyTitle: 'Apply',
     fields: {
@@ -87,6 +59,7 @@ export const APPLY_COPY = {
 
     slotsLabel: 'Pick your interview',
     slotsNone: 'No times open yet. Send the form and we will email you one.',
+    slotsNoneLater: 'No times open right now. We will email you as soon as one opens.',
     slotsLoading: 'Loading the times…',
     slotsUnavailable: 'We could not load the interview times just now.',
     slotsRetry: 'Try again',
@@ -95,17 +68,15 @@ export const APPLY_COPY = {
 
     send: 'Send application',
     sending: 'Sending…',
-    sendNote: 'Your interview time is confirmed immediately upon submission. We will email you the Google Meet link and calendar invite.',
+    sendNoteBooked: 'Your time is booked the moment you send. We email you the Google Meet link and a calendar invite.',
+    sendNoteWaiting: 'No time chosen: you join the waiting list, and we email you a link to pick one.',
 
-    doneTitle: 'We received your application... You are on the waiting list',
-    doneBody: 'No open interview times were available. We will email you as soon as a slot opens.',
+    doneTitle: 'Application received. You are on the waiting list.',
+    doneBody: 'We emailed you a link to pick your interview time. Not in your inbox? Check spam.',
 
     confirmedTitle: 'Your interview is booked.',
-    confirmedBody: 'We have sent your Google Meet link and interview details to your email and calendar. See you then.',
+    confirmedBody: 'The Google Meet link and a calendar invite are on their way to your email. Not in your inbox? Check spam.',
     confirming: 'One moment…',
-
-    stripLeft: 'Applications are read by the head coach.',
-    stripMiddle: 'Interviews in person · Cairo',
 
     welcomeEyebrow: 'Approved',
     welcomeHeadline: ["You're in. ", 'Now set up your side.'] as const,
@@ -131,35 +102,12 @@ export const APPLY_COPY = {
   ar: {
     metaTitle: 'كن مدربًا في Unlimited',
     metaDescription:
-      'قدّم للتدريب في Unlimited. عدد محدود من المدربين، ويقابل المدرب ' +
-      'الأول كل واحد منهم شخصيًا.',
+      'قدّم للتدريب في Unlimited. اختر موعد مقابلة مع المدرب الأول ' +
+      'وسنرسل لك التفاصيل بالبريد.',
 
     eyebrow: 'التقديم للتدريب — مفتوح',
     headline: ['مكان واحد. ', 'درّب داخل مجتمع الكاليسثنكس.'] as const,
-    under: 'متدربوك وخططك ودخلك في مكان واحد، حيث يتدرّب الناس بالفعل.',
-
-    getTitle: 'ما تحصل عليه',
-    get1a:
-      'متدربون جاهزون للتدريب. منشئ خطط بمكتبة فيديو كاملة. ' +
-      'صفحة عامة يجدك الناس من خلالها. ',
-    get1b: 'تحتفظ بالنسبة الأكبر مما يدفعونه.',
-    get2: 'المتابعات والرسائل والتقدّم في التطبيق، والبرامج تُبنى من لوحة التحكم.',
-
-    expectTitle: 'ما نتوقعه منك',
-    terms: [
-      {
-        title: 'ترد على متدربيك',
-        body: 'دفعوا مقابل مدرب. كن حاضرًا.',
-      },
-      {
-        title: 'تدرّب باسمك',
-        body: 'صفحتك عامة، وتقييمك تكسبه بعملك.',
-      },
-      {
-        title: 'تقابلنا أولًا',
-        body: 'مقابلة حقيقية واحدة مع المدرب الأول. هذا هو الفلتر.',
-      },
-    ],
+    under: 'دقيقتان فقط. اختر موعد المقابلة وسنرسل لك التفاصيل بالبريد.',
 
     applyTitle: 'التقديم',
     fields: {
@@ -191,6 +139,7 @@ export const APPLY_COPY = {
 
     slotsLabel: 'اختر موعد المقابلة',
     slotsNone: 'لا توجد مواعيد متاحة بعد. أرسل النموذج وسنراسلك بموعد.',
+    slotsNoneLater: 'لا توجد مواعيد متاحة الآن. سنراسلك فور فتح موعد جديد.',
     slotsLoading: 'جارٍ تحميل المواعيد…',
     slotsUnavailable: 'تعذّر تحميل مواعيد المقابلات الآن.',
     slotsRetry: 'أعد المحاولة',
@@ -199,17 +148,15 @@ export const APPLY_COPY = {
 
     send: 'أرسل الطلب',
     sending: 'جارٍ الإرسال…',
-    sendNote: 'يتم تأكيد موعد مقابلتك فور إرسال الطلب، وسنرسل لك رابط Google Meet ودعوة التقويم عبر البريد.',
+    sendNoteBooked: 'يُحجز موعدك فور الإرسال، ونرسل لك رابط Google Meet ودعوة التقويم بالبريد.',
+    sendNoteWaiting: 'لم تختر موعدًا: ستنضم إلى قائمة الانتظار، ونرسل لك رابطًا لاختيار موعد.',
 
-    doneTitle: 'استلمنا طلبك... أنت في قائمة الانتظار',
-    doneBody: 'لم تكن هناك مواعيد متاحة للمقابلة حاليًا. سنراسلك بالبريد فور فتح موعد جديد.',
+    doneTitle: 'استلمنا طلبك. أنت في قائمة الانتظار.',
+    doneBody: 'أرسلنا لك رابطًا بالبريد لاختيار موعد المقابلة. لم تجده؟ راجع مجلد الرسائل غير المرغوب فيها.',
 
     confirmedTitle: 'تم حجز موعد مقابلتك.',
-    confirmedBody: 'أرسلنا رابط Google Meet وتفاصيل الموعد إلى بريدك وتقويمك. في انتظارك.',
+    confirmedBody: 'رابط Google Meet ودعوة التقويم في طريقهما إلى بريدك. لم تجدهما؟ راجع مجلد الرسائل غير المرغوب فيها.',
     confirming: 'لحظة…',
-
-    stripLeft: 'يقرأ الطلبات المدرب الأول.',
-    stripMiddle: 'المقابلات شخصية · القاهرة',
 
     welcomeEyebrow: 'تمت الموافقة',
     welcomeHeadline: ['أنت معنا. ', 'جهّز حسابك الآن.'] as const,

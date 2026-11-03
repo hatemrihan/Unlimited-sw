@@ -3,7 +3,7 @@ import dbConnect from '../lib/mongodb';
 import { productQueries } from '@/product/queries';
 import { sellsFromSupabase } from '@/shopdb/client';
 import Product from '@/product/model';
-import { CATEGORIES, CATEGORY_KEYS } from '@/product/categories';
+import { CATEGORIES, stockedCategories, type CategoryKey } from '@/product/categories';
 import { listCoachUsernames } from '@/coaches/api';
 import { hreflangPair, type Reach } from '@/lib/locale';
 
@@ -58,9 +58,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Google to crawl them wastes budget on pages that can never rank.
   ];
 
-  const categoryPages: MetadataRoute.Sitemap = CATEGORY_KEYS.flatMap(key =>
-    bilingual(`/shop/${key}`, `/ar/shop/${CATEGORIES[key].slugAr}`, 'weekly', 0.8)
-  );
+  // Only categories with something on sale (4 Nov 2026): an empty category
+  // page is "not found", and a sitemap must not send Google to it.
+  const categoryPagesFor = (keys: CategoryKey[]): MetadataRoute.Sitemap =>
+    keys.flatMap(key =>
+      bilingual(`/shop/${key}`, `/ar/shop/${CATEGORIES[key].slugAr}`, 'weekly', 0.8)
+    );
 
   // Coach pages come from the coaching platform's database, not Mongo, so they
   // get their own try/catch: that database being unreachable — or its env vars
@@ -82,7 +85,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ? await productQueries.findAllActive()
       : await (async () => {
           await dbConnect();
-          return Product.find({ isActive: true }).select('_id slug slugAr updatedAt').lean();
+          return Product.find({ isActive: true }).select('_id slug slugAr category updatedAt').lean();
         })();
 
     const productPages: MetadataRoute.Sitemap = products.flatMap((product: any) => {
@@ -95,9 +98,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       return bilingual(`/product/${enSlug}`, `/ar/product/${arSlug}`, 'weekly', 0.8, lastModified);
     });
 
+    const categoryPages = categoryPagesFor(stockedCategories(products as { category?: string | null }[]));
     return [...staticPages, ...categoryPages, ...coachPages, ...productPages];
   } catch (error) {
+    // Products unreadable: which categories are stocked is unknown too.
     console.error('Error generating sitemap for products:', error);
-    return [...staticPages, ...categoryPages, ...coachPages];
+    return [...staticPages, ...coachPages];
   }
 }

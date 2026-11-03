@@ -54,16 +54,39 @@ export default function ApplyForm({
   const [bookedFor, setBookedFor] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(Boolean(confirmToken));
 
-  const loadSlots = useCallback(() => {
-    setSlotsOk(null);
+  // `quiet` = a background refresh: the list stays on screen while it asks,
+  // and a failed refresh keeps the last good list rather than an error.
+  const loadSlots = useCallback((quiet = false) => {
+    if (!quiet) setSlotsOk(null);
     listOpenSlots(locale).then((result) => {
+      if (quiet && result.status !== 'ok') return;
       setSlots(result.slots);
       setSlotsOk(result.status === 'ok');
+      // His pick was taken by someone else meanwhile: clear it, so the
+      // button does not send a time that is gone.
+      setChosen((current) =>
+        current && !result.slots.some((s) => s.id === current && !s.isBooked) ? null : current
+      );
     });
   }, [locale]);
 
   useEffect(() => {
     loadSlots();
+  }, [loadSlots]);
+
+  // Live: the times are asked again every minute while the page is open,
+  // and the moment he comes back to the tab, so a time someone else just
+  // booked turns "Filled" before he picks it.
+  useEffect(() => {
+    const again = () => {
+      if (document.visibilityState === 'visible') loadSlots(true);
+    };
+    const timer = window.setInterval(again, 60_000);
+    document.addEventListener('visibilitychange', again);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', again);
+    };
   }, [loadSlots]);
 
   // Arriving from the email: the token is the whole message, and the time
@@ -78,7 +101,10 @@ export default function ApplyForm({
         setConfirming(false);
       })
       .catch((error) => {
-        setProblem(applyError(error, locale));
+        // From the waiting-list email he has no time yet: that is the
+        // reason he came, not an error. Only a real failure is shown red.
+        const raw = String((error as { message?: unknown })?.message ?? '');
+        setProblem(raw.includes('CHOOSE_A_TIME') ? null : applyError(error, locale));
         setConfirming(false);
         setChosen(null);
         // His first choice went while he was reading his email; offer him
@@ -206,13 +232,13 @@ export default function ApplyForm({
         // somebody to chase by hand.
         <p className={styles.tz}>
           {copy.slotsUnavailable}{' '}
-          <button type="button" className={styles.retry} onClick={loadSlots}>
+          <button type="button" className={styles.retry} onClick={() => loadSlots()}>
             {copy.slotsRetry}
           </button>
         </p>
       ) : slots.length === 0 ? (
         <p className={styles.tz}>
-          {slotsOk === null ? copy.slotsLoading : copy.slotsNone}
+          {slotsOk === null ? copy.slotsLoading : confirmToken ? copy.slotsNoneLater : copy.slotsNone}
         </p>
       ) : (
         <>
@@ -315,7 +341,7 @@ export default function ApplyForm({
         <button className={styles.go} type="submit" disabled={busy}>
           {busy ? copy.sending : `${copy.send} ↗`}
         </button>
-        <p className={styles.note}>{copy.sendNote}</p>
+        <p className={styles.note}>{chosen ? copy.sendNoteBooked : copy.sendNoteWaiting}</p>
       </div>
     </form>
   );

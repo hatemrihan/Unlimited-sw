@@ -77,6 +77,19 @@ export class SupabaseProductQueries implements ProductQueries {
     return data ? rowToProduct(data) : null;
   }
 
+  async currentSlugFor(oldSlug: string, locale: 'en' | 'ar'): Promise<string | null> {
+    const { data, error } = await shopDb()
+      .from('shop_product_slugs')
+      .select('product:shop_products(slug, slug_ar, is_active)')
+      .eq('locale', locale)
+      .eq('slug', oldSlug)
+      .maybeSingle();
+    if (error) fail(error, 'old product address');
+    const product = (data as { product?: { slug: string | null; slug_ar: string | null; is_active: boolean } | null } | null)?.product;
+    if (!product?.is_active) return null;
+    return (locale === 'ar' ? product.slug_ar || product.slug : product.slug) ?? null;
+  }
+
   async findByCategory(category: string): Promise<Product[]> {
     const { data, error } = await shopDb()
       .from('shop_products')

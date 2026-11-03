@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
+import { FEEDBACK_TAG } from '@/app/sections/feedback/reviews';
 import Feedback from '../../../../models/feedback';
 import connectToDatabase from '../../../../lib/mongodb';
 import { requireAdmin } from '../../../../lib/requireAdmin';
@@ -66,6 +68,11 @@ export async function PATCH(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    // The home page's reviews are cached on the server (app/sections/
+    // feedback/reviews.ts): an approval shows at the next visit, not in
+    // five minutes.
+    revalidateTag(FEEDBACK_TAG);
 
     return NextResponse.json({ success: true, feedback });
   } catch (error) {

@@ -1,6 +1,8 @@
 import FreeShippingOverride, { type IFreeShippingOverride } from '../models/freeShippingOverride';
 import dbConnect from './mongodb';
 import { apiCache } from './cache';
+import { sellsFromSupabase } from '@/shopdb/client';
+import { shopSwitches } from '@/shopdb/settings';
 
 /**
  * Checks whether the global free-shipping override is currently active.
@@ -100,6 +102,16 @@ export function isProductShippingWaived(
 export async function getFreeShippingStatus(): Promise<FreeShippingStatus> {
   const cached = apiCache.get<FreeShippingStatus>(STATUS_CACHE_KEY);
   if (cached !== null) return cached;
+
+  // Since the cutover (SHOP_DB=supabase, 31 Oct) the switch lives in the
+  // dashboard (/shop → Settings) and checkout prices from it. The home
+  // page's banner read the old MongoDB copy until 3 Nov 2026, so it could
+  // promise free shipping checkout no longer gave, or hide one it did.
+  if (sellsFromSupabase()) {
+    const { freeShipping } = await shopSwitches();
+    apiCache.set(STATUS_CACHE_KEY, freeShipping, CACHE_TTL_MS);
+    return freeShipping;
+  }
 
   let doc;
   try {

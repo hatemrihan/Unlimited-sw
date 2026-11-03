@@ -1,79 +1,153 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
+
 import { FALLBACK_CONTACT } from '@/payments/contact-values';
+import styles from './whatsapp/WhatsAppButton.module.css';
+import { isLightColour, WHATSAPP_TOPICS, whatsappLink } from './whatsapp/topics';
 
 /**
+ * The WhatsApp button (redesigned 3 Nov 2026, Hatem's pick: underlined,
+ * no pill, no box).
+ *
+ * "Questions?" opens four topics in Arabic; each is a real link that opens
+ * WhatsApp with its question already typed. Replaced: a pill that pulsed
+ * forever, a fake "1" badge, a hover tip that never showed, a greeting
+ * with its halves swapped, and window.open (which Instagram's and
+ * Facebook's in-app browsers block).
+ *
  * `phone` comes from the coaching platform's /settings (payments/contact.ts),
- * passed down by the page that renders this — since 7 Oct 2026 the number is
- * changed on the dashboard, logged there, and no longer typed in here.
- * International form: +201044878774.
+ * changed on the dashboard and logged there. International form.
  */
-const WhatsAppButton = ({ phone = FALLBACK_CONTACT.whatsapp }: { phone?: string }) => {
-  const [isVisible, setIsVisible] = useState(false);
+export default function WhatsAppButton({ phone = FALLBACK_CONTACT.whatsapp }: { phone?: string }) {
+  const [open, setOpen] = useState(false);
+  const [away, setAway] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const openerRef = useRef<HTMLButtonElement>(null);
+  const listId = useId();
 
+  // Close on Escape, or a tap anywhere outside the menu.
   useEffect(() => {
-    // Show the button after a short delay for better UX
-    const timer = setTimeout(() => {
-      setIsVisible(true);
-    }, 1000);
+    if (!open) return;
+    const outside = (e: PointerEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const escape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        openerRef.current?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', outside);
+    document.addEventListener('keydown', escape);
+    return () => {
+      document.removeEventListener('pointerdown', outside);
+      document.removeEventListener('keydown', escape);
+    };
+  }, [open]);
 
-    return () => clearTimeout(timer);
+  // Step aside while the feedback form is on screen: it must never cover Send.
+  useEffect(() => {
+    const form = document.getElementById('feedbackform');
+    if (!form || typeof IntersectionObserver === 'undefined') return;
+    const watch = new IntersectionObserver(([entry]) => {
+      setAway(entry.isIntersecting);
+      if (entry.isIntersecting) setOpen(false);
+    }, { threshold: 0.15 });
+    watch.observe(form);
+    return () => watch.disconnect();
   }, []);
 
-  const handleWhatsAppClick = () => {
-    const message = ' كنت حابب استفسر عن! السلام عليكم';
-    const whatsappUrl = `https://wa.me/${phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`;
-    
-    window.open(whatsappUrl, '_blank');
-  };
+  // What is behind the button? Black words over a light section, white over
+  // a dark one. Read from the page's own colours on scroll, once a frame.
+  const [onLight, setOnLight] = useState(false);
+  useEffect(() => {
+    let frame = 0;
+    const look = () => {
+      frame = 0;
+      const root = rootRef.current;
+      if (!root) return;
+      const box = root.getBoundingClientRect();
+      const x = box.left + box.width / 2;
+      const y = box.bottom - 12;
+      const under = document.elementsFromPoint(x, y).find((el) => !root.contains(el));
+      for (let el: Element | null = under ?? null; el; el = el.parentElement) {
+        const light = isLightColour(getComputedStyle(el).backgroundColor);
+        if (light !== null) {
+          setOnLight(light);
+          return;
+        }
+      }
+      setOnLight(false);
+    };
+    const later = () => {
+      if (!frame) frame = requestAnimationFrame(look);
+    };
+    look();
+    // Again once the page has settled: a link to #feedbackform scrolls
+    // after this first look, and images still loading move the sections.
+    const settle = [window.setTimeout(later, 400), window.setTimeout(later, 1500)];
+    window.addEventListener('scroll', later, { passive: true });
+    window.addEventListener('resize', later);
+    window.addEventListener('load', later);
+    return () => {
+      settle.forEach((t) => window.clearTimeout(t));
+      window.removeEventListener('load', later);
+      cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', later);
+      window.removeEventListener('resize', later);
+    };
+  }, []);
 
-  if (!isVisible) return null;
+  const links = WHATSAPP_TOPICS.map((topic) => ({ ...topic, href: whatsappLink(phone, topic.message) }));
+  // No usable number: no button, rather than a link to nowhere.
+  if (links.some((l) => !l.href)) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
-      <button
-        onClick={handleWhatsAppClick}
-        className="group flex items-center gap-3 bg-black hover:bg-green-600 text-white px-6 py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 animate-pulse"
-        aria-label="Chat with us on WhatsApp"
+    <>
+      {open && <div className={styles.scrim} aria-hidden="true" />}
+      <div
+        ref={rootRef}
+        className={`${styles.root} ${open ? styles.open : ''} ${away ? styles.away : ''} ${onLight && !open ? styles.onLight : ''}`}
+        aria-hidden={away || undefined}
       >
-        {/* WhatsApp Icon */}
-        <div className="relative">
-          <svg 
-            className="w-6 h-6" 
-            fill="currentColor" 
-            viewBox="0 0 24 24"
-          >
-            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.214-.361a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/>
-          </svg>
-          
-          {/* Notification Badge */}
-          <div className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
-            <span className="text-xs font-bold text-white">1</span>
-          </div>
-        </div>
-        
-        {/* Text */}
-        <span className="font-semibold text-sm">Text Us</span>
-        
-        {/* Hover Effect Arrow */}
-        <svg 
-          className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300" 
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
+        {open && (
+          <ul id={listId} className={styles.list} dir="rtl" lang="ar">
+            {links.map((link) => (
+              <li key={link.id}>
+                <a
+                  className={styles.topic}
+                  href={link.href!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setOpen(false)}
+                >
+                  {link.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+        <button
+          ref={openerRef}
+          type="button"
+          className={styles.opener}
+          aria-expanded={open}
+          aria-controls={listId}
+          tabIndex={away ? -1 : undefined}
+          onClick={() => setOpen((v) => !v)}
         >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-        </svg>
-      </button>
-      
-      {/* Tooltip */}
-      <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">
-        Click to chat with us on WhatsApp!
-        <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+          <span className={styles.word}>Questions?</span>
+          <span className={styles.srOnly}>{open ? 'Close WhatsApp topics' : 'Ask us on WhatsApp'}</span>
+          <svg className={styles.icon} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            {open ? (
+              <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" fill="none" />
+            ) : (
+              <path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.16-.17.2-.35.22-.64.07-.3-.15-1.26-.46-2.39-1.47-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.6.13-.14.3-.35.45-.52.15-.18.2-.3.3-.5.1-.2.05-.37-.03-.52-.07-.15-.67-1.61-.92-2.2-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.21 3.07c.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.7.63.71.22 1.36.2 1.87.12.57-.09 1.76-.72 2-1.41.25-.7.25-1.29.18-1.41-.08-.13-.28-.2-.57-.35M12.05 21.78a9.87 9.87 0 0 1-5.03-1.38l-.36-.21-3.74.98 1-3.65-.24-.37a9.86 9.86 0 0 1-1.51-5.26c0-5.45 4.44-9.88 9.89-9.88 2.64 0 5.12 1.03 6.99 2.9a9.83 9.83 0 0 1 2.89 6.99c0 5.45-4.44 9.88-9.89 9.88M20.46 3.49A11.82 11.82 0 0 0 12.05 0C5.5 0 .16 5.34.16 11.89c0 2.1.55 4.14 1.59 5.95L.06 24l6.3-1.65a11.88 11.88 0 0 0 5.69 1.45c6.55 0 11.89-5.34 11.89-11.89a11.82 11.82 0 0 0-3.48-8.42" />
+            )}
+          </svg>
+        </button>
       </div>
-    </div>
+    </>
   );
-};
-
-export default WhatsAppButton;
+}

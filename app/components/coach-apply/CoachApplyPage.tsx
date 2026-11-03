@@ -44,48 +44,14 @@ export default function CoachApplyPage({
 
           <p className={styles.under}>{copy.under}</p>
 
-          <section className={styles.cols}>
-            <h2 className={styles.label}>{copy.getTitle}</h2>
-            <div className={styles.body}>
-              <p>
-                {copy.get1a}
-                <u>{copy.get1b}</u>
-              </p>
-              <p>{copy.get2}</p>
-            </div>
-          </section>
-
-          <section className={styles.cols}>
-            <h2 className={styles.label}>{copy.expectTitle}</h2>
-            <div className={styles.terms}>
-              {copy.terms.map((term, index) => (
-                <div className={styles.term} key={term.title}>
-                  {/* Numbered because it IS a sequence of commitments, in
-                      the order they matter. */}
-                  <div className={`${styles.termNumber} ${styles.latin}`}>
-                    {String(index + 1).padStart(2, '0')}
-                  </div>
-                  <div>
-                    <h3>{term.title}</h3>
-                    <p>{term.body}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
+          {/* One thing on the page: the form (3 Nov 2026 — the "what you
+              get / what we expect" prose and the footer strip are gone). */}
           <section className={styles.cols} id="apply">
             <h2 className={styles.label}>{copy.applyTitle}</h2>
             <div className={styles.formWrap}>
               <ApplyForm locale={locale} confirmToken={confirmToken} />
             </div>
           </section>
-
-          <div className={styles.strip}>
-            <div>{copy.stripLeft}</div>
-            <div><b>{copy.stripMiddle}</b></div>
-            <div className={styles.latin}>unlimited-sw.com</div>
-          </div>
         </div>
         <Footer />
       </main>

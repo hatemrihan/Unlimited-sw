@@ -20,10 +20,13 @@ import type { Product } from '@/product/model';
 export default function CategoryPage({
   category,
   products,
+  stocked = CATEGORY_KEYS,
   locale,
 }: {
   category: CategoryKey;
   products: Product[];
+  /** Categories with something on sale; only these are linked (4 Nov 2026). */
+  stocked?: readonly CategoryKey[];
   locale: Locale;
 }) {
   const copy = categoryCopy(category, locale);
@@ -37,7 +40,7 @@ export default function CategoryPage({
     { name: label, path: `${shopPath}/${categorySlug(category, locale)}` },
   ]);
 
-  const others = CATEGORY_KEYS.filter(key => key !== category);
+  const others = stocked.filter(key => key !== category);
 
   return (
     <>
@@ -121,6 +124,7 @@ export default function CategoryPage({
 
           {/* Internal links: these are how Google finds the other category pages
               and how it works out that they belong to one another. */}
+          {others.length > 0 && (
           <section>
             <h2 className="text-sm uppercase tracking-widest text-white/40 mb-4">
               {t(locale, 'category.browseOthers')}
@@ -137,6 +141,7 @@ export default function CategoryPage({
               ))}
             </div>
           </section>
+          )}
 
         </div>
       </main>

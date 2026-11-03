@@ -22,6 +22,12 @@ export interface ProductQueries {
    * thing and whose canonical says another.
    */
   findBySlug(slug: string, locale: 'en' | 'ar'): Promise<Product | null>;
+  /**
+   * The product's address NOW, for an address it used to have (4 Nov 2026,
+   * public.shop_product_slugs): an old link redirects instead of 404-ing.
+   * Null when the address was never a product's.
+   */
+  currentSlugFor(oldSlug: string, locale: 'en' | 'ar'): Promise<string | null>;
   /** Active products in one category, cheapest first. */
   findByCategory(category: string): Promise<Product[]>;
   findByIds(ids: string[]): Promise<Product[]>;
@@ -71,6 +77,11 @@ export class MongoProductQueries implements ProductQueries {
     const q = ProductModel.findById(id);
     if (fields) q.select(fields);
     return q.lean().exec() as unknown as Product | null;
+  }
+
+  /** Mongo never kept old addresses. */
+  async currentSlugFor(): Promise<string | null> {
+    return null;
   }
 
   async findBySlug(slug: string, locale: 'en' | 'ar'): Promise<Product | null> {

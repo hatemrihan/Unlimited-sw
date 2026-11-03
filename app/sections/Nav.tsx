@@ -1,430 +1,299 @@
 "use client";
 
-import { FC, useEffect, useState, MouseEvent } from "react";
-import { useAnimate } from "motion/react";
-import { useCart } from "../../contexts/CartContext";
+/**
+ * The store's nav (redesigned 3 Nov 2026, from Hatem's earlier "Target
+ * Team" nav that he liked): a slim bar on top — our logo where it always
+ * sat, and on the right MENU and CART as words — and MENU opens a full-screen
+ * olive (#8A855E) menu, the links large and uppercase, sliding in one after
+ * another, our Instagram / Facebook / TikTok underneath.
+ *
+ * WHY IT IS WRITTEN THIS WAY (what the old nav got wrong):
+ *  · State drives the classes. The old one reached into the page with
+ *    querySelector and swapped classes by hand after every render.
+ *  · next/link, not `window.location.href = …`: going to Shop or About no
+ *    longer reloads the whole site, and the pages are prefetched.
+ *  · No "force every <video> to play on first touch": that hack also
+ *    started a product's own video when you tapped anywhere on its page.
+ *    The hero video already has autoPlay muted playsInline.
+ *  · "Reviews" and "Get in touch" scroll when the section is on this page,
+ *    and go to the home page's section when it is not — they used to do
+ *    nothing at all on /shop, /cart, /about…
+ *  · No motion library for one fade: plain CSS transitions.
+ *  · Escape closes, the page under the menu does not scroll, the button says
+ *    whether the menu is open, and the closed menu cannot be tabbed into.
+ *  · MENU is a word in the bar beside CART (Hatem: "a texted menu beside
+ *    the cart, a pretty gap between them"), not a round button.
+ */
+
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { MouseEvent, useCallback, useEffect, useState } from "react";
 
+import { useCart } from "../../contexts/CartContext";
 
+/** The olive of the menu, from the Target Team nav. */
+const OLIVE = "#8A855E";
 
-const navItems = [
+/**
+ * The menu. "Apply to coach" is here so every visitor can find it (Hatem,
+ * 4 Nov 2026). Hash links are sections: "#contact" is the footer, on
+ * almost every page; "#feedbackform" is the home page's reviews.
+ */
+const LINKS = [
+  { label: "Home", href: "/" },
+  { label: "Shop", href: "/shop" },
+  { label: "Apply to coach", href: "/coaches/apply" },
+  { label: "About", href: "/about" },
+  { label: "Reviews", href: "#feedbackform" },
+  { label: "Get in touch", href: "#contact" },
+] as const;
+
+/** A section, found and scrolled to below the bar. */
+function scrollToSection(hash: string, smooth = true): boolean {
+  const target = document.getElementById(hash.replace(/^#/, ""));
+  if (!target) return false;
+  const top = target.getBoundingClientRect().top + window.scrollY - BAR_HEIGHT;
+  window.scrollTo({ top, behavior: smooth ? "smooth" : "auto" });
+  return true;
+}
+
+const SOCIAL = [
+  { label: "Instagram", href: "https://www.instagram.com/unlimited.sw/" },
   {
-    label: "About",
-    href: "/about",
+    label: "Facebook",
+    href: "https://www.facebook.com/share/1AfmUmnj4f/?mibextid=wwXIfr",
   },
   {
-    label: "Shop",
-    href: "/shop",
+    label: "TikTok",
+    href: "https://www.tiktok.com/@unlimited.sw?_t=ZS-8zZ5xMelNwX&_r=1",
   },
-  // {
-  //   label: "Our Athletes",
-  //   href: "#intro",
-  // },
+] as const;
 
-  {
-    label: "Reviews",
-    href: "#feedbackform",
-  },
-  {
-    label: "Get in touch",
-    href: "#contact",
-  },
-  // Coaching applications. It sits last on purpose: this nav is for
-  // customers, and a coach arriving to apply usually comes from a link
-  // somebody sent rather than from the shop's menu. Being findable here
-  // costs nothing; being first would push a shopper past it.
-  //
-  // A real href, not a hash — the other two above scroll the home page,
-  // and this one leaves it.
-  // {
-  //   label: "Become a coach",
-  //   href: "/coaches/apply",
-  // },
+/** Under the fixed bar when a link scrolls to a section. */
+const BAR_HEIGHT = 96;
 
-];
+export default function Nav() {
+  const [open, setOpen] = useState(false);
+  const { state: cart } = useCart();
+  const pathname = usePathname();
+  const router = useRouter();
 
+  const close = useCallback(() => setOpen(false), []);
 
-const Nav: FC = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [navScope, navAnimate] = useAnimate();
-  const [mounted, setMounted] = useState(false);
-  const [showLoader, setShowLoader] = useState(false);
-  const { state: cartState } = useCart();
-
-  // Initialize theme toggle
+  // Escape closes; the page under the menu stays where it was.
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Handle dynamic styling after mount to prevent hydration mismatch
-  useEffect(() => {
-    if (!mounted) return;
-
-    // Handle nav items
-    const navItems = document.querySelectorAll('[data-nav-item="true"]');
-    navItems.forEach((item, index) => {
-      if (isOpen) {
-        item.classList.remove('opacity-0', '-translate-x-8');
-        item.classList.add('opacity-100', 'translate-x-0');
-        (item as HTMLElement).style.transitionDelay = `${index * 100}ms`;
-      } else {
-        item.classList.remove('opacity-100', 'translate-x-0');
-        item.classList.add('opacity-0', '-translate-x-8');
-        (item as HTMLElement).style.transitionDelay = '0ms';
-      }
-    });
-
-    // Handle header background
-    const header = document.querySelector('[data-header="true"]');
-    if (header) {
-      if (isOpen) {
-        header.classList.remove('bg-transparent', 'border-gray-800/50');
-        header.classList.add('bg-white', 'border-gray-300/50');
-      } else {
-        header.classList.remove('bg-white', 'border-gray-300/50');
-        header.classList.add('bg-transparent', 'border-gray-800/50');
-      }
-    }
-
-    // Handle dynamic text colors - Turn black when nav opens
-    const dynamicElements = document.querySelectorAll('[data-dynamic-color="true"]');
-    dynamicElements.forEach((element) => {
-      if (isOpen) {
-        element.classList.remove('text-[#b3b3b3]');
-        element.classList.add('text-black');
-      } else {
-        element.classList.remove('text-black');
-        element.classList.add('text-[#b3b3b3]');
-      }
-    });
-
-    // Handle logo filter - Turn black when nav opens
-    const logo = document.querySelector('[data-logo="true"]');
-    if (logo) {
-      if (isOpen) {
-        logo.classList.remove('filter', 'brightness-0', 'invert');
-        logo.classList.add('filter-none');
-      } else {
-        logo.classList.remove('filter-none');
-        logo.classList.add('filter', 'brightness-0', 'invert');
-      }
-    }
-  }, [isOpen, mounted]);
-
-  // Force video playback on mobile
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const videos = document.querySelectorAll('video');
-    videos.forEach(video => {
-      // Force play on iOS
-      video.addEventListener('loadedmetadata', () => {
-        video.play().catch(() => {
-          // Fallback if autoplay fails
-          console.log('Video autoplay failed, user interaction required');
-        });
-      });
-
-      // Handle touch events for iOS
-      const playVideo = () => {
-        video.play().catch(() => { });
-        document.removeEventListener('touchstart', playVideo);
-      };
-
-      document.addEventListener('touchstart', playVideo, { once: true });
-    });
-  }, []);
-
-  // Initialize navigation to closed state on mount and after page refresh
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    // Ensure nav starts closed
-    setIsOpen(false);
-
-    // Prevent horizontal scrolling completely
-    if (typeof document !== 'undefined') {
-      document.body.style.overflowX = 'hidden';
-      document.documentElement.style.overflowX = 'hidden';
-    }
-
-    // Initialize nav height to 0
-    if (navScope.current) {
-      navScope.current.style.height = '0px';
-    }
-
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    const before = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
     return () => {
-      if (typeof document !== 'undefined') {
-        document.body.style.overflowX = 'auto';
-        document.documentElement.style.overflowX = 'auto';
-      }
+      document.body.style.overflow = before;
+      window.removeEventListener("keydown", onKey);
     };
-  }, [navScope]);
+  }, [open, close]);
 
+  // A new page always starts with the menu closed.
+  useEffect(close, [pathname, close]);
+
+  // Arriving with "#feedbackform" from another page: the browser jumps
+  // before the pictures above it have loaded, then they push the section
+  // down and it lands in the wrong place, under the bar. Scroll once the
+  // page is drawn, and once more when everything has loaded.
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    if (isOpen) {
-      navAnimate(navScope.current, {
-        height: "100vh"
-      },
-        {
-          duration: 0.7,
-        });
-      // Prevent body scroll when nav is open
-      if (typeof document !== 'undefined') {
-        document.body.style.overflow = 'hidden';
-      }
-    } else {
-      navAnimate(navScope.current, {
-        height: 0
-      });
-      // Restore body scroll when nav is closed
-      if (typeof document !== 'undefined') {
-        document.body.style.overflow = 'auto';
-      }
+    const hash = window.location.hash;
+    if (!hash) return;
+    const first = window.setTimeout(() => scrollToSection(hash, false), 60);
+    const again = () => scrollToSection(hash);
+    if (document.readyState === "complete") {
+      const late = window.setTimeout(again, 600);
+      return () => {
+        window.clearTimeout(first);
+        window.clearTimeout(late);
+      };
     }
-  }, [isOpen, navScope, navAnimate]);
+    window.addEventListener("load", again, { once: true });
+    return () => {
+      window.clearTimeout(first);
+      window.removeEventListener("load", again);
+    };
+  }, [pathname]);
 
-  const handleClickMobileNavItem = (e: MouseEvent<HTMLAnchorElement>) => {
+  /** Arabic pages have their own home and their own apply page. */
+  const arabic = pathname === "/ar" || pathname.startsWith("/ar/");
+  const local = (href: string) =>
+    arabic && href.startsWith("/")
+      ? href === "/"
+        ? "/ar"
+        : `/ar${href}`
+      : href;
+
+  /**
+   * A section link works from any page: scroll to it when it is on this
+   * page, otherwise go to the home page and land on it there.
+   */
+  const go = (e: MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (!href.startsWith("#")) {
+      close();
+      return; // next/link does the rest
+    }
     e.preventDefault();
-    setIsOpen(false);
-    const url = new URL(e.currentTarget.href);
-
-    if (typeof window === 'undefined') return;
-
-    // Always navigate to /about if that's the link
-    if (url.pathname === '/about') {
-      window.location.href = '/about';
-      return;
-    }
-
-    // Handle external routes
-    if (url.pathname !== window.location.pathname) {
-      window.location.href = url.href;
-      return;
-    }
-
-    // Handle internal hash navigation with better smooth scrolling
-    const hash = url.hash;
-    if (hash) {
-      // Add a small delay to allow menu to close first
-      setTimeout(() => {
-        const target = document.querySelector(hash);
-        if (target) {
-          // Calculate offset for fixed header
-          const headerHeight = 80; // Approximate header height
-          const targetPosition = target.getBoundingClientRect().top + window.pageYOffset - headerHeight;
-
-          window.scrollTo({
-            top: targetPosition,
-            behavior: 'smooth'
-          });
-        }
-      }, 300); // Wait for menu animation to complete
+    close();
+    if (document.getElementById(href.slice(1))) {
+      // After the menu has faded, so the page can scroll again.
+      window.setTimeout(() => scrollToSection(href), 250);
+    } else {
+      router.push(`${arabic ? "/ar" : "/"}${href}`);
     }
   };
 
-  const toggleMenu = () => {
-    setIsOpen(!isOpen);
-  };
-
-
-
-  const handleLoaderComplete = () => {
-    setShowLoader(false);
-    if (typeof window !== 'undefined') {
-      window.location.href = '/about';
-    }
-  };
-
-
+  const ink = open ? "text-white" : "text-[#b3b3b3]";
 
   return (
-    <div className="overflow-x-hidden w-full">
+    <>
+      {/* The bar: logo and Cart only. */}
+      <nav
+        aria-label="Main"
+        className={`fixed inset-x-0 top-0 z-50 flex items-center justify-between px-5 py-4 transition-colors duration-300 md:px-10 md:py-5 ${
+          open ? "" : "bg-transparent"
+        }`}
+        style={open ? { backgroundColor: OLIVE } : undefined}
+      >
+        {/* Where the logo always sat (Hatem, 3 Nov 2026: "I like its place
+            before"): on the left of a phone (as on the desktop, so it never runs into MENU), 160px in on a desktop. */}
+        <Link
+          href={arabic ? "/ar" : "/"}
+          aria-label="Unlimited — home"
+          onClick={close}
+          className="block shrink-0 ms-1 lg:ms-40"
+        >
+          <Image
+            src="/images/Logo-image.png"
+            alt=""
+            width={1024}
+            height={1024}
+            priority
+            sizes="(min-width: 768px) 96px, 72px"
+            className={`h-[72px] w-auto object-contain brightness-0 invert transition-opacity duration-300 md:h-24 ${
+              open ? "opacity-100" : "opacity-70 hover:opacity-100"
+            }`}
+          />
+        </Link>
 
-
-      {/* Navigation Header */}
-      <header className="relative w-full">
-        {/* Mobile Sliding Navigation */}
-        <div className="fixed top-0 left-0 w-full h-0 overflow-hidden z-40 bg-white transition-colors duration-300 text-center" ref={navScope}>
-          <nav className="mt-16 sm:mt-20 flex flex-col w-full text-center">
-            {navItems.map(({ label, href }, index) => (
-              <a
-                href={href}
-                key={label}
-                className="text-black border-t last:border-b border-gray-700/30 py-6 sm:py-8 group/nav-items relative isolate bg-white w-full transition-all duration-300 hover:text-gray-500 hover:bg-gray-50 text-center opacity-0 -translate-x-8"
-                data-nav-item="true"
-                onClick={handleClickMobileNavItem}
+        <div className="ms-auto me-1 flex shrink-0 items-center gap-4 text-xs sm:gap-6 sm:text-sm md:me-8 md:gap-12">
+          {/* Shop and Apply in plain sight, not only inside the menu (Hatem,
+              4 Nov 2026: "it's important"). On a phone only APPLY, MENU and
+              CART (Shop is inside the menu): "Apply" alone, so the
+              bar still fits beside the logo. */}
+          <Link
+            href={local("/shop")}
+            onClick={close}
+            aria-current={pathname === local("/shop") ? "page" : undefined}
+            className={`hidden uppercase tracking-wide md:inline transition-opacity hover:opacity-75 aria-[current=page]:underline aria-[current=page]:underline-offset-4 ${ink}`}
+          >
+            Shop
+          </Link>
+          <Link
+            href={local("/coaches/apply")}
+            onClick={close}
+            aria-current={
+              pathname === local("/coaches/apply") ? "page" : undefined
+            }
+            className={`uppercase tracking-wide transition-opacity hover:opacity-75 aria-[current=page]:underline aria-[current=page]:underline-offset-4 ${ink}`}
+          >
+            Apply<span className="hidden md:inline"> to coach</span>
+          </Link>
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            aria-controls="site-menu"
+            className={`cursor-pointer rounded-sm uppercase tracking-wide outline-none transition-opacity hover:opacity-75 focus-visible:ring-1 focus-visible:ring-white/70 focus-visible:ring-offset-4 focus-visible:ring-offset-transparent ${ink}`}
+          >
+            {open ? "Close" : "Menu"}
+          </button>
+          <Link
+            href="/cart"
+            onClick={close}
+            className={`relative flex items-center gap-1.5 uppercase tracking-wide transition-opacity hover:opacity-75 ${ink}`}
+          >
+            Cart <span aria-hidden>→</span>
+            {cart.itemCount > 0 && (
+              <span
+                className="ms-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1.5 text-xs font-bold text-black"
+                aria-label={`${cart.itemCount} in cart`}
               >
-                <div className="container mx-auto px-4 sm:px-6 flex items-center justify-center">
-                  <div className="absolute w-full h-0 bg-gray-100 group-hover/nav-items:h-full transition-all duration-500 bottom-0 -z-10"></div>
-                  <span className="text-2xl sm:text-3xl group-hover/nav-items:pl-4 transition-all duration-500 font-medium">
+                {cart.itemCount}
+              </span>
+            )}
+          </Link>
+        </div>
+      </nav>
+
+      {/* The full-screen menu. */}
+      <div
+        id="site-menu"
+        inert={!open}
+        className={`fixed inset-0 z-40 transition-[opacity,visibility] duration-500 ease-in-out ${
+          open ? "visible opacity-100" : "invisible opacity-0"
+        }`}
+        style={{ backgroundColor: OLIVE }}
+      >
+        <div className="flex h-full flex-col justify-between px-6 pb-16 pt-32 md:px-12 md:pt-36">
+          <ul className="space-y-3 text-right md:space-y-4">
+            {LINKS.map(({ label, href }, i) => {
+              const to = local(href);
+              const here = to === pathname;
+              return (
+                <li
+                  key={href}
+                  className={`transition-[opacity,transform] duration-700 ease-out ${
+                    open
+                      ? "translate-x-0 opacity-100"
+                      : "translate-x-8 opacity-0"
+                  }`}
+                  style={{
+                    transitionDelay: open ? `${100 + i * 70}ms` : "0ms",
+                  }}
+                >
+                  <Link
+                    href={to}
+                    onClick={(e) => go(e, href)}
+                    aria-current={here ? "page" : undefined}
+                    className={`inline-flex items-center gap-4 text-2xl font-normal uppercase tracking-tight text-white transition-opacity duration-300 hover:opacity-70 md:text-3xl lg:text-4xl ${
+                      here ? "underline decoration-1 underline-offset-8" : ""
+                    }`}
+                  >
                     {label}
-                  </span>
-                </div>
+                    <span className="text-lg" aria-hidden>
+                      →
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+
+          <div
+            className={`flex items-center justify-end gap-6 text-sm tracking-wide text-white transition-opacity delay-300 duration-700 md:text-base ${
+              open ? "opacity-100" : "opacity-0"
+            }`}
+          >
+            {SOCIAL.map(({ label, href }) => (
+              <a
+                key={label}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="transition-opacity hover:opacity-70"
+              >
+                {label}
               </a>
             ))}
-
-
-
-          </nav>
-        </div>
-
-        {/* Fixed Header - Always on top */}
-        <div className="fixed top-0 left-0 right-0 w-full z-50 transition-colors duration-300 bg-transparent" data-header="true" suppressHydrationWarning>
-          <div className="w-full px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16 lg:h-20 relative">
-              {/* Mobile: Menu Button - Left */}
-              <div className="lg:hidden flex items-center">
-                <button
-                  className="hover:text-gray-400 transition-colors duration-300 relative z-10 px-3 py-2 min-w-[60px] min-h-[44px] flex flex-col items-center justify-center gap-1 cursor-pointer text-[#b3b3b3]"
-                  data-dynamic-color="true"
-                  onClick={toggleMenu}
-                  aria-label="Toggle menu"
-                  suppressHydrationWarning
-                >
-                  <span className="block w-6 h-0.5 bg-current transition-all duration-300 cursor-pointer"></span>
-                  <span className="block w-6 h-0.5 bg-current transition-all duration-300 cursor-pointer"></span>
-                </button>
-              </div>
-
-              {/* Logo - Center on Mobile, Left on Desktop */}
-              <div className="absolute left-1/2 lg:left-60 transform -translate-x-1/2 lg:relative lg:transform-none flex-shrink-0 flex items-center pt-3 text-[#b3b3b3]" data-dynamic-color="true" suppressHydrationWarning>
-                <Link href="/" className="block">
-                  <div className="relative text-[#b3b3b3]" data-dynamic-color="true" suppressHydrationWarning>
-                    <Image
-                      src="/images/Logo-image.png"
-                      alt="Logo"
-                      width={500}
-                      height={500}
-                      className="h-25 lg:h-30 w-auto object-contain hover:scale-105 transition-all duration-300 filter brightness-0 invert opacity-70"
-                      data-logo="true"
-                      onError={(e) => {
-                        // Fallback to text if image fails to load
-                        const target = e.currentTarget;
-                        const fallback = target.nextElementSibling as HTMLElement;
-                        target.style.display = 'none';
-                        if (fallback) {
-                          fallback.style.display = 'block';
-                        }
-                      }}
-                    />
-
-                  </div>
-                </Link>
-              </div>
-
-              {/* Desktop Navigation - Centered */}
-              <div className="hidden lg:flex flex-1 justify-center">
-                <nav className="flex items-center space-x-8 xl:space-x-12">
-                  {navItems.map(({ label, href }) => (
-                    <a
-                      href={href}
-                      key={label}
-                      className="relative text-[#b3b3b3] hover:text-gray-400 transition-colors duration-300 text-base font-medium py-2 group"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (typeof window === 'undefined') return;
-
-                        if (href === '/about') {
-                          window.location.href = '/about';
-                          return;
-                        }
-                        if (href.startsWith('/')) {
-                          window.location.href = href;
-                          return;
-                        }
-
-                        // Improved smooth scrolling for hash links
-                        if (href.startsWith('#')) {
-                          const target = document.querySelector(href);
-                          if (target) {
-                            const headerHeight = 80; // Approximate header height
-                            const targetPosition = target.getBoundingClientRect().top + window.pageYOffset - headerHeight;
-
-                            window.scrollTo({
-                              top: targetPosition,
-                              behavior: 'smooth'
-                            });
-                          }
-                        }
-                      }}
-                    >
-                      {label}
-                      {/* Hover line effect */}
-                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gray-300 transition-all duration-300 group-hover:w-full"></span>
-                    </a>
-                  ))}
-                </nav>
-              </div>
-
-              {/* Right Side Icons - Desktop and Mobile */}
-              <div className="flex items-center space-x-3">
-                {/* Desktop Cart and Account Icons */}
-                <div className="hidden lg:flex items-center space-x-4">
-                  {/* Desktop Cart Icon */}
-                  <div className="relative group">
-                    <button
-                      onClick={() => window.location.href = '/cart'}
-                      className="text-[#b3b3b3] hover:text-white transition-all duration-300 px-3 py-2 cursor-pointer relative flex items-center gap-2"
-                      suppressHydrationWarning
-                    >
-
-                      <span className="text-sm font-medium">Cart</span>
-                      {/* Cart Count Badge */}
-                      {cartState.itemCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-white text-black text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                          {cartState.itemCount}
-                        </span>
-                      )}
-                    </button>
-                    {/* Underline hover effect */}
-                    <div className="absolute bottom-0 left-0 w-0 h-0.5 bg-white transition-all duration-300 group-hover:w-full"></div>
-                  </div>
-
-                  {/* The admin link and the EN/AR toggle were both removed from
-                      the storefront nav. The Arabic pages still exist and are
-                      still declared to Google via hreflang and the sitemap —
-                      there is simply no visible switch in the header. */}
-                </div>
-
-                {/* Mobile Cart and Account Icons */}
-                <div className="lg:hidden flex items-center space-x-2">
-                  {/* Mobile Cart Icon */}
-                  <div className="relative group">
-                    <button
-                      onClick={() => window.location.href = '/cart'}
-                      className="text-[#b3b3b3] hover:text-white transition-all duration-300 px-2 py-1 cursor-pointer relative flex items-center gap-1"
-                      data-dynamic-color="true"
-                      suppressHydrationWarning
-                    >
-
-                      <span className="text-xs font-medium">Cart</span>
-                      {/* Cart Count Badge */}
-                      {cartState.itemCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-white text-black text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                          {cartState.itemCount}
-                        </span>
-                      )}
-                    </button>
-                    {/* Underline hover effect */}
-                    <div className="absolute bottom-0 left-0 w-0 h-0.5 bg-current transition-all duration-300 group-hover:w-full"></div>
-                  </div>
-
-                  {/* The admin link was removed from the storefront — see the
-                      desktop block above. */}
-                </div>
-              </div>
-            </div>
           </div>
         </div>
-      </header>
-
-
-    </div>
+      </div>
+    </>
   );
-};
-
-export default Nav;
+}

@@ -1,11 +1,11 @@
 import Nav from "@/app/sections/Nav";
 import Products from "@/app/sections/Products";
 import Hero from "@/app/sections/Hero";
-import FeedbackFormLazy from "@/app/sections/FeedbackFormLazy";
+import FeedbackSection from "@/app/sections/feedback/FeedbackSection";
 import Footer from "@/app/sections/Footer";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import { getStoreContact } from "@/payments/contact";
-import Explore from "@/app/sections/Explore";
+import Featured from "@/app/sections/Featured";
 import { getActiveProducts } from "@/product/actions";
 import { storeJsonLd } from "@/lib/storeSchema";
 import { alternatesFor } from "@/lib/locale";
@@ -93,9 +93,9 @@ export default async function Home() {
         initialApplyToAll={freeShippingStatus.applyToAll}
       />
       <Products initialProducts={initialProducts} initialHasMore={initialHasMore} />
-      <Explore />
+      <Featured />
       {/* <Intro /> */}
-      <FeedbackFormLazy />
+      <FeedbackSection />
       <Footer />
       <WhatsAppButton phone={(await getStoreContact()).whatsapp} />
     </>

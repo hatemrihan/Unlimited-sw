@@ -2,8 +2,14 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import CategoryPage from '@/app/components/CategoryPage';
-import { getProductsByCategory } from '@/product';
-import { CATEGORIES, CATEGORY_KEYS, categorySlug, isCategoryKey } from '@/product/categories';
+import { getActiveProducts, getProductsByCategory } from '@/product';
+import {
+  CATEGORIES,
+  CATEGORY_KEYS,
+  categorySlug,
+  isCategoryKey,
+  stockedCategories,
+} from '@/product/categories';
 import { alternatesFor, absoluteUrl } from '@/lib/locale';
 
 interface Props {
@@ -43,7 +49,15 @@ export default async function ShopCategoryPage({ params }: Props) {
   const { category } = await params;
   if (!isCategoryKey(category)) notFound();
 
-  const products = JSON.parse(JSON.stringify(await getProductsByCategory(category)));
+  const [found, all] = await Promise.all([
+    getProductsByCategory(category),
+    getActiveProducts().catch(() => []),
+  ]);
+  // Nothing on sale here yet: "not found", not an empty page (4 Nov 2026).
+  if (found.length === 0) notFound();
 
-  return <CategoryPage category={category} products={products} locale="en" />;
+  const products = JSON.parse(JSON.stringify(found));
+  const stocked = stockedCategories(all as { category?: string | null }[]);
+
+  return <CategoryPage category={category} products={products} stocked={stocked} locale="en" />;
 }

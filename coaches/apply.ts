@@ -173,6 +173,18 @@ const MESSAGES: Record<string, { en: string; ar: string }> = {
     en: 'Add your Instagram or a link to your work.',
     ar: 'أضف حسابك على إنستغرام أو رابطًا لأعمالك.',
   },
+  // The table's unique rules (20260831000100). Applying again while an
+  // application is open, or two people taking the same time in the same
+  // second, used to read "something went wrong, try again" — and trying
+  // again could never work (3 Nov 2026).
+  coach_applications_one_open_per_email: {
+    en: 'You already have an application with us. Your interview details are in your email.',
+    ar: 'لديك طلب قائم معنا بالفعل. تفاصيل مقابلتك في بريدك الإلكتروني.',
+  },
+  coach_applications_one_open_per_slot: {
+    en: 'That slot was just taken — please choose another available time below.',
+    ar: 'تم حجز هذا الموعد للتو — يرجى اختيار موعد آخر متاح بالأسفل.',
+  },
   ALREADY_A_COACH: {
     en: 'You already coach with us. Sign in instead.',
     ar: 'أنت مدرب معنا بالفعل. سجّل الدخول بدلًا من ذلك.',

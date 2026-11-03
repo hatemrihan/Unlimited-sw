@@ -11,7 +11,7 @@ import { useCart } from '@/contexts/CartContext';
 import { translator } from '@/i18n';
 import type { Locale } from '@/lib/locale';
 import { localized, productPath } from '@/product/seo';
-import { CATEGORIES, CATEGORY_KEYS, categorySlug } from '@/product/categories';
+import { CATEGORIES, categorySlug, stockedCategories } from '@/product/categories';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -39,7 +39,7 @@ interface Product {
   mainImage: string;
   images: string[];
   description: string;
-  categories?: string[];
+  category?: string | null;
   discount?: number;
   isActive?: boolean;
   stock?: number;
@@ -176,7 +176,6 @@ export default function ShopClient({
   // Rendered on the server so crawlers see every /product/ link in the HTML.
   const [products] = useState<Product[]>(initialProducts);
   const [error] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
   const { addItem } = useCart();
@@ -184,28 +183,23 @@ export default function ShopClient({
   const [showCartNotification, setShowCartNotification] = useState(false);
   const [cartNotificationKey, setCartNotificationKey] = useState(0);
 
-  // Memoize derived data to avoid recomputing on every render
-  const categories = useMemo(
-    () => ['All', ...Array.from(new Set(products.flatMap(p => p.categories ?? [])))],
-    [products]
-  );
+  // Only categories with a product on sale get a link (4 Nov 2026).
+  const stocked = useMemo(() => stockedCategories(products), [products]);
 
+  // Search: the name, the description and the category's name, in either
+  // language. (The old filter read `p.categories`, a field no product has,
+  // so typing "parallettes" found nothing.)
   const filteredProducts = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
+    if (!query) return products;
     return products.filter(p => {
-      if (selectedCategory !== 'All') {
-        const match = p.categories?.some(c => c.toLowerCase().includes(selectedCategory.toLowerCase()));
-        if (!match) return false;
-      }
-      if (query) {
-        const inName = p.name?.toLowerCase().includes(query);
-        const inDesc = p.description?.toLowerCase().includes(query);
-        const inCat  = p.categories?.some(c => c.toLowerCase().includes(query));
-        if (!inName && !inDesc && !inCat) return false;
-      }
-      return true;
+      const cat = p.category && p.category in CATEGORIES
+        ? CATEGORIES[p.category as keyof typeof CATEGORIES]
+        : null;
+      return [p.name, p.description, cat?.en, cat?.ar]
+        .some(text => text?.toLowerCase().includes(query));
     });
-  }, [products, selectedCategory, searchQuery]);
+  }, [products, searchQuery]);
 
   const handleAddToCart = (product: Product) => {
     const stock = getAvailableStock(product);
@@ -216,7 +210,7 @@ export default function ShopClient({
     // receives — and the cart could hold the "same" product twice. Send them to
     // the product page to choose.
     if (Array.isArray(product.variants) && product.variants.length > 0) {
-      router.push(`/product/${product._id}`);
+      router.push(productPath(product as any, locale));
       return;
     }
 
@@ -317,8 +311,9 @@ export default function ShopClient({
               them. A link is crawlable; the filtering still happens instantly
               because the target pages are prerendered.
             */}
+            {stocked.length > 1 && (
             <nav className="flex gap-6 overflow-x-auto pb-2">
-              {CATEGORY_KEYS.map((key) => (
+              {stocked.map((key) => (
                 <Link
                   key={key}
                   href={`${shopPath}/${categorySlug(key, locale)}`}
@@ -328,6 +323,7 @@ export default function ShopClient({
                 </Link>
               ))}
             </nav>
+            )}
           </motion.div>
 
           {/* Product Grid — flex layout to ensure centering on all screen sizes */}

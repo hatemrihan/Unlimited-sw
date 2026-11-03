@@ -16,6 +16,7 @@ export {
   getProductById,
   getProductPageData,
   getProductPageDataBySlug,
+  getCurrentSlug,
   getProductsByCategory,
   createProduct,
   updateProduct,

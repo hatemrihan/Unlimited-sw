@@ -42,7 +42,23 @@ export const en = {
   'product.addedToCart': 'Added to cart',
   'product.off': 'OFF',
   'product.currency': 'EGP',
+  'home.featured.title': 'Worth the buy.',
+  'home.featured.buy': 'Buy now',
   'product.chooseVariant': 'Choose an option',
+  // Product page, rebuilt 4 Nov 2026 (no English left on the Arabic page).
+  'product.buyNow': 'Buy it now',
+  'product.quantity': 'Quantity',
+  'product.option': 'Option',
+  'product.inStock': 'In stock',
+  'product.onlyLeft': 'Only {n} left',
+  'product.cartLimit': 'Only {n} more available — your cart holds the rest.',
+  'product.cartAll': 'That is all we have in stock right now.',
+  'product.viewCart': 'View cart',
+  'product.youMightLike': 'You might also like',
+  'product.payCod': 'Cash on delivery',
+  'product.payInstapay': 'InstaPay',
+  'product.photo': 'photo {n} of {total}',
+  'product.video': 'Video',
 
   // ─── Breadcrumbs ──────────────────────────────────────────────────────────
   'breadcrumb.home': 'Home',

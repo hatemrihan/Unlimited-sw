@@ -2,12 +2,13 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import CategoryPage from '@/app/components/CategoryPage';
-import { getProductsByCategory } from '@/product';
+import { getActiveProducts, getProductsByCategory } from '@/product';
 import {
   CATEGORIES,
   CATEGORY_KEYS,
   categoryFromArabicSlug,
   categorySlug,
+  stockedCategories,
 } from '@/product/categories';
 import { alternatesFor, absoluteUrl } from '@/lib/locale';
 
@@ -52,7 +53,15 @@ export default async function ArabicShopCategoryPage({ params }: Props) {
   const key = categoryFromArabicSlug(decodeURIComponent(segment));
   if (!key) notFound();
 
-  const products = JSON.parse(JSON.stringify(await getProductsByCategory(key)));
+  const [found, all] = await Promise.all([
+    getProductsByCategory(key),
+    getActiveProducts().catch(() => []),
+  ]);
+  // Nothing on sale here yet: "not found", not an empty page (4 Nov 2026).
+  if (found.length === 0) notFound();
 
-  return <CategoryPage category={key} products={products} locale="ar" />;
+  const products = JSON.parse(JSON.stringify(found));
+  const stocked = stockedCategories(all as { category?: string | null }[]);
+
+  return <CategoryPage category={key} products={products} stocked={stocked} locale="ar" />;
 }

@@ -46,7 +46,23 @@ export const ar: Record<StringKey, string> = {
   'product.addedToCart': 'تمت الإضافة إلى السلة',
   'product.off': 'خصم',
   'product.currency': 'جنيه',
+  'home.featured.title': 'يستحق الشراء.',
+  'home.featured.buy': 'اشترِ الآن',
   'product.chooseVariant': 'اختر النوع',
+  // Product page, rebuilt 4 Nov 2026 (no English left on the Arabic page).
+  'product.buyNow': 'اشترِ الآن',
+  'product.quantity': 'الكمية',
+  'product.option': 'النوع',
+  'product.inStock': 'متوفر',
+  'product.onlyLeft': 'باقي {n} فقط',
+  'product.cartLimit': 'متاح {n} فقط زيادة — والباقي في سلتك بالفعل.',
+  'product.cartAll': 'هذا كل المتوفر عندنا الآن.',
+  'product.viewCart': 'عرض السلة',
+  'product.youMightLike': 'قد يعجبك أيضاً',
+  'product.payCod': 'الدفع عند الاستلام',
+  'product.payInstapay': 'إنستاباي',
+  'product.photo': 'صورة {n} من {total}',
+  'product.video': 'فيديو',
 
   // ─── Breadcrumbs ──────────────────────────────────────────────────────────
   'breadcrumb.home': 'الرئيسية',

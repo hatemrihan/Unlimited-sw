@@ -3,11 +3,11 @@ import type { Metadata } from 'next';
 import Nav from '@/app/sections/Nav';
 import Products from '@/app/sections/Products';
 import Hero from '@/app/sections/Hero';
-import FeedbackFormLazy from '@/app/sections/FeedbackFormLazy';
+import FeedbackSection from '@/app/sections/feedback/FeedbackSection';
 import Footer from '@/app/sections/Footer';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import { getStoreContact } from '@/payments/contact';
-import Explore from '@/app/sections/Explore';
+import Featured from '@/app/sections/Featured';
 import CounterDown from '@/app/sections/CounterDown';
 import { getActiveProducts } from '@/product';
 import { alternatesFor, absoluteUrl } from '@/lib/locale';
@@ -63,8 +63,8 @@ export default async function ArabicHome() {
         initialApplyToAll={freeShippingStatus.applyToAll}
       />
       <Products initialProducts={initialProducts} initialHasMore={initialHasMore} locale="ar" />
-      <Explore locale="ar" />
-      <FeedbackFormLazy />
+      <Featured locale="ar" />
+      <FeedbackSection locale="ar" />
       <Footer />
       <WhatsAppButton phone={(await getStoreContact()).whatsapp} />
     </>

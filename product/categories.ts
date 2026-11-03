@@ -56,3 +56,17 @@ export function categorySlug(key: CategoryKey, locale: 'en' | 'ar'): string {
 export function categoryLabel(key: CategoryKey, locale: 'en' | 'ar'): string {
   return locale === 'ar' ? CATEGORIES[key].ar : CATEGORIES[key].en;
 }
+
+/**
+ * The categories that really have something on sale, in navigation order
+ * (4 Nov 2026, Hatem: "we don't have accessories yet — why is it there?
+ * Don't show fake things"). A category with no active product is not
+ * linked, not listed in the sitemap, and its page is "not found" — never an
+ * empty page that looks like the shop is broken.
+ */
+export function stockedCategories(
+  products: ReadonlyArray<{ category?: string | null }>,
+): CategoryKey[] {
+  const present = new Set(products.map(p => p.category));
+  return CATEGORY_KEYS.filter(key => present.has(key));
+}

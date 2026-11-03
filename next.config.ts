@@ -75,9 +75,9 @@ const nextConfig: NextConfig = {
           ]
         : []),
     ],
-    // 75 is the default for every image; 90 is the before/after slider in
-    // Explore, which used to ask for 100 (several MB per image, no visible gain).
-    qualities: [75, 90],
+    // 75 for every image. (90 was the hand-typed Explore section's slider,
+    // replaced on 3 Nov 2026 by the featured product, which uses 75.)
+    qualities: [75],
   },
   async headers() {
     return [

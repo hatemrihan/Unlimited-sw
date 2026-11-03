@@ -1,359 +1,342 @@
 "use client";
 
-import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import { Product } from '@/product/model';
-import Nav from '@/app/sections/Nav';
-import ProductDetailsTabs from './ProductDetailsTabs';
-import { translator } from '@/i18n';
-import type { Locale } from '@/lib/locale';
-import { localized, productPath } from '@/product/seo';
-import { useCart } from '@/contexts/CartContext';
-import { track } from '@/analytics/client/track';
-import { motion, AnimatePresence } from 'motion/react';
-import Footer from '@/app/sections/Footer';
-
 /**
- * ProductClient — Client-side product detail page
+ * The product page (rebuilt 4 Nov 2026 — Hatem: "no box … a hundred times
+ * better … in Arabic too").
  *
- * Performance optimizations:
- * - Uses next/image for automatic WebP, srcset, and lazy loading
- * - Gallery scroll uses ref instead of document.querySelector
- * - Related products use router.push for client-side navigation (no full reload)
- * - Memoized computed values (displayMedia, currentStock, displayPrice)
- * 
- * Bug fixes applied:
- * - Quantity capped by live stock (was unbounded)
- * - Buy Now no longer navigates on addItem failure
- * - Stock passed to addItem for CartContext enforcement
- * - Variant comparison by name instead of reference equality
+ * WHAT IT IS: the pictures on the left, whole and edge to edge, no grey
+ * frames; on the right a calm column that stays in view while the pictures
+ * scroll — name, price, whether it is in stock, the options, quantity, Buy it
+ * now, Add to cart, how you can pay, then the details as hairline sections.
+ * Below, other products. Nothing sits in a box.
+ *
+ * WHAT CHANGED UNDER IT:
+ *  · Every word comes from the dictionary: the Arabic page used to say
+ *    "Color", "Quantity", "Add to cart", "Buy it now", "MIGHT ALSO LIKE",
+ *    "Added to cart!" and "Only 3 left in stock" in English.
+ *  · Nothing invented: a details section with no text is not drawn (it used
+ *    to open on "This information will be available once the admin adds
+ *    content"); the payment line is the shop's real switches.
+ *  · No animation library. The page used to slide every block in with
+ *    motion/react — script the phone had to download and run before the
+ *    page settled. Plain CSS now.
+ *  · Thumbnails are small images (they were the full-size photos).
+ *  · Prices are formatted the same on the server and the phone (the bare
+ *    toLocaleString() could differ and flash on load).
+ *  · "Added to cart" is said under the button, with a way to the cart —
+ *    not a box in the corner that vanished.
+ *  · Related products are links (a long-press opens them; Google follows
+ *    them) and carry their Arabic names on the Arabic page.
  */
 
-type Variant = {
-  name: string;
-  stock: number;
-  price?: number;
-  images?: string[];
-};
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import Footer from "@/app/sections/Footer";
+import Nav from "@/app/sections/Nav";
+import { track } from "@/analytics/client/track";
+import { useCart } from "@/contexts/CartContext";
+import { translator } from "@/i18n";
+import type { Locale } from "@/lib/locale";
+import { CATEGORIES, categorySlug, type CategoryKey } from "@/product/categories";
+import type { Product } from "@/product/model";
+import { localized, productPath } from "@/product/seo";
+
+import ProductDetailsTabs from "./ProductDetailsTabs";
+
+type Variant = { name: string; stock: number; price?: number; images?: string[] };
+
+export interface ShopPayments {
+  cod: boolean;
+  instapay: boolean;
+}
 
 interface Props {
   product: Product;
   relatedProducts: Product[];
-  /**
-   * Which language this page renders in. Defaults to English so the existing
-   * English route needs no change.
-   */
   locale?: Locale;
+  /** The shop's payment switches, read on the server; omitted = not shown. */
+  payments?: ShopPayments;
 }
 
-// Helper — detect video URLs
 const isVideoUrl = (url: string) =>
-  url.includes('.mp4') || url.includes('.mov') || url.includes('.avi') ||
-  url.includes('.webm') || url.includes('video/upload');
+  /\.(mp4|mov|avi|webm)(\?|$)/i.test(url) || url.includes("video/upload");
 
-export default function ProductClient({ product, relatedProducts, locale = 'en' }: Props) {
+/** "2,000" on the server and on every phone alike. */
+const money = (n: number) => Math.round(n).toLocaleString("en-US");
+
+const fill = (text: string, values: Record<string, string | number>) =>
+  text.replace(/\{(\w+)\}/g, (_, k) => String(values[k] ?? ""));
+
+export default function ProductClient({
+  product,
+  relatedProducts,
+  locale = "en",
+  payments,
+}: Props) {
   const tr = translator(locale);
-  /** The product's own text in this language, falling back to English. */
-  const displayName = localized(product, 'name', locale);
+  const name = localized(product, "name", locale);
+  const summary = localized(product, "description", locale);
   const router = useRouter();
   const { addItem } = useCart();
-  const galleryRef = useRef<HTMLDivElement>(null);
+  const gallery = useRef<HTMLDivElement>(null);
 
-  const [selectedVariant, setSelectedVariant] = useState<Variant | null>(
-    product.variants && product.variants.length > 0 ? product.variants[0] : null
+  const [variant, setVariant] = useState<Variant | null>(
+    product.variants?.length ? product.variants[0] : null,
   );
   const [quantity, setQuantity] = useState(1);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [showCartNotification, setShowCartNotification] = useState(false);
-  /** Set when the cart refused an add, so the button can explain itself. */
-  const [cartRefusal, setCartRefusal] = useState<string | null>(null);
-  const [cartNotificationKey, setCartNotificationKey] = useState(0);
+  const [shown, setShown] = useState(0);
+  /** What the last press did, said under the buttons. */
+  const [said, setSaid] = useState<{ kind: "added" | "refused"; text: string } | null>(null);
 
-  // ── Computed values (memoized) ─────────────────────────────────────────────
-  const currentStock = useMemo(() => {
-    return selectedVariant ? selectedVariant.stock : product.stock;
-  }, [selectedVariant, product.stock]);
+  const stock = variant ? variant.stock : product.stock;
+  const price = variant?.price && variant.price > 0 ? variant.price : product.price;
+  const soldOut = stock <= 0;
+  const currency = tr("product.currency");
 
-  const displayPrice = useMemo(() => {
-    return (selectedVariant?.price && selectedVariant.price > 0)
-      ? selectedVariant.price
-      : product.price;
-  }, [selectedVariant, product.price]);
+  const media = useMemo(() => {
+    const pictures = variant?.images?.length
+      ? variant.images
+      : [product.mainImage, ...(product.images || [])].filter(Boolean);
+    return [...pictures, ...(product.videos || [])];
+  }, [variant, product.mainImage, product.images, product.videos]);
 
-  const isOutOfStock = currentStock <= 0;
-
-  const allMedia = useMemo(() => {
-    let media: string[] = [];
-    if (selectedVariant?.images && selectedVariant.images.length > 0) {
-      media = selectedVariant.images;
-    } else {
-      media = [product.mainImage, ...(product.images || [])].filter(Boolean);
-    }
-    if (product.videos && product.videos.length > 0) {
-      media = [...media, ...product.videos];
-    }
-    return media;
-  }, [selectedVariant, product.mainImage, product.images, product.videos]);
-
-  /**
-   * ViewContent — someone looked at this product.
-   *
-   * Once per mount, keyed on the product id, NOT on the selected variant.
-   * Clicking through four colours is one person considering one product; four
-   * events would make the funnel's second stage a measure of how many variants
-   * a product has rather than of how many people looked at it.
-   */
+  // One "looked at this product" per visit, not one per option clicked.
   useEffect(() => {
     if (!product._id) return;
-    track('ViewContent', {
+    track("ViewContent", {
       productId: product._id,
       productName: product.name,
       value: product.price,
-      currency: 'EGP',
-      source: 'client',
+      currency: "EGP",
+      source: "client",
     });
   }, [product._id, product.name, product.price]);
 
-  // ── Cart actions ───────────────────────────────────────────────────────────
-  const buildCartItem = useCallback(() => ({
-    id: product._id!,
-    name: product.name,
-    image: product.mainImage,
-    price: displayPrice,
-    stock: currentStock,
-    // `color` is left unset: there is no separate colour field on a variant, and
-    // duplicating the name into it puts garbage in the order record and breaks
-    // variant matching in the cart.
-    variant: selectedVariant ? { name: selectedVariant.name } : undefined,
-  }), [product._id, product.name, product.mainImage, displayPrice, currentStock, selectedVariant]);
+  // A message about the last press fades after a few seconds.
+  useEffect(() => {
+    if (!said) return;
+    const id = window.setTimeout(() => setSaid(null), said.kind === "added" ? 6000 : 4500);
+    return () => window.clearTimeout(id);
+  }, [said]);
 
-  /**
-   * What to say when the cart refuses an add.
-   *
-   * `addItem` used to return nothing, so a refusal — always a stock limit —
-   * looked exactly like a working button that did nothing at all. The customer
-   * pressed it again, and again.
-   */
-  const refusalMessage = (remaining: number) =>
-    remaining > 0
-      ? `Only ${remaining} more available — your cart already holds the rest.`
-      : 'That is all we have in stock right now.';
-
-  const handleAddToCart = useCallback(() => {
-    try {
-      const result = addItem(buildCartItem(), quantity, currentStock);
-
-      if (!result.added) {
-        setCartRefusal(refusalMessage(result.remaining));
-        setTimeout(() => setCartRefusal(null), 4000);
-        return;
-      }
-
-      setCartRefusal(null);
-      setCartNotificationKey(prev => prev + 1);
-      setShowCartNotification(true);
-      setTimeout(() => setShowCartNotification(false), 3000);
-    } catch (error) {
-      console.error('Error adding to cart:', error);
-    }
-  }, [addItem, buildCartItem, quantity, currentStock]);
-
-  const handleBuyNow = useCallback(() => {
-    try {
-      const result = addItem(buildCartItem(), quantity, currentStock);
-
-      // Navigating on a refused add sent the customer to checkout to buy
-      // something that was never added.
-      if (!result.added) {
-        setCartRefusal(refusalMessage(result.remaining));
-        setTimeout(() => setCartRefusal(null), 4000);
-        return;
-      }
-
-      router.push('/checkout');
-    } catch (error) {
-      console.error('Error in Buy Now:', error);
-      // Don't navigate on error — item wasn't added
-    }
-  }, [addItem, buildCartItem, quantity, currentStock, router]);
-
-  // ── Quantity controls (stock-bounded) ──────────────────────────────────────
-  const decrementQty = useCallback(() => {
-    setQuantity(prev => Math.max(1, prev - 1));
-  }, []);
-
-  const incrementQty = useCallback(() => {
-    setQuantity(prev => {
-      const max = currentStock > 0 ? currentStock : 1;
-      return Math.min(prev + 1, max);
-    });
-  }, [currentStock]);
-
-  // ── Gallery scroll via ref ─────────────────────────────────────────────────
-  const scrollToImage = useCallback((index: number) => {
-    if (galleryRef.current) {
-      galleryRef.current.scrollTo({
-        left: index * galleryRef.current.clientWidth,
-        behavior: 'smooth',
+  const add = useCallback(() => {
+    const result = addItem(
+      {
+        id: product._id!,
+        name: product.name,
+        image: product.mainImage,
+        price,
+        stock,
+        variant: variant ? { name: variant.name } : undefined,
+      },
+      quantity,
+      stock,
+    );
+    if (!result.added) {
+      setSaid({
+        kind: "refused",
+        text: result.remaining > 0
+          ? fill(tr("product.cartLimit"), { n: result.remaining })
+          : tr("product.cartAll"),
       });
     }
-    setCurrentImageIndex(index);
-  }, []);
+    return result.added;
+  }, [addItem, product._id, product.name, product.mainImage, price, stock, variant, quantity, tr]);
 
-  const handleGalleryScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const container = e.currentTarget;
-    const newIndex = Math.round(container.scrollLeft / container.clientWidth);
-    setCurrentImageIndex(newIndex);
-  }, []);
+  const addToCart = () => {
+    if (add()) setSaid({ kind: "added", text: tr("product.addedToCart") });
+  };
+  // A refused add never sends anyone to pay for something not in the cart.
+  const buyNow = () => {
+    if (add()) router.push("/checkout");
+  };
 
-  // ── Variant selection ──────────────────────────────────────────────────────
-  const selectVariant = useCallback((variant: Variant) => {
-    setSelectedVariant(variant);
+  const goTo = (i: number) => {
+    const el = gallery.current;
+    if (!el) return;
+    // scrollLeft runs negative in a right-to-left page.
+    const dir = getComputedStyle(el).direction === "rtl" ? -1 : 1;
+    el.scrollTo({ left: dir * i * el.clientWidth, behavior: "smooth" });
+    setShown(i);
+  };
+  const onScroll = () => {
+    const el = gallery.current;
+    if (el) setShown(Math.round(Math.abs(el.scrollLeft) / el.clientWidth));
+  };
+
+  const pickVariant = (v: Variant) => {
+    setVariant(v);
     setQuantity(1);
-    setCurrentImageIndex(0);
-  }, []);
+    setShown(0);
+    gallery.current?.scrollTo({ left: 0 });
+  };
+
+  const category = product.category as CategoryKey | undefined;
+  const shopPath = locale === "ar" ? "/ar/shop" : "/shop";
+  const payWays = [
+    payments?.cod && tr("product.payCod"),
+    payments?.instapay && tr("product.payInstapay"),
+  ].filter(Boolean) as string[];
+  const others = relatedProducts.filter((p) => p._id !== product._id).slice(0, 4);
+  const discounted = !!(product.discount && product.discount > 0 && product.originalPrice);
+
+  const status = soldOut
+    ? { text: product.customOutOfStockMessage || tr("product.outOfStock"), dot: "bg-stone-500" }
+    : stock <= 5
+      ? { text: fill(tr("product.onlyLeft"), { n: stock }), dot: "bg-amber-400" }
+      : { text: tr("product.inStock"), dot: "bg-emerald-400" };
 
   return (
     <>
-      <div className="min-h-screen bg-stone-900 text-[#b3b3b3]">
-        <Nav />
-
-        <div className="pt-20 lg:pt-24">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-
-              {/* Left Side - Images */}
-              <motion.div
-                className="space-y-4"
-                initial={{ opacity: 0, x: -50 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.8, delay: 0.2 }}
-              >
-                <motion.div
-                  className="relative"
-                  initial={{ scale: 0.9 }}
-                  animate={{ scale: 1 }}
-                  transition={{ duration: 0.6, delay: 0.4 }}
+      <Nav />
+      <main className="min-h-screen bg-stone-900 text-stone-300">
+        <div className="mx-auto max-w-[1280px] px-5 pb-20 pt-28 sm:px-8 lg:pt-36">
+          {/* Where you are */}
+          <nav aria-label="Breadcrumb" className="mb-8 text-xs text-stone-500">
+            <Link href={shopPath} className="hover:text-stone-200">
+              {tr("breadcrumb.shop")}
+            </Link>
+            {category && CATEGORIES[category] && (
+              <>
+                <span className="mx-2">/</span>
+                <Link
+                  href={`${shopPath}/${categorySlug(category, locale)}`}
+                  className="hover:text-stone-200"
                 >
-                  {/* Horizontal Scrollable Gallery */}
+                  {locale === "ar" ? CATEGORIES[category].ar : CATEGORIES[category].en}
+                </Link>
+              </>
+            )}
+          </nav>
+
+          <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-20">
+            {/* ── The pictures ─────────────────────────────────────────── */}
+            <section aria-label={name}>
+              <div
+                ref={gallery}
+                onScroll={onScroll}
+                className="flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
+                {media.map((src, i) => (
                   <div
-                    ref={galleryRef}
-                    className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide"
-                    style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch', msOverflowStyle: 'none', scrollbarWidth: 'none' }}
-                    onScroll={handleGalleryScroll}
+                    key={`${src}-${i}`}
+                    className="relative aspect-[4/5] w-full shrink-0 snap-start"
                   >
-                    {allMedia.map((media, index) => (
-                      <div
-                        key={`${media}-${index}`}
-                        className="flex-shrink-0 w-full bg-gray-800 overflow-hidden relative"
-                        style={{ scrollSnapAlign: 'start', aspectRatio: '1080 / 1350', maxWidth: '1080px', maxHeight: '1350px' }}
-                      >
-                        {isVideoUrl(media) ? (
-                          <video
-                            src={media}
-                            className="w-full h-full object-cover"
-                            controls
-                            preload="metadata"
-                            playsInline
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          />
-                        ) : (
-                          <Image
-                            src={media}
-                            alt={`${product.name} - image ${index + 1}`}
-                            fill
-                            sizes="(max-width: 768px) 100vw, 50vw"
-                            className="object-cover"
-                            priority={index === 0}
-                          />
-                        )}
-                      </div>
-                    ))}
+                    {isVideoUrl(src) ? (
+                      <video
+                        src={src}
+                        controls
+                        playsInline
+                        preload="metadata"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <Image
+                        src={src}
+                        alt={media.length > 1 ? `${name} — ${fill(tr("product.photo"), { n: i + 1, total: media.length })}` : name}
+                        fill
+                        sizes="(min-width: 1024px) 640px, 100vw"
+                        priority={i === 0}
+                        loading={i === 0 ? undefined : "lazy"}
+                        className="object-cover"
+                      />
+                    )}
                   </div>
+                ))}
+              </div>
 
-                  {/* Image Counter */}
-                  {allMedia.length > 1 && (
-                    <div className="absolute bottom-6 right-4 bg-black/70 text-white px-2 py-1 rounded-full text-sm" aria-live="polite">
-                      {currentImageIndex + 1} / {allMedia.length}
-                    </div>
-                  )}
-                </motion.div>
-
-                {/* Thumbnails (desktop) */}
-                {allMedia.length > 1 && (
-                  <div className="hidden lg:grid grid-cols-4 gap-2">
-                    {allMedia.map((media, index) => (
+              {media.length > 1 && (
+                <div className="mt-4 flex items-center gap-3">
+                  <div className="flex gap-2 overflow-x-auto [scrollbar-width:none]">
+                    {media.map((src, i) => (
                       <button
-                        key={`thumb-${index}`}
-                        onClick={() => scrollToImage(index)}
-                        aria-label={`View image ${index + 1} of ${allMedia.length}`}
-                        className={`aspect-square overflow-hidden bg-gray-800 border-2 transition-colors duration-300 rounded-lg ${currentImageIndex === index ? 'border-white' : 'border-transparent hover:border-gray-400'}`}
+                        key={`t-${i}`}
+                        type="button"
+                        onClick={() => goTo(i)}
+                        aria-label={fill(tr("product.photo"), { n: i + 1, total: media.length })}
+                        aria-current={i === shown}
+                        className={`relative h-16 w-[52px] shrink-0 transition-opacity ${
+                          i === shown ? "opacity-100" : "opacity-40 hover:opacity-80"
+                        }`}
                       >
-                        {isVideoUrl(media) ? (
-                          <div className="w-full h-full bg-gray-700 flex items-center justify-center">
-                            <svg className="w-8 h-8 text-white/60" fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M8 5v14l11-7z" />
-                            </svg>
-                          </div>
+                        {isVideoUrl(src) ? (
+                          <span className="flex h-full w-full items-center justify-center text-[10px] uppercase tracking-wide text-stone-300">
+                            ▶ {tr("product.video")}
+                          </span>
                         ) : (
-                          <img src={media} alt={`${product.name} thumbnail ${index + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                          <Image src={src} alt="" fill sizes="52px" className="object-cover" />
                         )}
+                        <span
+                          className={`absolute inset-x-0 -bottom-1.5 h-px ${i === shown ? "bg-white" : "bg-transparent"}`}
+                        />
                       </button>
                     ))}
                   </div>
-                )}
-              </motion.div>
-
-              {/* Right Side - Product Info */}
-              <motion.div
-                className="space-y-3"
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.8, delay: 0.2 }}
-              >
-                {/* Title & Price */}
-                <div>
-                  <h1 className="text-lg lg:text-xl font-bold mb-2 text-center">{displayName}</h1>
-                  <div className="flex items-center justify-center space-x-2 mb-2">
-                    {product.discount && product.discount > 0 && product.originalPrice ? (
-                      <>
-                        <span className="text-base lg:text-lg font-bold">{displayPrice.toLocaleString()} LE</span>
-                        <span className="text-sm text-gray-400 line-through">{product.originalPrice.toLocaleString()} LE</span>
-                        <span className="bg-red-600 text-white px-1.5 py-0.5 text-xs font-medium rounded">{product.discount}% {tr('product.off')}</span>
-                      </>
-                    ) : (
-                      <span className="text-base lg:text-lg font-bold">{displayPrice.toLocaleString()} LE</span>
-                    )}
-                    {/* Custom badge — always visible when set by admin */}
-                    {product.customOutOfStockMessage && (
-                      <span className="bg-stone-900 text-white px-1.5 py-0.5 text-[10px] font-medium uppercase rounded ml-2" dir="auto">{product.customOutOfStockMessage}</span>
-                    )}
-                    {/* Standard badge — only when out of stock AND no custom message */}
-                    {isOutOfStock && !product.customOutOfStockMessage && (
-                      <span className="bg-gray-700 text-white px-1.5 py-0.5 text-xs font-medium rounded ml-2">{tr('product.outOfStock')}</span>
-                    )}
-                  </div>
+                  <span className="ms-auto shrink-0 text-xs tabular-nums text-stone-500" aria-live="polite">
+                    {shown + 1} / {media.length}
+                  </span>
                 </div>
+              )}
+            </section>
 
-                {/* Variants */}
-                {product.variants && product.variants.length > 0 && (
-                  <div>
-                    <label className="text-xs font-medium mb-2 flex items-center justify-center">Color</label>
-                    <div className="flex flex-wrap gap-2 items-center justify-center" role="radiogroup" aria-label="Product color options">
-                      {product.variants.map((variant, index) => {
-                        const isSelected = selectedVariant?.name === variant.name;
+            {/* ── What it is, and buying it ────────────────────────────── */}
+            <section className="lg:sticky lg:top-32 lg:self-start">
+              <h1 className="text-2xl font-light leading-tight tracking-tight text-white sm:text-3xl">
+                {name}
+              </h1>
+
+              <p className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span className="text-xl text-white tabular-nums">
+                  {money(price)} {currency}
+                </span>
+                {discounted && (
+                  <>
+                    <span className="text-sm text-stone-500 line-through tabular-nums">
+                      {money(product.originalPrice!)} {currency}
+                    </span>
+                    <span className="text-sm text-[#b5af84]">
+                      −{product.discount}% {tr("product.off")}
+                    </span>
+                  </>
+                )}
+              </p>
+
+              <p className="mt-3 flex items-center gap-2 text-sm text-stone-400">
+                <span className={`inline-block h-1.5 w-1.5 rounded-full ${status.dot}`} aria-hidden />
+                <span dir="auto">{status.text}</span>
+              </p>
+
+              {summary && (
+                <p className="mt-6 max-w-prose whitespace-pre-line text-[15px] leading-relaxed text-stone-400">
+                  {summary}
+                </p>
+              )}
+
+              <div className="mt-8 border-t border-white/10 pt-6">
+                {/* Options: words, the chosen one underlined */}
+                {!!product.variants?.length && (
+                  <div className="mb-6">
+                    <p className="mb-2 text-xs uppercase tracking-widest text-stone-500">
+                      {tr("product.option")}
+                    </p>
+                    <div role="radiogroup" aria-label={tr("product.option")} className="flex flex-wrap gap-x-5 gap-y-2">
+                      {product.variants.map((v) => {
+                        const on = variant?.name === v.name;
                         return (
                           <button
-                            key={index}
-                            onClick={() => selectVariant(variant)}
+                            key={v.name}
+                            type="button"
                             role="radio"
-                            aria-checked={isSelected}
-                            aria-label={`Color: ${variant.name}${variant.stock <= 0 ? ' (out of stock)' : ''}`}
-                            className={`px-3 py-1.5 border text-xs font-medium transition-colors duration-300 ${isSelected ? 'bg-white text-black border-white' : 'bg-transparent text-white border-white hover:bg-white hover:text-black'}`}
+                            aria-checked={on}
+                            onClick={() => pickVariant(v)}
+                            className={`text-sm underline-offset-[6px] transition-colors ${
+                              on ? "text-white underline decoration-1" : "text-stone-400 hover:text-white"
+                            } ${v.stock <= 0 ? "line-through decoration-stone-600" : ""}`}
                           >
-                            {variant.name}
+                            {v.name}
                           </button>
                         );
                       })}
@@ -362,168 +345,116 @@ export default function ProductClient({ product, relatedProducts, locale = 'en' 
                 )}
 
                 {/* Quantity */}
-                <div>
-                  <label className="flex items-center justify-center text-xs font-medium mb-2">Quantity</label>
-                  <div className="flex items-center space-x-3 justify-center">
-                    <button
-                      onClick={decrementQty}
-                      disabled={quantity <= 1}
-                      aria-label="Decrease quantity"
-                      className={`w-8 h-8 flex items-center justify-center text-sm font-bold transition-colors duration-300 ${
-                        quantity <= 1
-                          ? 'text-white/30 cursor-not-allowed'
-                          : 'text-white hover:bg-white hover:text-black'
-                      }`}
-                    >
-                      -
-                    </button>
-                    <span className="text-sm font-medium w-8 text-center tabular-nums" aria-live="polite" aria-label={`Quantity: ${quantity}`}>
-                      {quantity}
+                {!soldOut && (
+                  <div className="mb-8 flex items-center gap-5">
+                    <span className="text-xs uppercase tracking-widest text-stone-500">
+                      {tr("product.quantity")}
                     </span>
+                    <div className="flex items-center gap-4 text-white">
+                      <button
+                        type="button"
+                        onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                        disabled={quantity <= 1}
+                        aria-label="−"
+                        className="text-lg leading-none disabled:text-stone-600"
+                      >
+                        −
+                      </button>
+                      <span className="w-6 text-center tabular-nums" aria-live="polite">
+                        {quantity}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setQuantity((q) => Math.min(q + 1, Math.max(1, stock)))}
+                        disabled={quantity >= stock}
+                        aria-label="+"
+                        className="text-lg leading-none disabled:text-stone-600"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Buying */}
+                {soldOut ? (
+                  <p className="text-sm text-stone-500">{tr("product.outOfStock")}</p>
+                ) : (
+                  <div className="flex flex-col gap-4">
                     <button
-                      onClick={incrementQty}
-                      disabled={!isOutOfStock && quantity >= currentStock}
-                      aria-label="Increase quantity"
-                      className={`w-8 h-8 flex items-center justify-center text-sm font-bold transition-colors duration-300 ${
-                        !isOutOfStock && quantity >= currentStock
-                          ? 'text-white/30 cursor-not-allowed'
-                          : 'text-white hover:bg-white hover:text-black'
-                      }`}
+                      type="button"
+                      onClick={buyNow}
+                      className="h-12 w-full bg-white text-sm font-semibold uppercase tracking-widest text-stone-900 transition-colors hover:bg-stone-200"
                     >
-                      +
+                      {tr("product.buyNow")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={addToCart}
+                      className="self-center text-sm uppercase tracking-widest text-white underline decoration-1 underline-offset-[6px] transition-opacity hover:opacity-70"
+                    >
+                      {tr("product.addToCart")}
                     </button>
                   </div>
-                  {/* Stock indicator */}
-                  {!isOutOfStock && currentStock <= 5 && (
-                    <p className="text-center text-amber-400 text-xs mt-1">
-                      Only {currentStock} left in stock
-                    </p>
+                )}
+
+                <p role="status" aria-live="polite" className="mt-4 min-h-5 text-center text-sm">
+                  {said?.kind === "added" && (
+                    <span className="text-emerald-300">
+                      {said.text} ·{" "}
+                      <Link href="/cart" className="text-white underline underline-offset-4">
+                        {tr("product.viewCart")} →
+                      </Link>
+                    </span>
                   )}
-                </div>
+                  {said?.kind === "refused" && <span className="text-amber-300">{said.text}</span>}
+                </p>
 
-                {/* Action Buttons */}
-                <div className="space-y-2">
-                  {isOutOfStock ? (
-                    <button disabled className="w-full bg-gray-700 border border-gray-600 text-gray-400 px-4 py-2 text-xs font-bold uppercase tracking-wider cursor-not-allowed opacity-60">Out of Stock</button>
-                  ) : (
-                    <>
-                      <button
-                        onClick={handleAddToCart}
-                        aria-label={`Add ${product.name} to cart`}
-                        className="w-full bg-transparent border border-white text-white px-4 py-2 text-xs font-bold uppercase tracking-wider hover:bg-white hover:text-black transition-all duration-300"
-                      >
-                        Add to cart
-                      </button>
-                      <button
-                        onClick={handleBuyNow}
-                        aria-label={`Buy ${product.name} now`}
-                        className="w-full bg-white text-black px-4 py-2 text-xs font-bold uppercase tracking-wider hover:bg-gray-100 transition-colors duration-300"
-                      >
-                        Buy it now
-                      </button>
-                    </>
-                  )}
-                </div>
+                {payWays.length > 0 && (
+                  <p className="mt-4 text-center text-xs text-stone-500">{payWays.join(" · ")}</p>
+                )}
+              </div>
 
-                <ProductDetailsTabs product={product} locale={locale} />
-              </motion.div>
-            </div>
+              <ProductDetailsTabs product={product} locale={locale} />
+            </section>
+          </div>
 
-            {/* Related Products */}
-            {relatedProducts.length > 0 && (
-              <motion.div
-                className="mt-20 lg:mt-26"
-                initial={{ opacity: 0, y: 50 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.2 }}
-              >
-                <motion.h2
-                  className="text-lg sm:text-xl lg:text-2xl font-bold text-center mb-16 lg:mb-20 uppercase tracking-wider text-[#b3b3b3]"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.6, delay: 0.4 }}
-                >
-                  MIGHT ALSO LIKE
-                </motion.h2>
-
-                <motion.div
-                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.6, delay: 0.6 }}
-                >
-                  {relatedProducts.filter(p => p._id !== product._id).slice(0, 6).map((relatedProduct) => (
-                    <div
-                      key={relatedProduct._id}
-                      className="group cursor-pointer"
-                      onClick={() => router.push(productPath(relatedProduct, locale))}
-                      role="link"
-                      aria-label={`View ${relatedProduct.name}`}
-                    >
-                      <div className="aspect-square mb-2 lg:mb-3 overflow-hidden bg-gray-800 max-w-[140px] sm:max-w-[160px] lg:max-w-[180px] mx-auto relative">
-                        {isVideoUrl(relatedProduct.mainImage) ? (
-                          <div className="w-full h-full bg-gray-700 flex items-center justify-center">
-                            <svg className="w-10 h-10 text-white/60" fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M8 5v14l11-7z" />
-                            </svg>
-                          </div>
-                        ) : (
+          {/* ── Other products ──────────────────────────────────────────── */}
+          {others.length > 0 && (
+            <section className="mt-28">
+              <h2 className="mb-8 text-xs uppercase tracking-widest text-stone-500">
+                {tr("product.youMightLike")}
+              </h2>
+              <ul className="grid grid-cols-2 gap-x-5 gap-y-10 sm:grid-cols-4">
+                {others.map((p) => (
+                  <li key={String(p._id)}>
+                    <Link href={productPath(p, locale)} className="group block">
+                      <div className="relative aspect-[4/5] overflow-hidden">
+                        {p.mainImage && !isVideoUrl(p.mainImage) && (
                           <Image
-                            src={relatedProduct.mainImage}
-                            alt={relatedProduct.name}
+                            src={p.mainImage}
+                            alt={localized(p, "name", locale)}
                             fill
-                            sizes="(max-width: 640px) 140px, (max-width: 1024px) 160px, 180px"
-                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                            sizes="(min-width: 640px) 25vw, 50vw"
                             loading="lazy"
+                            className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                           />
                         )}
                       </div>
-                      <div className="text-center">
-                        <h3 className="text-[#b3b3b3] text-xs sm:text-sm lg:text-base font-medium mb-1 group-hover:text-[#b3b3b3]/70 transition-colors duration-300 line-clamp-2">{relatedProduct.name}</h3>
-                        <p className="text-[#b3b3b3] font-bold text-sm lg:text-base tabular-nums">{relatedProduct.price.toLocaleString()} L.E</p>
-                      </div>
-                    </div>
-                  ))}
-                </motion.div>
-              </motion.div>
-            )}
-
-          </div>
+                      <p className="mt-3 line-clamp-2 text-sm text-stone-200">
+                        {localized(p, "name", locale)}
+                      </p>
+                      <p className="mt-1 text-sm text-stone-500 tabular-nums">
+                        {money(p.price)} {currency}
+                      </p>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </div>
-
-        {/* Cart refusal — always a stock limit, and always actionable */}
-        <AnimatePresence>
-          {cartRefusal && (
-            <motion.div
-              initial={{ y: -50, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: -50, opacity: 0 }}
-              role="status"
-              aria-live="polite"
-              className="fixed top-4 right-4 bg-amber-600 text-white px-6 py-3 rounded-lg z-50"
-            >
-              {cartRefusal}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Cart notification */}
-        <AnimatePresence>
-          {showCartNotification && (
-            <motion.div
-              key={cartNotificationKey}
-              initial={{ y: -50, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: -50, opacity: 0 }}
-              role="status"
-              aria-live="polite"
-              className="fixed top-4 right-4 bg-black text-white px-6 py-3 rounded-lg z-50"
-            >
-              Added to cart!
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+      </main>
       <Footer />
     </>
   );
