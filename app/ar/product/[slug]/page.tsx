@@ -1,7 +1,6 @@
 import { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { cache } from 'react';
-import { getPaymentMethods } from '@/payments/settings';
 
 import ProductClient from '@/app/(en)/product/[slug]/ProductClient';
 import { getCurrentSlug, getProductPageData, getProductPageDataBySlug } from '@/product';
@@ -133,9 +132,6 @@ export default async function ArabicProductPage({ params }: Props) {
     { name: localized(product, 'name', 'ar'), path: `/ar/product/${productSlug(product, 'ar')}` },
   ]);
 
-  // The shop's real payment switches, for the line under the buttons.
-  const methods = await getPaymentMethods().catch(() => null);
-  const payments = methods ? { cod: methods.codEnabled, instapay: methods.instaPayEnabled } : undefined;
 
   const serializedProduct = JSON.parse(JSON.stringify(product));
   const serializedRelated = JSON.parse(JSON.stringify(related));
@@ -154,7 +150,7 @@ export default async function ArabicProductPage({ params }: Props) {
         </script>
       )}
 
-      <ProductClient product={serializedProduct} relatedProducts={serializedRelated} payments={payments} locale="ar" />
+      <ProductClient product={serializedProduct} relatedProducts={serializedRelated} locale="ar" />
     </>
   );
 }

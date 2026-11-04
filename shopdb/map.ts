@@ -53,6 +53,7 @@ export function rowToProduct(row: any): Product & { _id: string; createdAt?: any
     specifications: row.specifications || undefined,
     specificationsAr: row.specifications_ar || undefined,
     shippingInfo: row.shipping_info || undefined,
+    shippingInfoAr: row.shipping_info_ar || undefined,
     faqs: row.faqs ?? [],
     faqsAr: row.faqs_ar ?? [],
     promoCode: row.promo_code ?? '',
@@ -108,6 +109,7 @@ export function productToRow(p: Partial<Product>): Record<string, unknown> {
   set('specifications', p.specifications);
   set('specifications_ar', p.specificationsAr);
   set('shipping_info', p.shippingInfo);
+  set('shipping_info_ar', (p as any).shippingInfoAr);
   set('faqs', p.faqs);
   set('faqs_ar', p.faqsAr);
   set('promo_code', p.promoCode);

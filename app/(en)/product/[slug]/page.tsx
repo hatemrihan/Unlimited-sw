@@ -1,7 +1,6 @@
 import { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { cache } from 'react';
-import { getPaymentMethods } from '@/payments/settings';
 
 import ProductClient from './ProductClient';
 import { getCurrentSlug, getProductPageData, getProductPageDataBySlug } from '@/product';
@@ -142,9 +141,6 @@ export default async function ProductPage({ params }: Props) {
     console.error('product: rating summary failed', e);
   }
 
-  // The shop's real payment switches, for the line under the buttons.
-  const methods = await getPaymentMethods().catch(() => null);
-  const payments = methods ? { cod: methods.codEnabled, instapay: methods.instaPayEnabled } : undefined;
 
   const serializedProduct = JSON.parse(JSON.stringify(product));
   const serializedRelated = JSON.parse(JSON.stringify(related));
@@ -164,7 +160,7 @@ export default async function ProductPage({ params }: Props) {
         </script>
       )}
 
-      <ProductClient product={serializedProduct} relatedProducts={serializedRelated} payments={payments} />
+      <ProductClient product={serializedProduct} relatedProducts={serializedRelated} />
     </>
   );
 }

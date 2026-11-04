@@ -1,74 +1,124 @@
-/**
- * The product's details as hairline sections (rebuilt 4 Nov 2026).
- *
- * Native <details>: opens and closes with no script and no animation
- * library, works with the keyboard and screen readers, and its text is in
- * the page for Google even while closed. Only sections that have text are
- * drawn — no "this information will be available once the admin adds
- * content" placeholders.
- */
+"use client";
 
-import type { Product } from "@/product/model";
-import { translator } from "@/i18n";
-import type { Locale } from "@/lib/locale";
-import { localized, localizedFaqs } from "@/product/seo";
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Product } from '@/product/model';
+import { translator } from '@/i18n';
+import type { Locale } from '@/lib/locale';
+import { localized, localizedFaqs } from '@/product/seo';
 
-export default function ProductDetailsTabs({
-  product,
-  locale = "en",
-}: {
+interface ProductDetailsTabsProps {
   product: Product;
+  /** Defaults to English, so the existing English route is unchanged. */
   locale?: Locale;
-}) {
-  const tr = translator(locale);
-  const specifications = localized(product, "specifications", locale).trim();
-  const detailed = localized(product, "detailedDescription", locale).trim();
-  const shipping = product.shippingInfo?.trim() ?? "";
-  const faqs = localizedFaqs(product, locale);
+}
 
-  const sections = [
-    detailed && { id: "description", label: tr("product.description"), body: <Text>{detailed}</Text> },
-    specifications && { id: "specs", label: tr("product.specifications"), body: <Text>{specifications}</Text> },
-    shipping && { id: "shipping", label: tr("product.shipping"), body: <Text>{shipping}</Text> },
-    faqs.length > 0 && {
-      id: "faqs",
-      label: tr("product.faqs"),
-      body: (
-        <dl className="space-y-4">
-          {faqs.map((f: { question: string; answer: string }, i: number) => (
-            <div key={i}>
-              <dt className="text-sm text-stone-200">{f.question}</dt>
-              <dd className="mt-1 text-sm leading-relaxed text-stone-400">{f.answer}</dd>
+const ProductDetailsTabs: React.FC<ProductDetailsTabsProps> = ({ product, locale = 'en' }) => {
+  const [activeTab, setActiveTab] = useState<string | null>(null);
+  const tr = translator(locale);
+
+  // Each field falls back to its English value, so a product with partial
+  // Arabic copy shows a filled tab rather than a placeholder sentence.
+  const specifications = localized(product, 'specifications', locale);
+  const detailed = localized(product, 'detailedDescription', locale)
+    || localized(product, 'description', locale);
+  const faqs = localizedFaqs(product, locale);
+  const shipping = ((locale === 'ar' && product.shippingInfoAr) || product.shippingInfo || '').trim();
+
+  const tabs = [
+    {
+      id: 'details',
+      label: tr('product.specifications'),
+      content: specifications || tr('common.loading'),
+      hasContent: !!specifications.trim()
+    },
+    {
+      id: 'description',
+      label: tr('product.description'),
+      content: detailed || tr('common.loading'),
+      hasContent: !!detailed.trim()
+    },
+    {
+      id: 'shipping',
+      label: tr('product.shipping'),
+      // Shipping terms are the same for both languages until the owner writes
+      // an Arabic version; there is no shippingInfoAr field.
+      // The Arabic shipping text since 4 Nov 2026, else the English.
+      content: shipping,
+      hasContent: !!shipping
+    },
+    {
+      id: 'faqs',
+      label: tr('product.faqs'),
+      content: faqs.length > 0 ? (
+        <div className="space-y-2 w-full text-center">
+          {faqs.map((faq: { question: string; answer: string }, index: number) => (
+            <div key={index} className="border-b border-gray-600 pb-2 last:border-b-0 flex flex-col items-center text-center">
+              <h4 className="font-medium text-[#b3b3b3] mb-1 text-xs text-center">{faq.question}</h4>
+              <p className="text-[#b3b3b3]/70 text-xs leading-relaxed text-center">{faq.answer}</p>
             </div>
           ))}
-        </dl>
-      ),
-    },
-  ].filter(Boolean) as { id: string; label: string; body: React.ReactNode }[];
+        </div>
+      ) : '',
+      hasContent: faqs.length > 0
+    }
+  ];
 
-  if (sections.length === 0) return null;
+  const shownTabs = tabs.filter((tab) => tab.hasContent);
+
+  const toggleTab = (tabId: string) => {
+    setActiveTab(activeTab === tabId ? null : tabId);
+  };
 
   return (
-    <div className="mt-10 border-b border-white/10">
-      {sections.map((s) => (
-        <details key={s.id} className="group border-t border-white/10">
-          <summary className="flex cursor-pointer list-none items-center justify-between py-4 text-xs uppercase tracking-widest text-stone-300 transition-colors hover:text-white [&::-webkit-details-marker]:hidden">
-            {s.label}
-            <span aria-hidden className="text-base leading-none text-stone-500 transition-transform group-open:rotate-45">
-              +
+    <div className="space-y-2 pt-4 border-t border-gray-700 text-center">
+      {shownTabs.map((tab) => (
+        <div key={tab.id}>
+          <button
+            onClick={() => toggleTab(tab.id)}
+            className="flex justify-center items-center w-full text-center py-2 border-b border-gray-700 hover:border-gray-500 transition-colors duration-300 group"
+          >
+             <motion.span
+              animate={{ rotate: activeTab === tab.id ? 180 : 0 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="text-sm text-center text-[#b3b3b3]/50 group-hover:text-[#b3b3b3] transition-colors duration-300 flex items-center justify-center px-2"
+            >
+              {activeTab === tab.id ? '-' : '+'}
+            </motion.span>
+            <span className="text-xs font-medium uppercase tracking-wider text-[#b3b3b3] group-hover:text-[#b3b3b3]/70 transition-colors duration-300">
+              {tab.label}
             </span>
-          </summary>
-          <div className="pb-6">{s.body}</div>
-        </details>
+           
+          </button>
+
+          <AnimatePresence>
+            {activeTab === tab.id && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{
+                  duration: 0.2,
+                  ease: "easeInOut",
+                  opacity: { duration: 0.1 }
+                }}
+                className="overflow-hidden flex flex-col items-center justify-center w-full"
+              >
+                <div className="py-3 text-center text-[#b3b3b3] text-xs leading-relaxed w-full flex flex-col items-center justify-center">
+                  {typeof tab.content === 'string' ? (
+                    <div className="whitespace-pre-line text-center">{tab.content}</div>
+                  ) : (
+                    tab.content
+                  )}
+
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       ))}
     </div>
   );
-}
+};
 
-function Text({ children }: { children: string }) {
-  return (
-    <p className="max-w-prose whitespace-pre-line text-sm leading-relaxed text-stone-400">
-      {children}
-    </p>
-  );
-}
+export default ProductDetailsTabs;

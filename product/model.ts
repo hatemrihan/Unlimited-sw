@@ -33,6 +33,7 @@ export interface Product {
   detailedDescription?: string;  // Long detailed description
   specifications?: string;       // Technical specs/details
   shippingInfo?: string;         // Shipping information
+  shippingInfoAr?: string;       // Arabic shipping terms (4 Nov 2026); falls back to shippingInfo
   faqs?: Array<{                // Frequently asked questions
     question: string;
     answer: string;
