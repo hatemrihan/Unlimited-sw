@@ -5,16 +5,13 @@
  */
 
 export interface WhatsAppTopic {
-  id: 'wall' | 'order' | 'coach' | 'other';
+  id: 'product';
   label: string;
   message: string;
 }
 
 export const WHATSAPP_TOPICS: readonly WhatsAppTopic[] = [
-  { id: 'wall', label: 'أي عقلة تناسب حائطي؟', message: 'السلام عليكم، أي عقلة تناسب حائطي؟' },
-  { id: 'order', label: 'أين طلبي؟', message: 'السلام عليكم، أين طلبي؟ رقم الطلب: ' },
-  { id: 'coach', label: 'التدريب مع مدرب', message: 'السلام عليكم، أريد التدريب مع مدرب.' },
-  { id: 'other', label: 'سؤال آخر', message: 'السلام عليكم، عندي سؤال.' },
+  { id: 'product', label: 'استفسار عن منتج', message: 'السلام عليكم، أريد الاستفسار عن منتج.' },
 ];
 
 /**

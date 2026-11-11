@@ -13,7 +13,7 @@ describe('WhatsApp button', () => {
     const link = whatsappLink('+201044878774', WHATSAPP_TOPICS[0].message)!;
     expect(link.startsWith('https://wa.me/201044878774?text=')).toBe(true);
     const text = decodeURIComponent(link.split('?text=')[1]);
-    expect(text).toBe('السلام عليكم، أي عقلة تناسب حائطي؟');
+    expect(text).toBe('السلام عليكم، أريد الاستفسار عن منتج.');
     expect(text.startsWith('السلام عليكم')).toBe(true);
   });
 
@@ -22,8 +22,8 @@ describe('WhatsApp button', () => {
     expect(whatsappLink('+20', 'x')).toBeNull();
   });
 
-  it('has four Arabic topics, each with its own message', () => {
-    expect(WHATSAPP_TOPICS).toHaveLength(4);
+  it('has one Arabic topic, with its own message', () => {
+    expect(WHATSAPP_TOPICS).toHaveLength(1);
     WHATSAPP_TOPICS.forEach((t) => {
       expect(t.label).toMatch(/[؀-ۿ]/);
       expect(t.message.startsWith('السلام عليكم')).toBe(true);
