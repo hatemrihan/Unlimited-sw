@@ -7,16 +7,17 @@ import GoogleAnalytics from '@/app/components/GoogleAnalytics';
 import MetaPixel from '@/app/components/MetaPixel';
 import AnalyticsProvider from '@/app/components/AnalyticsProvider';
 import { directionFor, type Locale } from '@/lib/locale';
-import { Alexandria, Geist } from "next/font/google";
+import { Cairo, Geist } from "next/font/google";
 
 // The brand's two faces, the same as the dashboard and the app (2 Nov 2026):
 // Geist draws Latin letters and digits, and anything it has no glyph for —
-// Arabic — falls through to Alexandria (Hatem, 7 Oct: "use Alexandria").
+// Arabic — falls through to Cairo (Hatem, 13 Nov 2026: Alexandria "is big
+// and hurts my eye"; Alexandria from 7 Oct).
 // next/font serves both from our own domain, so nothing jumps while they load.
 // No Arial stand-in for Geist: Arial has Arabic letters, and would draw
-// every Arabic word before Alexandria was ever asked.
+// every Arabic word before Cairo was ever asked.
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist", adjustFontFallback: false });
-const alexandria = Alexandria({ subsets: ["arabic"], variable: "--font-arabic" });
+const cairo = Cairo({ subsets: ["arabic"], variable: "--font-arabic" });
 
 /**
  * Everything the two root layouts share: the <html> element, the site-wide
@@ -113,7 +114,7 @@ export default function StoreShell({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang={locale} dir={directionFor(locale)} suppressHydrationWarning className={cn(geist.variable, alexandria.variable)}>
+    <html lang={locale} dir={directionFor(locale)} suppressHydrationWarning className={cn(geist.variable, cairo.variable)}>
       <head>
         <meta name="theme-color" content="#000000" />
       </head>

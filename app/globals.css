@@ -155,7 +155,7 @@
 
 /* The brand faces in the order each language needs (2 Nov 2026). Geist ships
    an Arial stand-in that covers Arabic too, so with Geist first every Arabic
-   word was drawn in Arial and Alexandria never loaded. Arabic pages therefore
-   ask for Alexandria first (its Latin letters suit the odd English word). */
+   word was drawn in Arial and the Arabic face never loaded. Arabic pages therefore
+   ask for it first — Cairo since 13 Nov 2026, Alexandria before. */
 :root { --font-stack: var(--font-geist), var(--font-arabic), ui-sans-serif, system-ui, sans-serif; }
 html[lang="ar"] { --font-stack: var(--font-arabic), var(--font-geist), ui-sans-serif, system-ui, sans-serif; }

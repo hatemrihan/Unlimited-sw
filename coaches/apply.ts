@@ -112,6 +112,33 @@ export async function listOpenSlots(locale: 'en' | 'ar'): Promise<SlotsResult> {
   };
 }
 
+/**
+ * Is the team taking applications? (20261110140000 — "we choose
+ * Unlimited's coaches ourselves", 10 Nov 2026.)
+ *
+ * Asked on the server before drawing the page, so a stranger sees one
+ * calm "closed for now" instead of a form that refuses after two minutes
+ * of typing. The DOOR is the lock — apply_to_coach refuses while closed —
+ * so when this question itself fails we show the form, and the door
+ * answers with APPLICATIONS_CLOSED in his language if it must.
+ */
+export async function applicationsOpen(): Promise<boolean> {
+  try {
+    const { data, error } = await coachDatabase().rpc('get_sign_in_options_v1');
+    if (error) {
+      console.error('coach apply: could not read whether applications are open', {
+        message: error.message || 'request blocked or unreachable',
+        code: error.code,
+      });
+      return true;
+    }
+    return (data as { coach_applications?: boolean } | null)?.coach_applications !== false;
+  } catch (error) {
+    console.error('coach apply: could not read whether applications are open', error);
+    return true;
+  }
+}
+
 /** Everything that can go wrong, in the applicant's own language. */
 const MESSAGES: Record<string, { en: string; ar: string }> = {
   INVALID_EMAIL: {
@@ -184,6 +211,11 @@ const MESSAGES: Record<string, { en: string; ar: string }> = {
   coach_applications_one_open_per_slot: {
     en: 'That slot was just taken — please choose another available time below.',
     ar: 'تم حجز هذا الموعد للتو — يرجى اختيار موعد آخر متاح بالأسفل.',
+  },
+  // The team closed applications (20261110140000) while this page was open.
+  APPLICATIONS_CLOSED: {
+    en: 'Coaching applications are closed for now. We choose our coaches ourselves at the moment.',
+    ar: 'التقديم للتدريب مغلق حاليًا، ونختار مدربينا بأنفسنا في الوقت الحالي.',
   },
   ALREADY_A_COACH: {
     en: 'You already coach with us. Sign in instead.',

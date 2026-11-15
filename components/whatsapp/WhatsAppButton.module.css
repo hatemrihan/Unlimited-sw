@@ -22,7 +22,7 @@
 .list { display: grid; justify-items: end; gap: 14px; margin: 0; padding: 0; list-style: none; }
 .topic {
   position: relative; display: inline-block; padding: 2px 0;
-  color: #fafaf9; font-family: var(--font-arabic), 'Alexandria', system-ui, sans-serif; font-size: 16px; line-height: 1.5;
+  color: #fafaf9; font-family: var(--font-arabic), 'Cairo', system-ui, sans-serif; font-size: 16px; line-height: 1.5;
   text-decoration: none; animation: rise 0.32s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 .topic::after {

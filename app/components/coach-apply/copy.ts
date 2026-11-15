@@ -30,6 +30,11 @@ export const APPLY_COPY = {
     under: 'Two minutes. Pick an interview time and we email you the details.',
 
     applyTitle: 'Apply',
+    // Applications closed by the team (10 Nov 2026): coaches join by invitation.
+    eyebrowClosed: 'Coaching applications — closed for now',
+    underClosed:
+      'For now we choose Unlimited’s coaches ourselves and are not taking new ' +
+      'applications. Follow us — we will say when they open again.',
     fields: {
       name: 'Full name',
       email: 'Email',
@@ -110,6 +115,11 @@ export const APPLY_COPY = {
     under: 'دقيقتان فقط. اختر موعد المقابلة وسنرسل لك التفاصيل بالبريد.',
 
     applyTitle: 'التقديم',
+    // Applications closed by the team (10 Nov 2026): coaches join by invitation.
+    eyebrowClosed: 'التقديم للتدريب — مغلق حاليًا',
+    underClosed:
+      'نختار مدربي Unlimited بأنفسنا في الوقت الحالي، ولا نستقبل طلبات جديدة. ' +
+      'تابعنا وسنعلن عند فتح التقديم من جديد.',
     fields: {
       name: 'الاسم الكامل',
       email: 'البريد الإلكتروني',
