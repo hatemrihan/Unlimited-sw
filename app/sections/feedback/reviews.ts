@@ -6,6 +6,7 @@
  */
 import { unstable_cache } from 'next/cache';
 
+import { DATA_CACHE_SECONDS } from '@/lib/cache-ttl';
 import connectToDatabase from '@/lib/mongodb';
 import Feedback from '@/models/feedback';
 import { cleanFeedbackMessage, reviewName } from '../feedbackText';
@@ -40,7 +41,9 @@ const readReviews = unstable_cache(
       .slice(0, SHOWN);
   },
   ['feedback:public'],
-  { tags: [FEEDBACK_TAG], revalidate: 300 }
+  // An hour, like everything else the home page reads (it was 5 minutes):
+  // the page lives only as long as its shortest-lived data.
+  { tags: [FEEDBACK_TAG], revalidate: DATA_CACHE_SECONDS }
 );
 
 /** Never throws: no reviews is a page without the list, not a broken page. */

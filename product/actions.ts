@@ -4,7 +4,7 @@ import { productQueries } from '@/product/queries';
 import { sellsFromSupabase } from '@/shopdb/client';
 import { PRODUCTS_TAG, productTag } from '@/product/tags';
 import { apiCache, invalidateProductCache } from '@/lib/cache';
-import { CACHE_TTL } from '@/lib/cache-ttl';
+import { CACHE_TTL, DATA_CACHE_SECONDS } from '@/lib/cache-ttl';
 import { cacheKeys } from '@/lib/cache-keys';
 import { NotFoundError, DatabaseError } from '@/lib/errors';
 import { CreateProductInput, UpdateProductInput } from '@/product/schema';
@@ -31,7 +31,7 @@ interface AdminProductsResult {
 const readActiveProductsCached = unstable_cache(
   async () => productQueries.findAllActive(),
   ['products:all'],
-  { tags: [PRODUCTS_TAG], revalidate: CACHE_TTL.PRODUCTS / 1000 }
+  { tags: [PRODUCTS_TAG], revalidate: DATA_CACHE_SECONDS }
 );
 
 /**
@@ -117,7 +117,7 @@ export async function getActiveProductsPage(page: number, limit: number): Promis
         productQueries.countActive(),
       ]),
       ['products:page', String(safePage), String(safeLimit)],
-      { tags: [PRODUCTS_TAG], revalidate: CACHE_TTL.PRODUCTS / 1000 }
+      { tags: [PRODUCTS_TAG], revalidate: DATA_CACHE_SECONDS }
     );
 
     const [products, total] = await readPageCached();
@@ -353,7 +353,7 @@ export async function getProductPageData(
         return { product, related: await productQueries.findRelated(id, 4) };
       },
       ['product:page', id],
-      { tags: [PRODUCTS_TAG, productTag(id)], revalidate: CACHE_TTL.PRODUCT_DETAIL / 1000 }
+      { tags: [PRODUCTS_TAG, productTag(id)], revalidate: DATA_CACHE_SECONDS }
     );
 
     return await read();
@@ -381,7 +381,7 @@ export async function getCurrentSlug(oldSlug: string, locale: 'en' | 'ar'): Prom
     const read = unstable_cache(
       async () => productQueries.currentSlugFor(oldSlug, locale),
       ['product:moved', locale, oldSlug],
-      { tags: [PRODUCTS_TAG], revalidate: CACHE_TTL.PRODUCT_DETAIL / 1000 }
+      { tags: [PRODUCTS_TAG], revalidate: DATA_CACHE_SECONDS }
     );
     return await read();
   } catch (err) {
@@ -406,7 +406,7 @@ export async function getProductPageDataBySlug(
         return { product, related: await productQueries.findRelated(id, 4) };
       },
       ['product:page:slug', locale, slug],
-      { tags: [PRODUCTS_TAG], revalidate: CACHE_TTL.PRODUCT_DETAIL / 1000 }
+      { tags: [PRODUCTS_TAG], revalidate: DATA_CACHE_SECONDS }
     );
 
     return await read();
@@ -422,7 +422,7 @@ export async function getProductsByCategory(category: string): Promise<Product[]
     const read = unstable_cache(
       async () => productQueries.findByCategory(category),
       ['product:category', category],
-      { tags: [PRODUCTS_TAG], revalidate: CACHE_TTL.PRODUCTS / 1000 }
+      { tags: [PRODUCTS_TAG], revalidate: DATA_CACHE_SECONDS }
     );
 
     return await read();
@@ -445,7 +445,7 @@ export async function getProductById(id: string): Promise<any> {
     const product = await unstable_cache(
       async () => productQueries.findById(id),
       ['product:detail', id],
-      { tags: [PRODUCTS_TAG, productTag(id)], revalidate: CACHE_TTL.PRODUCT_DETAIL / 1000 }
+      { tags: [PRODUCTS_TAG, productTag(id)], revalidate: DATA_CACHE_SECONDS }
     )();
 
     if (!product) throw new NotFoundError('Product not found');

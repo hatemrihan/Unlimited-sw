@@ -22,6 +22,7 @@
 
 import { unstable_cache } from 'next/cache';
 
+import { DATA_CACHE_SECONDS } from '@/lib/cache-ttl';
 import type { Locale } from '@/lib/locale';
 import { productQueries } from '@/product/queries';
 import { productPath } from '@/product/seo';
@@ -84,10 +85,12 @@ async function readFeaturedId(): Promise<string | null> {
 }
 
 /**
- * Cached for a minute, and dropped with the products cache whenever a
+ * Cached for an hour (it was a minute until 17 Nov 2026 — see
+ * DATA_CACHE_SECONDS), and dropped with the products cache whenever a
  * product is edited, so a sale that empties the stock hides the section
  * at the next rebuild. The setting itself lives in the dashboard (another
- * app), so a change there shows within the minute.
+ * app), which calls /api/revalidate/shop when it is saved, so a change
+ * there shows at once; if that call is lost, within the hour.
  */
 const readFeaturedCached = unstable_cache(
   async (): Promise<Product | null> => {
@@ -96,7 +99,7 @@ const readFeaturedCached = unstable_cache(
     return productQueries.findById(id);
   },
   ['products:featured'],
-  { tags: [PRODUCTS_TAG], revalidate: 60 }
+  { tags: [PRODUCTS_TAG], revalidate: DATA_CACHE_SECONDS }
 );
 
 export async function getFeaturedProduct(): Promise<Product | null> {

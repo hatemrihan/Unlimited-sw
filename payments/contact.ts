@@ -1,5 +1,6 @@
 import { unstable_cache } from 'next/cache';
 import { coachDatabase } from '@/coaches/supabase';
+import { DATA_CACHE_SECONDS } from '@/lib/cache-ttl';
 import { logger } from '@/utils/logger';
 import { FALLBACK_CONTACT, toStoreContact, type StoreContact } from './contact-values';
 
@@ -57,6 +58,33 @@ const cachedContact = unstable_cache(getStoreContactUncached, ['store-contact-v1
 export async function getStoreContact(): Promise<StoreContact> {
   try {
     return await cachedContact();
+  } catch (error) {
+    logger.warn('[contact] Could not read contact settings; using the fallback', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return FALLBACK_CONTACT;
+  }
+}
+
+/**
+ * The same values for a PAGE that is built once and served from the CDN
+ * (the home pages' WhatsApp button), cached for an hour (17 Nov 2026).
+ *
+ * WHY A SECOND READER. A page lives only as long as the shortest-lived data
+ * it reads, so the one-minute reader above made the whole home page rebuild
+ * every minute. Checkout keeps the one-minute reader: the InstaPay address a
+ * customer pays into must never be an hour old.
+ *
+ * Same tag, so the dashboard's /api/revalidate/shop call refreshes both.
+ */
+const cachedContactForPage = unstable_cache(getStoreContactUncached, ['store-contact-v1-page'], {
+  revalidate: DATA_CACHE_SECONDS,
+  tags: [STORE_CONTACT_TAG],
+});
+
+export async function getStoreContactForPage(): Promise<StoreContact> {
+  try {
+    return await cachedContactForPage();
   } catch (error) {
     logger.warn('[contact] Could not read contact settings; using the fallback', {
       error: error instanceof Error ? error.message : String(error),

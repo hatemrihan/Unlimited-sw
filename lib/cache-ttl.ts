@@ -1,4 +1,23 @@
 /**
+ * How long Next's Data Cache keeps what the store's PAGES are built from:
+ * one hour, in seconds (17 Nov 2026).
+ *
+ * A page lives only as long as the shortest-lived data it reads. Products
+ * were cached for 30 to 45 seconds, so the home page, the shop and every
+ * product page were rebuilt on the server on nearly every visit — that used
+ * up the Vercel account's function time (the store was 79% of it).
+ *
+ * This number is only the ceiling. What keeps a page correct is the purge:
+ * the store purges by tag on its own writes (orders, stock, /admin edits),
+ * and the admin dashboard calls /api/revalidate/shop after its writes.
+ * Prices and stock are checked again, uncached, when an order is placed.
+ *
+ * Not the same thing as CACHE_TTL below, which is the small per-process Map
+ * and must stay short: a tag purge cannot reach another instance's Map.
+ */
+export const DATA_CACHE_SECONDS = 3600;
+
+/**
  * Centralized cache TTL constants (milliseconds).
  * Never use raw numbers in apiCache.set() calls.
  */

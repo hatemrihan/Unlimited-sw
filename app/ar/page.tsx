@@ -6,7 +6,7 @@ import Hero from '@/app/sections/Hero';
 import FeedbackSection from '@/app/sections/feedback/FeedbackSection';
 import Footer from '@/app/sections/Footer';
 import WhatsAppButton from '@/components/WhatsAppButton';
-import { getStoreContact } from '@/payments/contact';
+import { getStoreContactForPage } from '@/payments/contact';
 import Featured from '@/app/sections/Featured';
 import CounterDown from '@/app/sections/CounterDown';
 import { getActiveProducts } from '@/product';
@@ -66,7 +66,7 @@ export default async function ArabicHome() {
       <Featured locale="ar" />
       <FeedbackSection locale="ar" />
       <Footer />
-      <WhatsAppButton phone={(await getStoreContact()).whatsapp} />
+      <WhatsAppButton phone={(await getStoreContactForPage()).whatsapp} />
     </>
   );
 }

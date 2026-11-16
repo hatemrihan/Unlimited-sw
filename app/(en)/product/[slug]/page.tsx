@@ -53,11 +53,12 @@ const getPageData = cache(async (slug: string) => {
  *
  * It is rebuilt when the product changes — admin edits, stock moves and new
  * orders all call revalidateProducts(), which clears this page with the data —
- * and at most every 30 seconds otherwise, the same bound the product data
+ * and at most every hour otherwise (30 seconds until 17 Nov 2026; see
+ * DATA_CACHE_SECONDS in lib/cache-ttl.ts), the same bound the product data
  * cache had. Old /product/<ObjectId> links are not listed: they are built on
  * first visit and cached as the redirect they are.
  */
-export const revalidate = 30;
+export const revalidate = 3600;
 
 export async function generateStaticParams() {
   try {

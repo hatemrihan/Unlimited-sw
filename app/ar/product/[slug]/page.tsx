@@ -54,7 +54,7 @@ const getPageData = cache(async (slug: string) => {
 });
 
 /** Built at deploy and cached — app/(en)/product/[slug]/page.tsx explains the rules. */
-export const revalidate = 30;
+export const revalidate = 3600;
 
 export async function generateStaticParams() {
   try {
